@@ -315,17 +315,110 @@ def run_analysis_pipeline(
     top_roles = rank_roles(feature_vector, top_k=3)
     role_list = [{"role": role, "score": round(score, 4)} for role, score in top_roles]
 
-    # 6. Save result
+    # 6. Calculate category-specific scores (scale 0-10)
+    def calculate_category_scores(fvec, u):
+        missing_info = {
+            "edu": [], "skill": [], "contact": [], "intern": [], "exp": [], "proj": []
+        }
+        
+        # Education: Scale CGPA to 10
+        edu = min(10.0, (u.cgpa or 0.0))
+        if not u.cgpa:
+            missing_info["edu"].append("CGPA not found in profile")
+        elif u.cgpa < 8.0:
+            missing_info["edu"].append("CGPA is below 8.0")
+        
+        # Skills: 20+ detected skills = 10/10
+        skill_keys = [
+            "Python", "Java", "C++", "JavaScript", "SQL", "Node", "React", "NextJS",
+            "Docker", "Kubernetes", "CI/CD", "AWS", "NLP", "LLM", "SystemDesign", "DBMS"
+        ]
+        detected_skills = [k for k in skill_keys if fvec.get(k, 0) > 0]
+        skill_score = min(10.0, len(detected_skills) / 1.5) # Roughly 15 skills for 10/10
+        
+        missing_skills = [k for k in skill_keys if k not in detected_skills]
+        if len(detected_skills) < 10:
+            missing_info["skill"].extend(missing_skills[:3])
+        
+        # Contact: Name, Email (always present), Mobile, Github
+        contact = 5.0 # baseline for registered user
+        if u.mobile_number: 
+            contact += 2.5
+        else:
+            missing_info["contact"].append("Mobile Number")
+            
+        if u.github_username: 
+            contact += 2.5
+        else:
+            missing_info["contact"].append("GitHub Link")
+        
+        # Internships: 1=5, 2=8, 3+=10
+        intern_keys = ["internship_backend", "internship_ai", "internship_cloud", "internship_security", "internship_mobile", "internship_data"]
+        intern_count = sum(1 for k in intern_keys if fvec.get(k, 0) > 0)
+        intern_score = 10.0 if intern_count >= 3 else (8.0 if intern_count == 2 else (5.0 if intern_count == 1 else 0.0))
+        
+        if intern_count == 0:
+            missing_info["intern"].append("Relevant Internship")
+        elif intern_count < 2:
+            missing_info["intern"].append("Second Internship")
+        
+        # Projects: 5+ projects = 10/10
+        proj_keys = ["num_backend_projects", "num_ai_projects", "num_mobile_projects", "num_cloud_projects", "num_security_projects"]
+        proj_count = sum(fvec.get(k, 0) for k in proj_keys)
+        # Cap count from individual domains to avoid single-domain bloating
+        effective_proj_count = sum(min(fvec.get(k, 0), 2) for k in proj_keys)
+        proj_score = min(10.0, effective_proj_count * 2.5)
+        
+        if proj_count < 3:
+            missing_info["proj"].append(f"At least {3 - proj_count} more projects")
+        
+        # Experience: Weighted average of projects and internships for now
+        exp_score = (intern_score * 0.6) + (proj_score * 0.4)
+        if exp_score < 7:
+            missing_info["exp"].append("More hands-on industry experience")
+        
+        return {
+            "edu": round(edu, 1),
+            "skill": round(skill_score, 1),
+            "contact": round(contact, 1),
+            "intern": round(intern_score, 1),
+            "exp": round(exp_score, 1),
+            "proj": round(proj_score, 1),
+            "skills_list": detected_skills,
+            "missing": missing_info
+        }
+
+    cat_scores = calculate_category_scores(feature_vector, user)
+
+    # 7. Generate AI Suggestions
+    from services.suggestion_engine import generate_suggestions
+    ai_suggestions = generate_suggestions(
+        readiness_score=readiness,
+        features=feature_vector,
+        categories_scores=cat_scores,
+        resume_text=resume_text
+    )
+
+    # 8. Save result
     try:
         analysis = AnalysisResult(
             user_id=user.id,
             resume_text_preview=resume_text[:200] if resume_text else "",
             github_username=github_username,
             leetcode_username=leetcode_username,
-            features=json.dumps(feature_vector) if isinstance(feature_vector, dict) else feature_vector, # Ensure JSON serializable
+            features=json.dumps(feature_vector) if isinstance(feature_vector, dict) else feature_vector,
             readiness_score=readiness,
             readiness_category=category,
             recommended_roles=role_list,
+            # Re-assigned scores
+            education_score=cat_scores["edu"],
+            skills_score=cat_scores["skill"],
+            contact_score=cat_scores["contact"],
+            internship_score=cat_scores["intern"],
+            experience_score=cat_scores["exp"],
+            project_score=cat_scores["proj"],
+            ai_suggestions=ai_suggestions,
+            missing_details=cat_scores.get("missing", {})
         )
         db.add(analysis)
 
@@ -439,7 +532,15 @@ async def update_profile(
             "readiness_score": latest_analysis.readiness_score,
             "readiness_category": latest_analysis.readiness_category,
             "recommended_roles": latest_analysis.recommended_roles,
-            "total_features_used": len([v for v in (latest_analysis.features.values() if isinstance(latest_analysis.features, dict) else {}) if v > 0]),
+            "education_score": latest_analysis.education_score,
+            "skills_score": latest_analysis.skills_score,
+            "contact_score": latest_analysis.contact_score,
+            "internship_score": latest_analysis.internship_score,
+            "experience_score": latest_analysis.experience_score,
+            "project_score": latest_analysis.project_score,
+            "ai_suggestions": latest_analysis.ai_suggestions,
+            "missing_details": latest_analysis.missing_details,
+            "total_features_used": len([v for v in (json.loads(latest_analysis.features).values() if isinstance(latest_analysis.features, str) else latest_analysis.features.values() if latest_analysis.features else {}) if v > 0]),
             "created_at": latest_analysis.created_at
         } if latest_analysis else None
     }
@@ -471,7 +572,15 @@ def get_latest_analysis(
         "readiness_score": latest.readiness_score,
         "readiness_category": latest.readiness_category,
         "recommended_roles": latest.recommended_roles,
-        "total_features_used": len([v for v in (latest.features.values() if isinstance(latest.features, dict) else {}) if v > 0]),
+        "education_score": latest.education_score,
+        "skills_score": latest.skills_score,
+        "contact_score": latest.contact_score,
+        "internship_score": latest.internship_score,
+        "experience_score": latest.experience_score,
+        "project_score": latest.project_score,
+        "ai_suggestions": latest.ai_suggestions,
+        "missing_details": latest.missing_details,
+        "total_features_used": len([v for v in (json.loads(latest.features).values() if isinstance(latest.features, str) else latest.features.values() if latest.features else {}) if v > 0]),
         "created_at": latest.created_at
     }
 
@@ -658,6 +767,13 @@ def get_history(
             "readiness_score": r.readiness_score,
             "readiness_category": r.readiness_category,
             "recommended_roles": r.recommended_roles,
+            "education_score": r.education_score,
+            "skills_score": r.skills_score,
+            "contact_score": r.contact_score,
+            "internship_score": r.internship_score,
+            "experience_score": r.experience_score,
+            "project_score": r.project_score,
+            "ai_suggestions": r.ai_suggestions,
             "created_at": r.created_at.isoformat() if r.created_at else None,
         }
         for r in results

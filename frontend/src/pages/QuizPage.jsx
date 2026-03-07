@@ -1,159 +1,202 @@
-
-
 import React, { useState, useEffect } from 'react';
-import './QuizPage.css';
+import {
+  Box, Flex, Heading, Text, Button, VStack, HStack, Badge, Spinner,
+} from '@chakra-ui/react';
+import { NativeSelectField, NativeSelectRoot } from '@/components/ui/native-select';
 import QuizRunner from '../components/QuizRunner';
 
-const API_BASE_URL = "/api";
+const API_BASE_URL = '/api';
 
 const QuizPage = () => {
-    const [roles, setRoles] = useState([]);
-    const [history, setHistory] = useState([]);
-    const [selectedRole, setSelectedRole] = useState('');
-    const [difficulty, setDifficulty] = useState('Medium');
-    const [isRunning, setIsRunning] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const [retestResultId, setRetestResultId] = useState(null);
+  const [roles, setRoles] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [selectedRole, setSelectedRole] = useState('');
+  const [difficulty, setDifficulty] = useState('Medium');
+  const [isRunning, setIsRunning] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [retestResultId, setRetestResultId] = useState(null);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const token = localStorage.getItem("token");
-                const headers = { "Authorization": `Bearer ${token}` };
-
-                const [rolesRes, historyRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/quiz/roles`, { headers }),
-                    fetch(`${API_BASE_URL}/quiz/results`, { headers })
-                ]);
-
-                if (rolesRes.status === 401 || historyRes.status === 401) {
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("user");
-                    window.location.href = "/"; // Redirect to login
-                    return;
-                }
-
-                if (rolesRes.ok) {
-                    const data = await rolesRes.json();
-                    setRoles(data.roles || []);
-                }
-                if (historyRes.ok) {
-                    const data = await historyRes.json();
-                    setHistory(data.results || []);
-                }
-            } catch (err) {
-                console.error("Failed to load quiz data", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [isRunning]); // Reload history when returning from run
-
-    const handleStart = () => {
-        if (selectedRole) {
-            setRetestResultId(null);
-            setIsRunning(true);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const headers = { Authorization: `Bearer ${token}` };
+        const [rolesRes, historyRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/quiz/roles`, { headers }),
+          fetch(`${API_BASE_URL}/quiz/results`, { headers }),
+        ]);
+        if (rolesRes.status === 401 || historyRes.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/';
+          return;
         }
+        if (rolesRes.ok) { const data = await rolesRes.json(); setRoles(data.roles || []); }
+        if (historyRes.ok) { const data = await historyRes.json(); setHistory(data.results || []); }
+      } catch (err) {
+        console.error('Failed to load quiz data', err);
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchData();
+  }, [isRunning]);
 
-    const handleRetest = (item) => {
-        setSelectedRole(item.role);
-        setDifficulty(item.difficulty || 'Medium');
-        setRetestResultId(item.id);
-        setIsRunning(true);
-    };
+  const handleStart = () => {
+    if (selectedRole) { setRetestResultId(null); setIsRunning(true); }
+  };
 
-    if (isRunning) {
-        return (
-            <QuizRunner
-                role={selectedRole}
-                difficulty={difficulty}
-                initialResultId={retestResultId}
-                onComplete={() => setIsRunning(false)}
-                onCancel={() => setIsRunning(false)}
-            />
-        );
-    }
+  const handleRetest = (item) => {
+    setSelectedRole(item.role);
+    setDifficulty(item.difficulty || 'Medium');
+    setRetestResultId(item.id);
+    setIsRunning(true);
+  };
 
+  if (isRunning) {
     return (
-        <div className="quiz-page-container">
-            <header className="quiz-hero">
-                <h1>Skill Assessment</h1>
-                <p>Test your knowledge with AI-generated quizzes tailored to your target role.</p>
-            </header>
-
-            <div className="quiz-layout">
-                <div className="quiz-setup-card">
-                    <h2>Start New Quiz</h2>
-
-                    <div className="form-group">
-                        <label>Select Role</label>
-                        <select
-                            value={selectedRole}
-                            onChange={(e) => setSelectedRole(e.target.value)}
-                            className="quiz-select"
-                        >
-                            <option value="">-- Choose a Role --</option>
-                            {roles.map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Difficulty</label>
-                        <div className="diff-options">
-                            {['Low', 'Medium', 'High'].map(d => (
-                                <button
-                                    key={d}
-                                    className={`diff-btn ${difficulty === d ? 'active' : ''}`}
-                                    onClick={() => setDifficulty(d)}
-                                >
-                                    {d}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <button
-                        className="start-quiz-btn"
-                        disabled={!selectedRole || loading}
-                        onClick={handleStart}
-                    >
-                        Start Quiz
-                    </button>
-                    {!selectedRole && <p className="hint">Please select a role to begin.</p>}
-                </div>
-
-                <div className="quiz-history-section">
-                    <h3>Recent Attempts</h3>
-                    {history.length === 0 ? (
-                        <p className="no-history">No quizzes taken yet.</p>
-                    ) : (
-                        <div className="history-list">
-                            {history.map(item => (
-                                <div key={item.id} className="history-item">
-                                    <div className="history-info">
-                                        <span className="history-role">{item.role}</span>
-                                        <span className="history-meta">{item.difficulty} • {new Date(item.created_at).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="history-action">
-                                        <span className={`score-badge ${(item.score / item.total_questions) >= 0.8 ? 'good' : (item.score / item.total_questions) >= 0.5 ? 'avg' : 'bad'
-                                            }`}>
-                                            {item.score}/{item.total_questions}
-                                        </span>
-                                        <button className="retest-btn" onClick={() => handleRetest(item)}>
-                                            Retest
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
+      <QuizRunner
+        role={selectedRole}
+        difficulty={difficulty}
+        initialResultId={retestResultId}
+        onComplete={() => setIsRunning(false)}
+        onCancel={() => setIsRunning(false)}
+      />
     );
+  }
+
+  return (
+    <Box>
+      {/* Hero */}
+      <Box mb={6}>
+        <Heading size="xl" color="gray.100" mb={1}>Skill Assessment</Heading>
+        <Text color="gray.400">Test your knowledge with AI-generated quizzes tailored to your target role.</Text>
+      </Box>
+
+      <Flex gap={6} direction={{ base: 'column', lg: 'row' }}>
+        {/* Setup card */}
+        <Box
+          bg="gray.900"
+          border="1px solid"
+          borderColor="gray.800"
+          borderRadius="xl"
+          p={6}
+          flex={1}
+          maxW={{ lg: '380px' }}
+        >
+          <Heading size="md" color="gray.100" mb={4}>Start New Quiz</Heading>
+
+          {/* Role select */}
+          <Box mb={4}>
+            <Text fontSize="sm" color="gray.400" mb={1}>Select Role</Text>
+            <NativeSelectRoot size="md">
+              <NativeSelectField
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                bg="gray.800"
+                border="1px solid"
+                borderColor="gray.700"
+              >
+                <option value="">-- Choose a Role --</option>
+                {roles.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </NativeSelectField>
+            </NativeSelectRoot>
+          </Box>
+
+          {/* Difficulty */}
+          <Box mb={4}>
+            <Text fontSize="sm" color="gray.400" mb={1}>Difficulty</Text>
+            <HStack gap={2}>
+              {['Low', 'Medium', 'High'].map((d) => (
+                <Button
+                  key={d}
+                  size="sm"
+                  flex={1}
+                  variant={difficulty === d ? 'solid' : 'outline'}
+                  colorPalette={difficulty === d ? 'blue' : 'gray'}
+                  borderColor="gray.700"
+                  onClick={() => setDifficulty(d)}
+                >
+                  {d}
+                </Button>
+              ))}
+            </HStack>
+          </Box>
+
+          <Button
+            colorPalette="blue"
+            w="full"
+            size="lg"
+            disabled={!selectedRole || loading}
+            onClick={handleStart}
+          >
+            Start Quiz
+          </Button>
+          {!selectedRole && (
+            <Text fontSize="xs" color="gray.500" mt={2} textAlign="center">
+              Please select a role to begin.
+            </Text>
+          )}
+        </Box>
+
+        {/* History */}
+        <Box flex={1}>
+          <Heading size="sm" color="gray.300" mb={3}>Recent Attempts</Heading>
+          {loading ? (
+            <Flex justify="center" py={8}><Spinner color="blue.400" /></Flex>
+          ) : history.length === 0 ? (
+            <Text color="gray.500">No quizzes taken yet.</Text>
+          ) : (
+            <VStack gap={2} align="stretch">
+              {history.map((item) => {
+                const pct = item.score / item.total_questions;
+                const scoreColor = pct >= 0.8 ? 'green' : pct >= 0.5 ? 'yellow' : 'red';
+                return (
+                  <Flex
+                    key={item.id}
+                    bg="gray.900"
+                    border="1px solid"
+                    borderColor="gray.800"
+                    borderRadius="lg"
+                    px={4}
+                    py={3}
+                    align="center"
+                    justify="space-between"
+                  >
+                    <Box>
+                      <Text fontWeight="600" color="gray.100" fontSize="sm">{item.role}</Text>
+                      <Text fontSize="xs" color="gray.500">
+                        {item.difficulty} • {new Date(item.created_at).toLocaleDateString()}
+                      </Text>
+                    </Box>
+                    <HStack gap={3}>
+                      <Badge
+                        colorPalette={scoreColor}
+                        px={2}
+                        py={1}
+                        borderRadius="md"
+                        fontSize="xs"
+                      >
+                        {item.score}/{item.total_questions}
+                      </Badge>
+                      <Button size="xs" variant="outline" borderColor="gray.700" color="gray.300"
+                        _hover={{ bg: 'gray.800' }}
+                        onClick={() => handleRetest(item)}
+                      >
+                        Retest
+                      </Button>
+                    </HStack>
+                  </Flex>
+                );
+              })}
+            </VStack>
+          )}
+        </Box>
+      </Flex>
+    </Box>
+  );
 };
 
 export default QuizPage;

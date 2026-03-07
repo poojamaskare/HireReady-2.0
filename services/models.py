@@ -62,6 +62,18 @@ class AnalysisResult(Base):
     readiness_score = Column(Float, nullable=False)
     readiness_category = Column(String(50), nullable=False)
     recommended_roles = Column(JSON, nullable=False)
+    
+    # New category scores (0-10)
+    education_score = Column(Float, default=0.0)
+    skills_score = Column(Float, default=0.0)
+    contact_score = Column(Float, default=0.0)
+    internship_score = Column(Float, default=0.0)
+    experience_score = Column(Float, default=0.0)
+    project_score = Column(Float, default=0.0)
+    
+    ai_suggestions = Column(JSON, default=list) # List of strings
+    missing_details = Column(JSON, default=dict) # dict of lists
+
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

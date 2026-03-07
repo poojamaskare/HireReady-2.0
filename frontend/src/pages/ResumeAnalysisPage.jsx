@@ -1,0 +1,305 @@
+import { useState } from 'react';
+import {
+  Box, Flex, Heading, Text, Button, VStack,
+  Icon, SimpleGrid, Card, HStack, Badge,
+  List,
+} from '@chakra-ui/react';
+import { Alert } from '@/components/ui/alert';
+import { ProgressBar, ProgressRoot, ProgressValueText, ProgressLabel } from '@/components/ui/progress';
+import { 
+  FileUp, Paperclip, File, CheckCircle2, Lightbulb, 
+  Trophy, AlertTriangle, XCircle, Info 
+} from 'lucide-react';
+
+const API_BASE = '/api';
+
+export default function ResumeAnalysisPage({ token, user, result, onProfileUpdate }) {
+  const [resumeFile, setResumeFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setResumeFile(file);
+      setMessage('');
+    } else if (file) {
+      setMessage('❌ Please upload a PDF file.');
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!resumeFile) {
+      setMessage('❌ Please select a resume file first.');
+      return;
+    }
+
+    setUploading(true);
+    setMessage('');
+    try {
+      const formData = new FormData();
+      formData.append('resume', resumeFile);
+
+      const resp = await fetch(`${API_BASE}/auth/profile`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!resp.ok) {
+        const data = await resp.json();
+        throw new Error(data.detail || 'Failed to analyze resume.');
+      }
+
+      const data = await resp.json();
+      onProfileUpdate(data.user, data.analysis);
+      setMessage(`✅ Resume Analyzed!`);
+      setResumeFile(null);
+    } catch (err) {
+      setMessage(`❌ ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const ScoreCard = ({ label, value, color, missing }) => (
+    <Box 
+      bg="gray.800/40" 
+      p={5} 
+      borderRadius="2xl" 
+      border="1px solid" 
+      borderColor="gray.700"
+      _hover={{ borderColor: `${color}.500/50`, bg: 'gray.800/60' }}
+      transition="all 0.3s"
+      position="relative"
+      overflow="hidden"
+    >
+      <VStack align="stretch" gap={3}>
+        <HStack justify="space-between">
+          <Text fontSize="xs" fontWeight="800" color="gray.400" textTransform="uppercase" letterSpacing="widest">
+            {label}
+          </Text>
+          <Badge colorPalette={color} variant="solid" size="sm" borderRadius="md">
+            {value}/10
+          </Badge>
+        </HStack>
+        
+        <Box h="4px" bg="gray.950" borderRadius="full" overflow="hidden">
+           <Box h="full" bg={`${color}.500`} w={`${value * 10}%`} transition="width 1s ease-out" />
+        </Box>
+
+        {missing && missing.length > 0 ? (
+          <VStack align="start" gap={1.5} mt={1}>
+            <HStack gap={1.5}>
+              <Icon asChild color="orange.400" w={3} h={3}><AlertTriangle /></Icon>
+              <Text fontSize="2xs" color="orange.300" fontWeight="700">MISSING:</Text>
+            </HStack>
+            {missing.map((item, i) => (
+              <HStack key={i} gap={2}>
+                <Icon asChild w={2} h={2} color="gray.500"><XCircle /></Icon>
+                <Text fontSize="xs" color="gray.300" lineHeight="1">{item}</Text>
+              </HStack>
+            ))}
+          </VStack>
+        ) : (
+          <HStack gap={1.5} mt={1}>
+            <Icon asChild color="green.400" w={3} h={3}><CheckCircle2 /></Icon>
+            <Text fontSize="xs" color="green.300" fontWeight="600">Perfectly Optmized</Text>
+          </HStack>
+        )}
+      </VStack>
+    </Box>
+  );
+
+  const categoryColor = (cat) => {
+    if (!cat) return 'green';
+    const lower = cat.toLowerCase();
+    if (lower.includes('ready') && !lower.includes('almost')) return 'green';
+    if (lower.includes('almost')) return 'orange';
+    return 'red';
+  };
+
+  return (
+    <VStack gap={8} align="stretch" maxW="1200px" mx="auto" pb={20}>
+      {/* ── Header Area ── */}
+      <Flex direction={{ base: 'column', md: 'row' }} gap={6} align="center" justify="space-between">
+        <Box>
+          <Heading size="xl" color="white" mb={2}>Resume Intelligence</Heading>
+          <Text color="gray.400">Deep-dive analysis of your placement readiness with actionable gaps.</Text>
+        </Box>
+        {result && (
+           <Box 
+             p={6} 
+             bg="blue.600/10" 
+             borderRadius="2xl" 
+             border="2px solid" 
+             borderColor="blue.500/30"
+             textAlign="center"
+             minW="200px"
+           >
+              <Text fontSize="xs" color="blue.300" fontWeight="800" mb={1} textTransform="uppercase">Total Score</Text>
+              <Text fontSize="4xl" fontWeight="900" color="white" lineHeight="1">
+                {result.readiness_score}<Text as="span" fontSize="lg" color="blue.400" fontWeight="500">/100</Text>
+              </Text>
+              <Badge mt={2} colorPalette={categoryColor(result.readiness_category)} variant="subtle">
+                {result.readiness_category}
+              </Badge>
+           </Box>
+        )}
+      </Flex>
+
+      {/* ── Main Content Grid ── */}
+      <SimpleGrid columns={{ base: 1, lg: 3 }} gap={8}>
+        
+        {/* Left Column: Action & Suggestions */}
+        <VStack gap={6} align="stretch" gridColumn={{ lg: 'span 1' }}>
+          <Card.Root bg="gray.900/40" border="1px solid" borderColor="gray.800" borderRadius="3xl">
+            <Card.Body p={6}>
+              <VStack gap={5}>
+                <VStack gap={2} textAlign="center">
+                  <Box p={3} borderRadius="xl" bg="blue.500/10" color="blue.400">
+                    <Icon asChild w={8} h={8}><FileUp /></Icon>
+                  </Box>
+                  <Heading size="md" color="white">Update Analysis</Heading>
+                  <Text fontSize="sm" color="gray.500">Upload your latest PDF to refresh scores.</Text>
+                </VStack>
+
+                <Box
+                  w="full"
+                  border="2px dashed"
+                  borderColor={resumeFile ? 'blue.400' : 'gray.700'}
+                  borderRadius="2xl"
+                  p={8}
+                  bg="gray.950/40"
+                  cursor="pointer"
+                  transition="all 0.2s"
+                  onClick={() => document.getElementById('resume-upload').click()}
+                >
+                  <input id="resume-upload" type="file" accept="application/pdf" onChange={handleFileChange} style={{ display: 'none' }} />
+                  <VStack gap={2}>
+                    <Icon asChild w={8} h={8} color={resumeFile ? 'blue.400' : 'gray.600'}>
+                      {resumeFile ? <File /> : <Paperclip />}
+                    </Icon>
+                    <Text fontSize="xs" color={resumeFile ? 'gray.200' : 'gray.500'} fontWeight="700" textAlign="center">
+                      {resumeFile ? resumeFile.name : 'Select Resume PDF'}
+                    </Text>
+                  </VStack>
+                </Box>
+
+                <Button 
+                  w="full" 
+                  colorPalette="blue" 
+                  size="xl" 
+                  borderRadius="xl"
+                  loading={uploading}
+                  onClick={handleUpload}
+                  disabled={!resumeFile}
+                  boxShadow="0 4px 15px rgba(49, 130, 206, 0.3)"
+                >
+                  Run Neural Analysis
+                </Button>
+                {message && <Alert status={message.startsWith('✅') ? 'success' : 'error'} title={message} variant="subtle" borderRadius="xl" />}
+              </VStack>
+            </Card.Body>
+          </Card.Root>
+
+          {/* AI Success Guide */}
+          <Box bg="orange.600/5" p={6} borderRadius="3xl" border="1px solid" borderColor="orange.500/20">
+             <HStack mb={4} gap={3}>
+               <Icon asChild color="orange.400" w={6} h={6}><Lightbulb /></Icon>
+               <Heading size="sm" color="white">Road to 100/100</Heading>
+             </HStack>
+             <VStack gap={4} align="stretch">
+               {result?.ai_suggestions?.length > 0 ? result.ai_suggestions.map((s, idx) => (
+                 <HStack key={idx} align="start" gap={3}>
+                   <Icon asChild w={4} h={4} mt={1} color="orange.400"><CheckCircle2 /></Icon>
+                   <Text fontSize="sm" color="gray.300" lineHeight="1.5">{s}</Text>
+                 </HStack>
+               )) : (
+                 <Text color="gray.500" fontSize="sm">Perform an analysis to see your personalized growth list.</Text>
+               )}
+             </VStack>
+          </Box>
+        </VStack>
+
+        {/* Right Column: Detailed Score Matrix */}
+        <Box gridColumn={{ lg: 'span 2' }}>
+          {result ? (
+            <VStack gap={6} align="stretch">
+              <HStack justify="space-between">
+                <Heading size="md" color="gray.100">Performance Breakdown</Heading>
+                <HStack gap={4}>
+                   <HStack gap={1.5}><Box w={2} h={2} borderRadius="full" bg="green.500" /><Text fontSize="xs" color="gray.500">High</Text></HStack>
+                   <HStack gap={1.5}><Box w={2} h={2} borderRadius="full" bg="orange.500" /><Text fontSize="xs" color="gray.500">Medium</Text></HStack>
+                   <HStack gap={1.5}><Box w={2} h={2} borderRadius="full" bg="red.500" /><Text fontSize="xs" color="gray.500">Critical</Text></HStack>
+                </HStack>
+              </HStack>
+
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                <ScoreCard 
+                  label="Education" 
+                  value={result.education_score || 0} 
+                  color={result.education_score > 7 ? 'green' : result.education_score > 4 ? 'orange' : 'red'}
+                  missing={result.missing_details?.edu}
+                />
+                <ScoreCard 
+                  label="Core Technical Skills" 
+                  value={result.skills_score || 0} 
+                  color={result.skills_score > 7 ? 'green' : result.skills_score > 4 ? 'orange' : 'red'}
+                  missing={result.missing_details?.skill}
+                />
+                <ScoreCard 
+                  label="Relevant Internships" 
+                  value={result.internship_score || 0} 
+                  color={result.internship_score > 7 ? 'green' : result.internship_score > 4 ? 'orange' : 'red'}
+                  missing={result.missing_details?.intern}
+                />
+                <ScoreCard 
+                  label="Technical Projects" 
+                  value={result.project_score || 0} 
+                  color={result.project_score > 7 ? 'green' : result.project_score > 4 ? 'orange' : 'red'}
+                  missing={result.missing_details?.proj}
+                />
+                <ScoreCard 
+                  label="Hands-on Experience" 
+                  value={result.experience_score || 0} 
+                  color={result.experience_score > 7 ? 'green' : result.experience_score > 4 ? 'orange' : 'red'}
+                  missing={result.missing_details?.exp}
+                />
+                <ScoreCard 
+                  label="Online Presence & Contact" 
+                  value={result.contact_score || 0} 
+                  color={result.contact_score > 7 ? 'green' : result.contact_score > 4 ? 'orange' : 'red'}
+                  missing={result.missing_details?.contact}
+                />
+              </SimpleGrid>
+
+              {/* Skills Cloud */}
+              <Box bg="gray.900/40" p={6} borderRadius="3xl" border="1px solid" borderColor="gray.800">
+                <HStack mb={4} gap={3}>
+                  <Icon asChild color="blue.400" w={5} h={5}><Info /></Icon>
+                  <Heading size="xs" color="gray.400" textTransform="uppercase" letterSpacing="widest">Detected Skill Stack</Heading>
+                </HStack>
+                <Flex wrap="wrap" gap={2}>
+                  {result.skills_list?.length > 0 ? result.skills_list.map((skill, idx) => (
+                    <Badge key={idx} variant="surface" colorPalette="blue" px={3} py={1} borderRadius="lg" fontSize="xs">
+                      {skill}
+                    </Badge>
+                  )) : (
+                    <Text color="gray.600" fontSize="sm italic">No specific technical skills identified yet.</Text>
+                  )}
+                </Flex>
+              </Box>
+            </VStack>
+          ) : (
+            <Flex direction="column" align="center" justify="center" h="full" minH="500px" bg="gray.900/20" borderRadius="3xl" border="2px dashed" borderColor="gray.800">
+              <Icon asChild w={16} h={16} color="gray.700" mb={4}><FileText /></Icon>
+              <Text color="gray.500" fontWeight="600">No Analysis Found</Text>
+              <Text color="gray.600" fontSize="sm" mt={1}>Upload your resume to see the intelligence dashboard.</Text>
+            </Flex>
+          )}
+        </Box>
+      </SimpleGrid>
+    </VStack>
+  );
+}

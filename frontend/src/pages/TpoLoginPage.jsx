@@ -1,111 +1,165 @@
 import { useState } from 'react';
-import './LoginPage.css';           /* Reuse existing login styles */
+import {
+  Box, Flex, Heading, Text, Input, Button, VStack, HStack, Icon,
+} from '@chakra-ui/react';
+import { Alert } from '@/components/ui/alert';
+import { Field } from '@/components/ui/field';
+import { toaster } from '@/components/ui/toaster';
+import { PasswordInput } from '@/components/ui/password-input';
+import { ChevronLeft } from 'lucide-react';
 
 const API_BASE = '/api';
 
 export default function TpoLoginPage({ onLogin, onBack }) {
-  const [mode, setMode]       = useState('login');
-  const [name, setName]       = useState('');
-  const [email, setEmail]     = useState('');
+  const [mode, setMode] = useState('login');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!email.trim() || !password.trim()) {
-      setError('Please fill in all fields.');
-      return;
-    }
-    if (mode === 'register' && !name.trim()) {
-      setError('Please enter your name.');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
-      return;
-    }
+    if (!email.trim() || !password.trim()) { setError('Please fill in all fields.'); return; }
+    if (mode === 'register' && !name.trim()) { setError('Please enter your name.'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
 
     setLoading(true);
-
     try {
       const endpoint = mode === 'login' ? '/auth/login' : '/auth/register';
-      const body =
-        mode === 'login'
-          ? { email: email.trim(), password }
-          : { name: name.trim(), email: email.trim(), password, role: 'tpo' };
+      const body = mode === 'login'
+        ? { email: email.trim(), password }
+        : { name: name.trim(), email: email.trim(), password, role: 'tpo' };
 
       const resp = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-
       const data = await resp.json();
-
       if (!resp.ok) throw new Error(data.detail || 'Something went wrong.');
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      toaster.create({
+        title: mode === 'login' ? 'Login Successful' : 'Registration Successful',
+        type: 'success',
+      });
       onLogin(data.token, data.user);
     } catch (err) {
-      setError(err.name === 'TypeError' ? 'Network error — is the backend running?' : err.message);
+      const errorMsg = err.name === 'TypeError' ? 'Network error — is the backend running?' : err.message;
+      setError(errorMsg);
+      toaster.create({
+        title: mode === 'login' ? 'Login Failed' : 'Registration Failed',
+        description: errorMsg,
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="login-container">
-      <div className="login-header">
-        <h1>HireReady</h1>
-        <p>Training &amp; Placement Officer Portal</p>
-      </div>
+    <Flex minH="100vh" bg="gray.950" align="center" justify="center" direction="column" px={4}>
+      <Box textAlign="center" mb={8}>
+        <Heading
+          size="3xl"
+          fontWeight="800"
+          bgGradient="to-r"
+          gradientFrom="purple.400"
+          gradientTo="pink.400"
+          bgClip="text"
+          mb={1}
+        >
+          HireReady
+        </Heading>
+        <Text color="gray.400">Training &amp; Placement Officer Portal</Text>
+      </Box>
 
-      <div className="login-card">
-        {/* Back button */}
-        <button className="back-link" onClick={onBack}>← Back to role selection</button>
+      <Box
+        bg="gray.900"
+        border="1px solid"
+        borderColor="gray.800"
+        borderRadius="2xl"
+        p={8}
+        w="full"
+        maxW="420px"
+      >
+        <Button variant="ghost" size="sm" color="gray.400" mb={3} onClick={onBack}
+          _hover={{ color: 'gray.100' }}
+        >
+          <Icon asChild w={4} h={4}><ChevronLeft /></Icon> Back to role selection
+        </Button>
 
-        <div className="auth-toggle">
-          <button className={mode === 'login' ? 'active' : ''} onClick={() => { setMode('login'); setError(''); }}>Login</button>
-          <button className={mode === 'register' ? 'active' : ''} onClick={() => { setMode('register'); setError(''); }}>Register</button>
-        </div>
+        <HStack bg="gray.800" borderRadius="lg" p={1} mb={5} gap={0}>
+          <Button
+            flex={1} size="sm"
+            variant={mode === 'login' ? 'solid' : 'ghost'}
+            colorPalette={mode === 'login' ? 'purple' : undefined}
+            color={mode === 'login' ? 'white' : 'gray.400'}
+            onClick={() => { setMode('login'); setError(''); }}
+          >
+            Login
+          </Button>
+          <Button
+            flex={1} size="sm"
+            variant={mode === 'register' ? 'solid' : 'ghost'}
+            colorPalette={mode === 'register' ? 'purple' : undefined}
+            color={mode === 'register' ? 'white' : 'gray.400'}
+            onClick={() => { setMode('register'); setError(''); }}
+          >
+            Register
+          </Button>
+        </HStack>
 
-        <h2>{mode === 'login' ? 'Welcome back, TPO' : 'Create TPO account'}</h2>
-        <p className="subtitle">
+        <Heading size="lg" color="gray.100" mb={1}>
+          {mode === 'login' ? 'Welcome back, TPO' : 'Create TPO account'}
+        </Heading>
+        <Text color="gray.400" fontSize="sm" mb={5}>
           {mode === 'login' ? 'Sign in to manage placements' : 'Register as a placement officer'}
-        </p>
+        </Text>
 
-        {error && <div className="login-error">{error}</div>}
+        {error && <Alert status="error" mb={4} title={error} borderRadius="lg" />}
 
         <form onSubmit={handleSubmit}>
-          {mode === 'register' && (
-            <div className="form-group">
-              <label htmlFor="tpo-name">Full Name</label>
-              <input id="tpo-name" type="text" placeholder="e.g. Dr. Sharma" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-          )}
-
-          <div className="form-group">
-            <label htmlFor="tpo-email">Email</label>
-            <input id="tpo-email" type="email" placeholder="you@college.edu" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="tpo-password">Password</label>
-            <input id="tpo-password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </div>
-
-          <button type="submit" className="login-btn tpo-btn" disabled={loading}>
-            {loading && <span className="spinner" />}
-            {loading
-              ? (mode === 'login' ? 'Signing in…' : 'Creating account…')
-              : (mode === 'login' ? 'Sign In as TPO' : 'Create TPO Account')}
-          </button>
+          <VStack gap={4} align="stretch">
+            {mode === 'register' && (
+              <Field label="Full Name">
+                <Input placeholder="e.g. Dr. Sharma" value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  bg="gray.800" border="1px solid" borderColor="gray.700"
+                  _hover={{ borderColor: 'gray.600' }}
+                  _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+                />
+              </Field>
+            )}
+            <Field label="Email">
+              <Input type="email" placeholder="you@college.edu" value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                bg="gray.800" border="1px solid" borderColor="gray.700"
+                _hover={{ borderColor: 'gray.600' }}
+                _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+              />
+            </Field>
+            <Field label="Password">
+              <PasswordInput placeholder="••••••••" value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                bg="gray.800" border="1px solid" borderColor="gray.700"
+                _hover={{ borderColor: 'gray.600' }}
+                _focus={{ borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' }}
+              />
+            </Field>
+            <Button
+              type="submit" colorPalette="purple" w="full"
+              loading={loading}
+              loadingText={mode === 'login' ? 'Signing in…' : 'Creating account…'}
+            >
+              {mode === 'login' ? 'Sign In as TPO' : 'Create TPO Account'}
+            </Button>
+          </VStack>
         </form>
-      </div>
-    </div>
+      </Box>
+    </Flex>
   );
 }

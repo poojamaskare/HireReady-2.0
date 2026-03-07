@@ -79,19 +79,19 @@ def initialize_feature_vector() -> Dict[str, int]:
 # (e.g. "Java" won't match inside "JavaScript").
 _SKILL_PATTERNS: Dict[str, list] = {
     # ── Programming languages ────────────────────────────────────────────
-    "Python":            [r"\bpython\b"],
-    "Java":              [r"\bjava\b(?!\s*script)"],      # exclude "javascript"
+    "Python":            [r"\bpython\b", r"\bpy\b"],
+    "Java":              [r"\bjava\b(?!\s*script)"],
     "C++":               [r"\bc\+\+\b", r"\bcpp\b"],
-    "C":                 [r"\bc\b(?!\+\+|#|sharp)"],      # exclude C++/C#
-    "JavaScript":        [r"\bjavascript\b", r"\bjs\b"],
+    "C":                 [r"\bc\b(?!\+\+|#|sharp)"],
+    "JavaScript":        [r"\bjavascript\b", r"\bjs\b", r"\becmascript\b"],
     "Go":                [r"\bgolang\b", r"\bgo\b(?:\s+lang)?\b"],
     "Rust":              [r"\brust\b"],
     "TypeScript":        [r"\btypescript\b", r"\bts\b"],
-    "SQL":               [r"\bsql\b", r"\bmysql\b", r"\bpostgresql\b", r"\bpostgres\b"],
+    "SQL":               [r"\bsql\b", r"\bmysql\b", r"\bpostgresql\b", r"\bpostgres\b", r"\boracle\b", r"\bmongodb\b", r"\bnosql\b"],
 
     # ── Frameworks / runtimes ────────────────────────────────────────────
     "Node":              [r"\bnode\.?js\b", r"\bnode\b"],
-    "Spring":            [r"\bspring\b(?:\s*boot)?"],
+    "Spring":            [r"\bspring\b(?:\s*boot)?", r"\bhibernate\b"],
     "Django":            [r"\bdjango\b"],
     "Flask":             [r"\bflask\b"],
     "FastAPI":           [r"\bfastapi\b", r"\bfast\s*api\b"],
@@ -101,91 +101,89 @@ _SKILL_PATTERNS: Dict[str, list] = {
     "Vue":               [r"\bvue\.?js\b", r"\bvue\b"],
     "NextJS":            [r"\bnext\.?js\b", r"\bnextjs\b"],
     "HTML":              [r"\bhtml5?\b"],
-    "CSS":               [r"\bcss3?\b", r"\bsass\b", r"\bscss\b"],
+    "CSS":               [r"\bcss3?\b", r"\bsass\b", r"\bscss\b", r"\btailwind\b", r"\bbootstrap\b"],
 
     # ── ML / AI ──────────────────────────────────────────────────────────
     "TensorFlow":        [r"\btensorflow\b", r"\btf\b", r"\bkeras\b"],
-    "PyTorch":           [r"\bpytorch\b", r"\btorch\b"],
-    "Scikit":            [r"\bscikit[\s\-]?learn\b", r"\bsklearn\b", r"\bscikit\b", r"\bxboost\b", r"\blgbm\b"],
-    "Pandas":            [r"\bpandas\b", r"\bnumpy\b", r"\bmatplotlib\b", r"\bseaborn\b"],
-    "NLP":               [r"\bnlp\b", r"\bnatural\s+language\s+processing\b", r"\bspacy\b", r"\bnltk\b", r"\btransformers\b", r"\bhugging\s*face\b"],
-    "ComputerVision":    [r"\bcomputer\s*vision\b", r"\bcv\b", r"\bopencv\b", r"\byolo\b"],
-    "LLM":               [r"\bllm\b", r"\blarge\s+language\s+model\b", r"\bgpt\b", r"\bert\b", r"\bllama\b", r"\bgenerative\s+ai\b", r"\bgenai\b"],
+    "PyTorch":           [r"\bpytorch\b", r"\btorch\b", r"\bdeep\s+learning\b"],
+    "Scikit":            [r"\bscikit[\s\-]?learn\b", r"\bsklearn\b", r"\bscikit\b", r"\bxboost\b", r"\blgbm\b", r"\bcatboost\b"],
+    "Pandas":            [r"\bpandas\b", r"\bnumpy\b", r"\bmatplotlib\b", r"\bseaborn\b", r"\bplotly\b"],
+    "NLP":               [r"\bnlp\b", r"\bnatural\s+language\s+processing\b", r"\bspacy\b", r"\bnltk\b", r"\btransformers\b", r"\bhugging\s*face\b", r"\bbert\b", r"\blstm\b"],
+    "ComputerVision":    [r"\bcomputer\s*vision\b", r"\bcv\b", r"\bopencv\b", r"\byolo\b", r"\bcnn\b", r"\bimage\s+processing\b"],
+    "LLM":               [r"\bllm\b", r"\blarge\s+language\s+model\b", r"\bgpt\b", r"\bert\b", r"\bllama\b", r"\bgenerative\s+ai\b", r"\bgenai\b", r"\blangchain\b", r"\bopenai\b"],
     "PromptEngineering": [r"\bprompt\s*engineering\b", r"\bprompt\s*design\b"],
 
     # ── General / Core ───────────────────────────────────────────────────
     "Git":              [r"\bgit\b", r"\bgithub\b", r"\bbitbucket\b", r"\bgitlab\b"],
     "DSA":              [r"\bdsa\b", r"\badd\b", r"\balgorithms\b", r"\bdata\s*structures\b", r"\bleetcode\b", r"\bhackerrank\b"],
-    "OOPS":             [r"\boops\b", r"\bobject[\s\-]oriented\b", r"\bdesign\s*patterns\b"],
+    "OOPS":             [r"\boops\b", r"\bobject[\s\-]oriented\b", r"\boop\b", r"\bdesign\s*patterns\b"],
 
     # ── Cloud / DevOps ───────────────────────────────────────────────────
-    "AWS":               [r"\baws\b", r"\bamazon\s+web\s+services\b"],
+    "AWS":               [r"\baws\b", r"\bamazon\s+web\s+services\b", r"\bec2\b", r"\bs3\b", r"\blambda\b"],
     "Azure":             [r"\bazure\b"],
     "GCP":               [r"\bgcp\b", r"\bgoogle\s+cloud\b"],
-    "Docker":            [r"\bdocker\b"],
-    "Kubernetes":        [r"\bkubernetes\b", r"\bk8s\b"],
+    "Docker":            [r"\bdocker\b", r"\bcontainer\b"],
+    "Kubernetes":        [r"\bkubernetes\b", r"\bk8s\b", r"\bhelm\b"],
     "CI/CD":             [r"\bci\s*/\s*cd\b", r"\bcicd\b", r"\bcontinuous\s+integration\b",
                           r"\bcontinuous\s+deployment\b", r"\bcontinuous\s+delivery\b",
-                          r"\bgithub\s+actions\b", r"\bjenkins\b"],
+                          r"\bgithub\s+actions\b", r"\bjenkins\b", r"\bcircleci\b", r"\btravis\b"],
 
     # ── Security ─────────────────────────────────────────────────────────
     "EthicalHacking":    [r"\bethical\s*hacking\b", r"\bpenetration\s*testing\b",
-                          r"\bpen\s*test\b"],
-    "Cryptography":      [r"\bcryptography\b", r"\bcrypto\b"],
+                          r"\bpen\s*test\b", r"\bkali\b", r"\bmetasploit\b"],
+    "Cryptography":      [r"\bcryptography\b", r"\bcrypto\b", r"\baes\b", r"\brsa\b"],
     "NetworkSecurity":   [r"\bnetwork\s*security\b", r"\bfirewall\b",
-                          r"\bintrusion\s+detection\b"],
+                          r"\bintrusion\s+detection\b", r"\bwireshaak\b", r"\bnmap\b"],
 
     # ── Mobile ───────────────────────────────────────────────────────────
-    "Android":           [r"\bandroid\b"],
-    "Flutter":           [r"\bflutter\b"],
+    "Android":           [r"\bandroid\b", r"\bkotlin\b"],
+    "Flutter":           [r"\bflutter\b", r"\bdart\b"],
     "ReactNative":       [r"\breact\s*native\b"],
 
     # ── CS fundamentals ──────────────────────────────────────────────────
-    "OOPS":              [r"\boops\b", r"\bobject[\s\-]oriented\b", r"\boop\b"],
-    "SystemDesign":      [r"\bsystem\s*design\b", r"\bhld\b", r"\blld\b"],
-    "DBMS":              [r"\bdbms\b", r"\bdatabase\s+management\b", r"\brdbms\b"],
-    "OS":                [r"\boperating\s*system\b"],
+    "SystemDesign":      [r"\bsystem\s*design\b", r"\bhld\b", r"\blld\b", r"\bscalability\b", r"\bload\s+balancer\b"],
+    "DBMS":              [r"\bdbms\b", r"\bdatabase\s+management\b", r"\brdbms\b", r"\bmysql\b", r"\bmongodb\b"],
+    "OS":                [r"\boperating\s*system\b", r"\blinux\b", r"\bunix\b", r"\bwindows\b"],
 }
 
 # Internship domain keywords → feature column
 _INTERNSHIP_PATTERNS: Dict[str, list] = {
-    # Broadened to include Frontend/Web for "Web Development" coverage
     "internship_backend":  [r"\bbackend\b", r"\bback[\s\-]end\b", r"\bserver[\s\-]side\b",
                             r"\bfull[\s\-]?stack\b", r"\bweb\s+develop\b",
-                            r"\bfrontend\b", r"\bfront[\s\-]end\b", r"\bui\s*/\s*ux\b"],
+                            r"\bfrontend\b", r"\bfront[\s\-]end\b", r"\bui\s*/\s*ux\b",
+                            r"\bsoftware\s+developer\s+intern\b", r"\bsoftware\s+engineer\s+intern\b"],
     "internship_ai":       [r"\bai\b", r"\bartificial\s+intelligence\b",
                             r"\bmachine\s+learning\b", r"\bml\b", r"\bdata\s+science\b",
-                            r"\bdeep\s+learning\b"],
+                            r"\bdeep\s+learning\b", r"\bai\s+intern\b", r"\bml\s+intern\b"],
     "internship_cloud":    [r"\bcloud\b", r"\bdevops\b", r"\binfrastructure\b",
-                            r"\bsre\b"],
-    "internship_security": [r"\bsecurity\b", r"\bcyber\b", r"\bsoc\b"],
+                            r"\bsre\b", r"\bcloud\s+intern\b", r"\bdevops\s+intern\b"],
+    "internship_security": [r"\bsecurity\b", r"\bcyber\b", r"\bsoc\b", r"\bsecurity\s+intern\b"],
     "internship_mobile":   [r"\bmobile\b", r"\bandroid\b", r"\bios\b",
-                            r"\bflutter\b", r"\breact\s*native\b"],
+                            r"\bflutter\b", r"\breact\s*native\b", r"\bmobile\s+intern\b"],
     "internship_data":     [r"\bdata\s+engineer\b", r"\bdata\s+analy\b",
                             r"\betl\b", r"\bdata\s+pipeline\b",
-                            r"\bbig\s*data\b"],
+                            r"\bbig\s*data\b", r"\bdata\s+intern\b"],
 }
 
 # Project domain keywords → feature column
 _PROJECT_PATTERNS: Dict[str, list] = {
-    # Broadened to include Frontend/Web
     "num_backend_projects":  [r"\bbackend\b", r"\brest\s*api\b", r"\bweb\s+app\b",
                               r"\bserver\b", r"\bmicroservice\b", r"\bcrud\b",
                               r"\bfrontend\b", r"\bfront[\s\-]end\b", r"\bwebsite\b",
-                              r"\breact\b", r"\bvue\b", r"\bangular\b"],
+                              r"\breact\b", r"\bvue\b", r"\bangular\b", r"\bfull\s*stack\b"],
     "num_ai_projects":       [r"\bmachine\s+learning\b", r"\bml\b", r"\bai\b",
                               r"\bdeep\s+learning\b", r"\bneural\s+net\b",
                               r"\bnlp\b", r"\bcomputer\s*vision\b",
-                              r"\bclassifi\b", r"\bpredict\b"],
+                              r"\bclassifi\b", r"\bpredict\b", r"\brecommendation\b", r"\bchatbot\b"],
     "num_mobile_projects":   [r"\bmobile\s+app\b", r"\bandroid\s+app\b",
                               r"\bios\s+app\b", r"\bflutter\b",
-                              r"\breact\s*native\b"],
+                              r"\breact\s*native\b", r"\bhybrid\s+app\b"],
     "num_cloud_projects":    [r"\bcloud\b", r"\baws\b", r"\bazure\b", r"\bgcp\b",
                               r"\bdeployed\s+on\b", r"\bterraform\b",
-                              r"\bdocker\b", r"\bkubernetes\b"],
+                              r"\bdocker\b", r"\bkubernetes\b", r"\bserverless\b"],
     "num_security_projects": [r"\bsecurity\b", r"\bethical\s*hack\b",
                               r"\bvulnerability\b", r"\bpenetration\b",
-                              r"\bcryptograph\b"],
+                              r"\bcryptograph\b", r"\bencryption\b", r"\bscanner\b"],
 }
 
 
