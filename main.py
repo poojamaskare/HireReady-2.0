@@ -252,6 +252,21 @@ def get_me(current_user: User = Depends(get_current_user)):
         "cgpa": current_user.cgpa,
         "certifications": current_user.certifications or "",
         "preferred_job_roles": current_user.preferred_job_roles or "",
+        "moodle_id": current_user.moodle_id or "",
+        "year": current_user.year or "",
+        "division": current_user.division or "",
+        "semester": current_user.semester,
+        "sgpa": current_user.sgpa,
+        "atkt_count": current_user.atkt_count,
+        "atkt_subjects": current_user.atkt_subjects or "",
+        "drop_year": current_user.drop_year or "No",
+        "internships": current_user.internships or [],
+        "projects": current_user.projects or [],
+        "core_interests": current_user.core_interests or "",
+        "core_skills": current_user.core_skills or "",
+        "github_profile": current_user.github_profile or "",
+        "linkedin_profile": current_user.linkedin_profile or "",
+        "achievements": current_user.achievements or "",
     }
 
 
@@ -447,6 +462,21 @@ async def update_profile(
     cgpa: Optional[str] = Form(None),
     certifications: Optional[str] = Form(None),
     preferred_job_roles: Optional[str] = Form(None),
+    moodle_id: Optional[str] = Form(None),
+    year: Optional[str] = Form(None),
+    division: Optional[str] = Form(None),
+    semester: Optional[int] = Form(None),
+    sgpa: Optional[float] = Form(None),
+    atkt_count: Optional[int] = Form(None),
+    atkt_subjects: Optional[str] = Form(None),
+    drop_year: Optional[str] = Form(None),
+    internships: Optional[str] = Form(None), # JSON string
+    projects: Optional[str] = Form(None),    # JSON string
+    core_interests: Optional[str] = Form(None),
+    core_skills: Optional[str] = Form(None),
+    github_profile: Optional[str] = Form(None),
+    linkedin_profile: Optional[str] = Form(None),
+    achievements: Optional[str] = Form(None),
     resume: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -477,6 +507,31 @@ async def update_profile(
 
     if preferred_job_roles is not None:
         current_user.preferred_job_roles = preferred_job_roles.strip()
+
+    if moodle_id is not None: current_user.moodle_id = moodle_id.strip()
+    if year is not None: current_user.year = year.strip()
+    if division is not None: current_user.division = division.strip()
+    if semester is not None: current_user.semester = semester
+    if sgpa is not None: current_user.sgpa = sgpa
+    if atkt_count is not None: current_user.atkt_count = atkt_count
+    if atkt_subjects is not None: current_user.atkt_subjects = atkt_subjects.strip()
+    if drop_year is not None: current_user.drop_year = drop_year.strip()
+    if core_interests is not None: current_user.core_interests = core_interests.strip()
+    if core_skills is not None: current_user.core_skills = core_skills.strip()
+    if github_profile is not None: current_user.github_profile = github_profile.strip()
+    if linkedin_profile is not None: current_user.linkedin_profile = linkedin_profile.strip()
+    if achievements is not None: current_user.achievements = achievements.strip()
+
+    if internships is not None:
+        try:
+            current_user.internships = json.loads(internships)
+        except:
+            pass
+    if projects is not None:
+        try:
+            current_user.projects = json.loads(projects)
+        except:
+            pass
 
     # Handle resume upload
     if resume and resume.filename:
@@ -526,6 +581,21 @@ async def update_profile(
             "cgpa": current_user.cgpa,
             "certifications": current_user.certifications or "",
             "preferred_job_roles": current_user.preferred_job_roles or "",
+            "moodle_id": current_user.moodle_id or "",
+            "year": current_user.year or "",
+            "division": current_user.division or "",
+            "semester": current_user.semester,
+            "sgpa": current_user.sgpa,
+            "atkt_count": current_user.atkt_count,
+            "atkt_subjects": current_user.atkt_subjects or "",
+            "drop_year": current_user.drop_year or "No",
+            "internships": current_user.internships or [],
+            "projects": current_user.projects or [],
+            "core_interests": current_user.core_interests or "",
+            "core_skills": current_user.core_skills or "",
+            "github_profile": current_user.github_profile or "",
+            "linkedin_profile": current_user.linkedin_profile or "",
+            "achievements": current_user.achievements or "",
         },
         "analysis": {
             "status": "success",

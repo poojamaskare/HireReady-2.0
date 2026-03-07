@@ -29,6 +29,21 @@ class User(Base):
     github_username = Column(String(100), default="")
     leetcode_username = Column(String(100), default="")
     mobile_number = Column(String(20), default="")
+    moodle_id = Column(String(8), nullable=True)
+    year = Column(String(4), nullable=True)       # FE, SE, TE, BE
+    division = Column(String(1), nullable=True)   # A, B, C
+    semester = Column(Integer, nullable=True)     # 1-8
+    sgpa = Column(Float, nullable=True)           # 0.0-10.0
+    atkt_count = Column(Integer, default=0)
+    atkt_subjects = Column(Text, default="")
+    drop_year = Column(String(3), default="No")   # "Yes" | "No"
+    internships = Column(JSON, default=list)      # [{company, duration, domain, knowledge}]
+    projects = Column(JSON, default=list)         # [{title, techStack, description}]
+    core_interests = Column(Text, default="")
+    core_skills = Column(Text, default="")
+    github_profile = Column(Text, default="")
+    linkedin_profile = Column(Text, default="")
+    achievements = Column(Text, default="")
     cgpa = Column(Float, nullable=True)
     certifications = Column(Text, default="")        # comma-separated
     preferred_job_roles = Column(Text, default="")    # comma-separated

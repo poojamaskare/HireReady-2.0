@@ -32,6 +32,21 @@ new_user_cols = {
     "certifications": "TEXT DEFAULT ''",
     "preferred_job_roles": "TEXT DEFAULT ''",
     "resume_score": "FLOAT",
+    "moodle_id": "VARCHAR(8)",
+    "year": "VARCHAR(4)",
+    "division": "VARCHAR(1)",
+    "semester": "INTEGER",
+    "sgpa": "FLOAT",
+    "atkt_count": "INTEGER DEFAULT 0",
+    "atkt_subjects": "TEXT DEFAULT ''",
+    "drop_year": "VARCHAR(3) DEFAULT 'No'",
+    "internships": "JSONB",
+    "projects": "JSONB",
+    "core_interests": "TEXT DEFAULT ''",
+    "core_skills": "TEXT DEFAULT ''",
+    "github_profile": "TEXT DEFAULT ''",
+    "linkedin_profile": "TEXT DEFAULT ''",
+    "achievements": "TEXT DEFAULT ''",
 }
 for col_name, col_type in new_user_cols.items():
     if col_name not in cols:
