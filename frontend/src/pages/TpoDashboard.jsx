@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import {
   Box, Flex, Heading, Text, Input, Button, VStack, HStack,
-  SimpleGrid, Badge, Spinner, Textarea, Icon,
+  SimpleGrid, Badge, Spinner, Textarea, Icon, Image, Table,
 } from '@chakra-ui/react';
+import * as XLSX from 'xlsx';
 import { Alert } from '@/components/ui/alert';
 import { Field } from '@/components/ui/field';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   MenuContent, MenuItem, MenuRoot, MenuTrigger,
 } from '@/components/ui/menu';
 import { Avatar } from '@/components/ui/avatar';
+import { toaster } from '@/components/ui/toaster';
 import {
   LogOut, Target, BarChart3, DollarSign, CalendarClock,
-  Award, Lightbulb, Phone, FileText, ChevronLeft,
+  Award, Lightbulb, Phone, FileText, ChevronLeft, Download, Bell, Users, Upload,
 } from 'lucide-react';
 
 const API_BASE = '/api';
@@ -32,6 +35,8 @@ export default function TpoDashboard({ token, user, onLogout }) {
   const [preferredSkills, setPreferredSkills] = useState('');
   const [packageLpa, setPackageLpa] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [companyLogo, setCompanyLogo] = useState(null);
+  const [logoPreview, setLogoPreview] = useState('');
   const [posting, setPosting] = useState(false);
   const [postMsg, setPostMsg] = useState('');
 
@@ -41,8 +46,18 @@ export default function TpoDashboard({ token, user, onLogout }) {
   const [shortlistedJob, setShortlistedJob] = useState(null);
   const [loadingShortlisted, setLoadingShortlisted] = useState(false);
   const [shortlistedTotal, setShortlistedTotal] = useState(0);
+  const [notifying, setNotifying] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState([]);
+
+  /* Interested Students */
+  const [interestedStudents, setInterestedStudents] = useState([]);
+  const [interestedJob, setInterestedJob] = useState(null);
+  const [loadingInterested, setLoadingInterested] = useState(false);
+  const [interestedTotal, setInterestedTotal] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const authHeaders = { Authorization: `Bearer ${token}` };
 
   const inputStyles = {
     bg: 'gray.800', border: '1px solid', borderColor: 'gray.700',
@@ -60,33 +75,55 @@ export default function TpoDashboard({ token, user, onLogout }) {
   };
   useEffect(() => { fetchJobs(); }, []);
 
-  /* ── Post job ── */
+  /* ── Post job (multipart/form-data) ── */
   const handlePostJob = async (e) => {
     e.preventDefault();
     if (!title.trim() || !company.trim()) return;
     setPosting(true); setPostMsg('');
     try {
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('company', company);
+      formData.append('description', description);
+      formData.append('eligibility', eligibility);
+      formData.append('job_role', jobRole);
+      formData.append('min_cgpa', minCgpa || '');
+      formData.append('required_certifications', requiredCerts);
+      formData.append('preferred_skills', preferredSkills);
+      formData.append('package_lpa', packageLpa || '');
+      formData.append('deadline', deadline);
+      if (companyLogo) formData.append('company_logo', companyLogo);
+
       const res = await fetch(`${API_BASE}/tpo/jobs`, {
-        method: 'POST', headers,
-        body: JSON.stringify({
-          title, company, description, eligibility, deadline,
-          job_role: jobRole,
-          min_cgpa: minCgpa ? parseFloat(minCgpa) : null,
-          required_certifications: requiredCerts,
-          preferred_skills: preferredSkills,
-          package_lpa: packageLpa ? parseFloat(packageLpa) : null,
-        }),
+        method: 'POST',
+        headers: authHeaders,
+        body: formData,
       });
       if (res.ok) {
         setPostMsg('Job posted successfully!');
         setTitle(''); setCompany(''); setDescription(''); setEligibility(''); setDeadline('');
         setJobRole(''); setMinCgpa(''); setRequiredCerts(''); setPreferredSkills(''); setPackageLpa('');
+        setCompanyLogo(null); setLogoPreview('');
         fetchJobs();
       } else {
         const d = await res.json(); setPostMsg(d.detail || 'Failed to post job');
       }
     } catch { setPostMsg('Network error'); }
     finally { setPosting(false); }
+  };
+
+  /* ── Handle logo file select ── */
+  const handleLogoSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowed.includes(file.type)) {
+      toaster.create({ title: 'Invalid file type', description: 'Please upload PNG, JPG, or JPEG', type: 'error' });
+      return;
+    }
+    setCompanyLogo(file);
+    const url = URL.createObjectURL(file);
+    setLogoPreview(url);
   };
 
   /* ── Delete job ── */
@@ -98,7 +135,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
 
   /* ── View shortlisted ── */
   const viewShortlisted = async (jobId) => {
-    setSelectedJobId(jobId); setLoadingShortlisted(true); setTab('shortlisted');
+    setSelectedJobId(jobId); setLoadingShortlisted(true); setTab('shortlisted'); setSelectedStudents([]);
     try {
       const res = await fetch(`${API_BASE}/tpo/jobs/${jobId}/shortlisted`, { headers });
       if (res.ok) {
@@ -110,10 +147,101 @@ export default function TpoDashboard({ token, user, onLogout }) {
     } catch { /* */ } finally { setLoadingShortlisted(false); }
   };
 
+  const toggleStudentSelection = (studentId) => {
+    setSelectedStudents((prev) => (
+      prev.includes(studentId)
+        ? prev.filter((id) => id !== studentId)
+        : [...prev, studentId]
+    ));
+  };
+
+  const downloadShortlistedExcel = () => {
+    if (!shortlisted.length) return;
+    const rows = shortlisted.map((item) => ({
+      'Student Name': item.student.name || '',
+      Email: item.student.email || '',
+      Phone: item.student.mobile_number || '',
+      CGPA: item.student.cgpa ?? '',
+      'Resume Score': item.student.resume_score ?? '',
+      'Match Percentage': item.match_score ?? '',
+      Certifications: item.student.certifications || '',
+      'Preferred Role': item.student.preferred_job_roles || '',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Shortlisted Students');
+    const safeJob = shortlistedJob?.title ? shortlistedJob.title.replace(/[^a-z0-9]+/gi, '_').toLowerCase() : 'students';
+    XLSX.writeFile(workbook, `shortlisted_${safeJob}.xlsx`);
+  };
+
+  /* ── View interested students ── */
+  const viewInterested = async (jobId) => {
+    setSelectedJobId(jobId); setLoadingInterested(true); setTab('interested');
+    try {
+      const res = await fetch(`${API_BASE}/tpo/jobs/${jobId}/interested-students`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setInterestedStudents(data.students || []);
+        setInterestedJob(data.job || null);
+        setInterestedTotal(data.total || 0);
+      }
+    } catch { /* */ } finally { setLoadingInterested(false); }
+  };
+
+  /* ── Export interested students as Excel ── */
+  const exportExcel = async () => {
+    if (!selectedJobId) return;
+    setExporting(true);
+    try {
+      const res = await fetch(`${API_BASE}/tpo/jobs/${selectedJobId}/interested-students/export`, {
+        headers: authHeaders,
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `interested_students.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toaster.create({ title: 'Download started', type: 'success' });
+      }
+    } catch { toaster.create({ title: 'Export failed', type: 'error' }); }
+    finally { setExporting(false); }
+  };
+
+  /* ── Notify shortlisted students ── */
+  const notifyShortlisted = async () => {
+    if (!selectedJobId) return;
+    if (selectedStudents.length === 0) {
+      toaster.create({ title: 'Please select at least one student.', type: 'warning' });
+      return;
+    }
+    setNotifying(true);
+    try {
+      const res = await fetch(`${API_BASE}/tpo/jobs/${selectedJobId}/notify-shortlisted`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ student_ids: selectedStudents, job_id: selectedJobId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toaster.create({ title: data.message, type: 'success' });
+        setSelectedStudents([]);
+      } else {
+        const data = await res.json();
+        toaster.create({ title: data.detail || 'Failed to send notifications', type: 'error' });
+      }
+    } catch { toaster.create({ title: 'Failed to send notifications', type: 'error' }); }
+    finally { setNotifying(false); }
+  };
+
   const NAV = [
     { key: 'post', label: 'Post Job' },
     { key: 'jobs', label: 'My Jobs' },
     { key: 'shortlisted', label: 'Shortlisted' },
+    { key: 'interested', label: 'Interested' },
   ];
 
   return (
@@ -134,6 +262,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
         <VStack gap={1} px={2} flex={1}>
           {NAV.map((item) => {
             const isActive = tab === item.key;
+            const needsJob = (item.key === 'shortlisted' || item.key === 'interested') && !selectedJobId;
             return (
               <Button
                 key={item.key}
@@ -142,7 +271,9 @@ export default function TpoDashboard({ token, user, onLogout }) {
                 color={isActive ? 'purple.300' : 'gray.400'}
                 _hover={{ bg: 'gray.800', color: 'gray.100' }}
                 borderRadius="lg" fontSize="sm" fontWeight={isActive ? '600' : '400'}
-                onClick={() => { if (item.key === 'shortlisted' && !selectedJobId) return; setTab(item.key); }}
+                onClick={() => { if (needsJob) return; setTab(item.key); }}
+                opacity={needsJob ? 0.4 : 1}
+                cursor={needsJob ? 'not-allowed' : 'pointer'}
               >
                 {item.label}
               </Button>
@@ -201,6 +332,39 @@ export default function TpoDashboard({ token, user, onLogout }) {
                     <Textarea rows={4} value={description} onChange={e => setDescription(e.target.value)}
                       placeholder="Job responsibilities, tech stack, etc." {...inputStyles} />
                   </Field>
+
+                  {/* Company Logo Upload */}
+                  <Field label="Company Logo" helperText="PNG, JPG or JPEG (optional)">
+                    <Flex align="center" gap={3}>
+                      <Button
+                        as="label"
+                        htmlFor="logo-upload"
+                        size="sm"
+                        variant="outline"
+                        colorPalette="purple"
+                        cursor="pointer"
+                      >
+                        <Icon asChild w={4} h={4} mr={1}><Upload /></Icon>
+                        {companyLogo ? 'Change Logo' : 'Upload Logo'}
+                      </Button>
+                      <input
+                        id="logo-upload"
+                        type="file"
+                        accept=".png,.jpg,.jpeg"
+                        style={{ display: 'none' }}
+                        onChange={handleLogoSelect}
+                      />
+                      {logoPreview && (
+                        <Box w="40px" h="40px" borderRadius="md" overflow="hidden" bg="gray.800">
+                          <Image src={logoPreview} alt="Logo preview" w="full" h="full" objectFit="contain" />
+                        </Box>
+                      )}
+                      {companyLogo && (
+                        <Text fontSize="xs" color="gray.400">{companyLogo.name}</Text>
+                      )}
+                    </Flex>
+                  </Field>
+
                   <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
                     <Field label="Job Role / Category">
                       <Input value={jobRole} onChange={e => setJobRole(e.target.value)}
@@ -256,24 +420,108 @@ export default function TpoDashboard({ token, user, onLogout }) {
                   {jobs.map(j => (
                     <Box key={j.id} bg="gray.900" border="1px solid" borderColor="gray.800"
                       borderRadius="xl" p={5}>
-                      <Heading size="sm" color="gray.100" mb={1}>{j.title}</Heading>
-                      <Text color="purple.400" fontSize="sm" fontWeight="500" mb={2}>{j.company}</Text>
+                      <Flex gap={3} align="flex-start" mb={2}>
+                        {j.company_logo && (
+                          <Box w="40px" h="40px" minW="40px" borderRadius="md" overflow="hidden" bg="gray.800">
+                            <Image src={j.company_logo} alt={`${j.company} logo`} w="full" h="full" objectFit="contain" />
+                          </Box>
+                        )}
+                        <Box flex={1}>
+                          <Heading size="sm" color="gray.100" mb={1}>{j.title}</Heading>
+                          <Text color="purple.400" fontSize="sm" fontWeight="500">{j.company}</Text>
+                        </Box>
+                      </Flex>
                       {j.description && <Text color="gray.400" fontSize="sm" mb={3} lineClamp={2}>{j.description}</Text>}
                       <Flex flexWrap="wrap" gap={2} mb={3}>
-                      {j.job_role && <Badge colorPalette="purple" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><Target /></Icon>{j.job_role}</Badge>}
+                        {j.job_role && <Badge colorPalette="purple" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><Target /></Icon>{j.job_role}</Badge>}
                         {j.min_cgpa != null && <Badge colorPalette="blue" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><BarChart3 /></Icon>Min CGPA: {j.min_cgpa}</Badge>}
                         {j.package_lpa != null && <Badge colorPalette="green" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><DollarSign /></Icon>{j.package_lpa} LPA</Badge>}
                         {j.deadline && <Badge colorPalette="orange" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><CalendarClock /></Icon>{j.deadline}</Badge>}
                       </Flex>
-                      <HStack gap={2}>
-                        <Button size="sm" colorPalette="blue" variant="outline" flex={1}
-                          onClick={() => viewShortlisted(j.id)}>View Shortlisted</Button>
+                      <VStack gap={2} align="stretch">
+                        <HStack gap={2}>
+                          <Button size="sm" colorPalette="blue" variant="outline" flex={1}
+                            onClick={() => viewShortlisted(j.id)}>View Shortlisted</Button>
+                          <Button size="sm" colorPalette="purple" variant="outline" flex={1}
+                            onClick={() => viewInterested(j.id)}>
+                            <Icon asChild w={4} h={4} mr={1}><Users /></Icon>View Interested
+                          </Button>
+                        </HStack>
                         <Button size="sm" colorPalette="red" variant="ghost"
                           onClick={() => handleDelete(j.id)}>Delete</Button>
-                      </HStack>
+                      </VStack>
                     </Box>
                   ))}
                 </SimpleGrid>
+              )}
+            </Box>
+          )}
+
+          {/* ═══ Interested Students ═══ */}
+          {tab === 'interested' && (
+            <Box>
+              <Button variant="ghost" size="sm" color="gray.400" mb={3}
+                onClick={() => setTab('jobs')} _hover={{ color: 'gray.100' }}>
+                <Icon asChild w={4} h={4}><ChevronLeft /></Icon> Back to jobs
+              </Button>
+              <Flex justify="space-between" align="center" mb={4}>
+                <Box>
+                  <Heading size="lg" color="gray.100" mb={1}>Interested Students</Heading>
+                  {interestedJob && (
+                    <Text color="gray.400" fontSize="sm">
+                      {interestedJob.title} — {interestedJob.company} • {interestedTotal} student{interestedTotal !== 1 ? 's' : ''}
+                    </Text>
+                  )}
+                </Box>
+                {interestedStudents.length > 0 && (
+                  <Button size="sm" colorPalette="green" variant="outline" loading={exporting}
+                    loadingText="Exporting…" onClick={exportExcel}>
+                    <Icon asChild w={4} h={4} mr={1}><Download /></Icon> Download Excel
+                  </Button>
+                )}
+              </Flex>
+
+              {loadingInterested ? (
+                <Flex justify="center" py={8}><Spinner color="purple.400" size="xl" /></Flex>
+              ) : interestedStudents.length === 0 ? (
+                <Text color="gray.500">No students have shown interest yet.</Text>
+              ) : (
+                <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" overflow="hidden">
+                  <Table.Root size="sm">
+                    <Table.Header>
+                      <Table.Row bg="gray.800">
+                        <Table.ColumnHeader color="gray.300" px={4} py={3}>#</Table.ColumnHeader>
+                        <Table.ColumnHeader color="gray.300" px={4} py={3}>Student Name</Table.ColumnHeader>
+                        <Table.ColumnHeader color="gray.300" px={4} py={3}>Roll Number</Table.ColumnHeader>
+                        <Table.ColumnHeader color="gray.300" px={4} py={3}>Department</Table.ColumnHeader>
+                        <Table.ColumnHeader color="gray.300" px={4} py={3}>Email</Table.ColumnHeader>
+                        <Table.ColumnHeader color="gray.300" px={4} py={3}>Resume Score</Table.ColumnHeader>
+                        <Table.ColumnHeader color="gray.300" px={4} py={3}>CGPA</Table.ColumnHeader>
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                      {interestedStudents.map((s, idx) => (
+                        <Table.Row key={s.id} _hover={{ bg: 'gray.800/50' }}>
+                          <Table.Cell color="gray.400" px={4} py={3}>{idx + 1}</Table.Cell>
+                          <Table.Cell color="gray.100" px={4} py={3} fontWeight="500">{s.name}</Table.Cell>
+                          <Table.Cell color="gray.300" px={4} py={3}>{s.moodle_id || '—'}</Table.Cell>
+                          <Table.Cell color="gray.300" px={4} py={3}>{s.division || '—'}</Table.Cell>
+                          <Table.Cell color="gray.300" px={4} py={3}>{s.email}</Table.Cell>
+                          <Table.Cell px={4} py={3}>
+                            <Badge colorPalette={s.resume_score >= 70 ? 'green' : s.resume_score >= 50 ? 'yellow' : 'red'} fontSize="xs">
+                              {s.resume_score}
+                            </Badge>
+                          </Table.Cell>
+                          <Table.Cell px={4} py={3}>
+                            <Badge colorPalette={s.cgpa >= 7 ? 'green' : s.cgpa >= 5 ? 'yellow' : 'red'} fontSize="xs">
+                              {s.cgpa}
+                            </Badge>
+                          </Table.Cell>
+                        </Table.Row>
+                      ))}
+                    </Table.Body>
+                  </Table.Root>
+                </Box>
               )}
             </Box>
           )}
@@ -285,7 +533,21 @@ export default function TpoDashboard({ token, user, onLogout }) {
                 onClick={() => setTab('jobs')} _hover={{ color: 'gray.100' }}>
                 <Icon asChild w={4} h={4}><ChevronLeft /></Icon> Back to jobs
               </Button>
-              <Heading size="lg" color="gray.100" mb={3}>Auto-Shortlisted Students</Heading>
+              <Flex justify="space-between" align="center" mb={3}>
+                <Heading size="lg" color="gray.100">Auto-Shortlisted Students</Heading>
+                {shortlisted.length > 0 && (
+                  <HStack gap={2}>
+                    <Button size="sm" colorPalette="green" variant="outline" onClick={downloadShortlistedExcel}>
+                      <Icon asChild w={4} h={4} mr={1}><Download /></Icon> Download Excel
+                    </Button>
+                    <Button size="sm" colorPalette="purple" variant="solid" loading={notifying}
+                      loadingText="Sending…" onClick={notifyShortlisted}>
+                      <Icon asChild w={4} h={4} mr={1}><Bell /></Icon>
+                      Notify Selected Students
+                    </Button>
+                  </HStack>
+                )}
+              </Flex>
               {shortlistedJob && (
                 <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4} mb={4}>
                   <Heading size="sm" color="gray.100">{shortlistedJob.title} — {shortlistedJob.company}</Heading>
@@ -308,11 +570,16 @@ export default function TpoDashboard({ token, user, onLogout }) {
               ) : (
                 <VStack gap={3} align="stretch">
                   {shortlisted.map((item, idx) => (
-                    <Box key={item.student.id} bg="gray.900" border="1px solid" borderColor="gray.800"
+                    <Box key={item.student.id} bg={selectedStudents.includes(item.student.id) ? 'purple.500/10' : 'gray.900'} border="1px solid"
+                      borderColor={selectedStudents.includes(item.student.id) ? 'purple.500' : 'gray.800'}
                       borderRadius="xl" p={5}>
                       <Flex justify="space-between" align="flex-start" mb={3}>
                         <Box>
-                          <HStack gap={2} mb={1}>
+                          <HStack gap={2} mb={1} align="center">
+                            <Checkbox
+                              checked={selectedStudents.includes(item.student.id)}
+                              onCheckedChange={() => toggleStudentSelection(item.student.id)}
+                            />
                             <Badge colorPalette="purple" fontSize="xs">#{idx + 1}</Badge>
                             <Heading size="sm" color="gray.100">{item.student.name}</Heading>
                           </HStack>

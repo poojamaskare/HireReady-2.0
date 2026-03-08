@@ -1,24 +1,34 @@
 from fastapi import FastAPI, File, UploadFile, Form, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+import os
+from dotenv import load_dotenv
 import joblib
 import pandas as pd
 import io
 import logging
+import secrets
+import base64
+import re
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 import json
 from PyPDF2 import PdfReader
 from sqlalchemy.orm.session import Session
+from sqlalchemy import text
 from typing import Optional, List
+from datetime import datetime, timedelta, timezone
 
 from services.role_engine import rank_roles
 from services.feature_analyzer import build_complete_feature_vector
 from services.database import engine, get_db, Base
-from services.models import User, AnalysisResult, QuizResult, Job, TpoLogin
+from services.models import User, AnalysisResult, QuizResult, Job, TpoLogin, InterestedJob, Notification
 from services.quiz_generator import generate_quiz_questions
 from services.auth import (
     hash_password,
@@ -31,14 +41,78 @@ from services.auth import (
 
 logger = logging.getLogger(__name__)
 
+# Ensure EMAIL_* / SMTP_* vars from .env are available in this module.
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
+
 # ── Create database tables on startup ─────────────────────────────────────────
 Base.metadata.create_all(bind=engine)
+
+
+def ensure_db_schema_compatibility() -> None:
+    """Backfill columns required by current ORM models on older databases."""
+    with engine.begin() as conn:
+        # TPO login table columns introduced after initial schema.
+        conn.execute(
+            text(
+                'ALTER TABLE "TPO_login" ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(100)'
+            )
+        )
+        conn.execute(
+            text(
+                'ALTER TABLE "TPO_login" ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP WITH TIME ZONE'
+            )
+        )
+
+        # Users table profile and password-reset columns added over time.
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS moodle_id VARCHAR(8)'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS year VARCHAR(4)'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS division VARCHAR(1)'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS semester INTEGER'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sgpa DOUBLE PRECISION'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS atkt_count INTEGER DEFAULT 0'))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS atkt_subjects TEXT DEFAULT ''"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS drop_year VARCHAR(3) DEFAULT 'No'"))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS internships JSON'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS projects JSON'))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS core_interests TEXT DEFAULT ''"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS core_skills TEXT DEFAULT ''"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS github_profile TEXT DEFAULT ''"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linkedin_profile TEXT DEFAULT ''"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS achievements TEXT DEFAULT ''"))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_score DOUBLE PRECISION'))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_filename VARCHAR(255) DEFAULT ''"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_text TEXT DEFAULT ''"))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(100)'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP WITH TIME ZONE'))
+
+        # Jobs table columns introduced for richer posting details.
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_role VARCHAR(255) DEFAULT ''"))
+        conn.execute(text('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS min_cgpa DOUBLE PRECISION'))
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS required_certifications TEXT DEFAULT ''"))
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS preferred_skills TEXT DEFAULT ''"))
+        conn.execute(text('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS package_lpa DOUBLE PRECISION'))
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deadline VARCHAR(100) DEFAULT ''"))
+        conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_logo TEXT DEFAULT ''"))
+
+
+ensure_db_schema_compatibility()
 
 # ── Load ML model & columns ──────────────────────────────────────────────────
 model = joblib.load("readiness_model.pkl")
 feature_columns = joblib.load("feature_columns.pkl")
 
 app = FastAPI()
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch-all so every error returns JSON, never plain text."""
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error. Please try again later."},
+    )
+
 
 # Paths for serving the built frontend
 BASE_DIR = Path(__file__).resolve().parent
@@ -102,8 +176,22 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class NotifyShortlistedRequest(BaseModel):
+    student_ids: List[str] = []
+    job_id: Optional[str] = None
 
 
 @app.post("/api/auth/register")
@@ -235,6 +323,142 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             "preferred_job_roles": user.preferred_job_roles or "",
         },
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FORGOT / RESET PASSWORD
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def validate_password_strength(password: str) -> list:
+    """Return list of unmet password rules."""
+    errors = []
+    if len(password) < 8:
+        errors.append("Minimum 8 characters")
+    if not re.search(r'[A-Z]', password):
+        errors.append("At least one uppercase letter")
+    if not re.search(r'[a-z]', password):
+        errors.append("At least one lowercase letter")
+    if not re.search(r'[0-9]', password):
+        errors.append("At least one number")
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', password):
+        errors.append("At least one special character")
+    return errors
+
+
+def send_password_reset_email(recipient_email: str, token: str) -> None:
+    """Send a password reset link to the given email using SMTP."""
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    email_user = os.getenv("EMAIL_USER", "") or os.getenv("SMTP_USERNAME", "")
+    email_pass = os.getenv("EMAIL_PASS", "") or os.getenv("SMTP_PASSWORD", "")
+    sender_email = os.getenv("EMAIL_FROM", email_user or "noreply@hireready.com")
+    frontend_base_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
+
+    if not email_user or not email_pass:
+        raise RuntimeError("Email credentials are missing. Set EMAIL_USER and EMAIL_PASS in .env")
+
+    reset_link = f"{frontend_base_url}/reset-password?token={token}"
+    body = (
+        "Hello,\n\n"
+        "We received a request to reset your HireReady password.\n\n"
+        f"Click the link below to set a new password:\n{reset_link}\n\n"
+        "This link expires in 15 minutes.\n\n"
+        "If you did not request this, you can safely ignore this email.\n\n"
+        "- HireReady Team"
+    )
+
+    msg = MIMEMultipart()
+    msg["Subject"] = "Password Reset - HireReady"
+    msg["From"] = sender_email
+    msg["To"] = recipient_email
+    msg.attach(MIMEText(body, "plain"))
+
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(email_user, email_pass)
+        server.sendmail(sender_email, [recipient_email], msg.as_string())
+    logger.info("Password reset email sent to %s", recipient_email)
+
+
+@app.post("/api/auth/forgot-password")
+def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Generate reset token and email link, without revealing account existence."""
+    email = data.email.strip().lower()
+    generic_message = "If the email exists, a password reset link has been sent."
+    token = secrets.token_urlsafe(32)
+    expiry = datetime.now(timezone.utc) + timedelta(minutes=15)
+
+    user = db.query(User).filter(User.email == email).first()
+    if user:
+        user.password_reset_token = token
+        user.password_reset_expires = expiry
+        db.commit()
+        try:
+            send_password_reset_email(email, token)
+        except Exception as exc:
+            print("Email sending error:", exc)
+            logger.exception("Failed to send password reset email (student) to %s", email)
+        return {"message": generic_message}
+
+    tpo = db.query(TpoLogin).filter(TpoLogin.email == email).first()
+    if tpo:
+        tpo.password_reset_token = token
+        tpo.password_reset_expires = expiry
+        db.commit()
+        try:
+            send_password_reset_email(email, token)
+        except Exception as exc:
+            print("Email sending error:", exc)
+            logger.exception("Failed to send password reset email (tpo) to %s", email)
+        return {"message": generic_message}
+
+    return {"message": generic_message}
+
+
+@app.post("/api/auth/reset-password")
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Reset password using a valid token."""
+    # Validate password strength
+    errors = validate_password_strength(data.new_password)
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must contain: " + ", ".join(errors),
+        )
+
+    now = datetime.now(timezone.utc)
+
+    # Check student table
+    user = db.query(User).filter(
+        User.password_reset_token == data.token,
+    ).first()
+    if user:
+        if user.password_reset_expires and user.password_reset_expires > now:
+            user.password_hash = hash_password(data.new_password)
+            user.password_reset_token = None
+            user.password_reset_expires = None
+            db.commit()
+            return {"message": "Password reset successfully. You can now log in."}
+        else:
+            raise HTTPException(status_code=400, detail="Reset token has expired. Please request a new one.")
+
+    # Check TPO table
+    tpo = db.query(TpoLogin).filter(
+        TpoLogin.password_reset_token == data.token,
+    ).first()
+    if tpo:
+        if tpo.password_reset_expires and tpo.password_reset_expires > now:
+            tpo.password = hash_password(data.new_password)
+            tpo.password_reset_token = None
+            tpo.password_reset_expires = None
+            db.commit()
+            return {"message": "Password reset successfully. You can now log in."}
+        else:
+            raise HTTPException(status_code=400, detail="Reset token has expired. Please request a new one.")
+
+    raise HTTPException(status_code=400, detail="Invalid reset token.")
 
 
 @app.get("/api/auth/me")
@@ -999,38 +1223,46 @@ def get_quiz_roles(current_user: User = Depends(get_current_user)):
 # TPO  —  Job-posting & applicant management
 # ══════════════════════════════════════════════════════════════════════════════
 
-class JobCreateRequest(BaseModel):
-    title: str
-    company: str
-    description: str = ""
-    eligibility: str = ""
-    job_role: str = ""
-    min_cgpa: Optional[float] = None
-    required_certifications: str = ""
-    preferred_skills: str = ""
-    package_lpa: Optional[float] = None
-    deadline: str = ""
-
-
 @app.post("/api/tpo/jobs")
-def create_job(
-    body: JobCreateRequest,
+async def create_job(
+    title: str = Form(...),
+    company: str = Form(...),
+    description: str = Form(""),
+    eligibility: str = Form(""),
+    job_role: str = Form(""),
+    min_cgpa: Optional[float] = Form(None),
+    required_certifications: str = Form(""),
+    preferred_skills: str = Form(""),
+    package_lpa: Optional[float] = Form(None),
+    deadline: str = Form(""),
+    company_logo: UploadFile = File(None),
     tpo: User = Depends(get_current_tpo),
     db: Session = Depends(get_db),
 ):
-    """TPO creates a new job posting."""
+    """TPO creates a new job posting (multipart/form-data with optional logo)."""
+    logo_data = ""
+    if company_logo and company_logo.filename:
+        allowed = (".png", ".jpg", ".jpeg")
+        ext = Path(company_logo.filename).suffix.lower()
+        if ext not in allowed:
+            raise HTTPException(status_code=400, detail=f"Logo must be PNG, JPG, or JPEG. Got: {ext}")
+        raw = await company_logo.read()
+        mime = "image/png" if ext == ".png" else "image/jpeg"
+        logo_data = f"data:{mime};base64,{base64.b64encode(raw).decode()}"
+
     job = Job(
         posted_by=tpo.id,
-        title=body.title,
-        company=body.company,
-        description=body.description,
-        eligibility=body.eligibility,
-        job_role=body.job_role,
-        min_cgpa=body.min_cgpa,
-        required_certifications=body.required_certifications,
-        preferred_skills=body.preferred_skills,
-        package_lpa=body.package_lpa,
-        deadline=body.deadline,
+        title=title,
+        company=company,
+        description=description,
+        eligibility=eligibility,
+        job_role=job_role,
+        min_cgpa=min_cgpa,
+        required_certifications=required_certifications,
+        preferred_skills=preferred_skills,
+        package_lpa=package_lpa,
+        deadline=deadline,
+        company_logo=logo_data,
     )
     db.add(job)
     db.commit()
@@ -1047,6 +1279,7 @@ def create_job(
         "preferred_skills": job.preferred_skills,
         "package_lpa": job.package_lpa,
         "deadline": job.deadline,
+        "company_logo": job.company_logo or "",
         "created_at": str(job.created_at),
     }
 
@@ -1077,6 +1310,7 @@ def list_tpo_jobs(
                 "preferred_skills": j.preferred_skills or "",
                 "package_lpa": j.package_lpa,
                 "deadline": j.deadline,
+                "company_logo": j.company_logo or "",
                 "created_at": str(j.created_at),
             }
             for j in jobs
@@ -1241,9 +1475,288 @@ def list_all_jobs(
                 "preferred_skills": j.preferred_skills or "",
                 "package_lpa": j.package_lpa,
                 "deadline": j.deadline,
+                "company_logo": j.company_logo or "",
                 "created_at": str(j.created_at),
             }
             for j in jobs
         ]
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# INTERESTED JOBS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/jobs/{job_id}/interest")
+def mark_interest(
+    job_id: str,
+    current_user: User = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Student marks interest in a job."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    existing = db.query(InterestedJob).filter(
+        InterestedJob.student_id == current_user.id,
+        InterestedJob.job_id == job_id,
+    ).first()
+    if existing:
+        return {"message": "Already interested", "interested": True}
+
+    interest = InterestedJob(student_id=current_user.id, job_id=job_id)
+    db.add(interest)
+    db.commit()
+    return {"message": "Interest marked", "interested": True}
+
+
+@app.delete("/api/jobs/{job_id}/interest")
+def remove_interest(
+    job_id: str,
+    current_user: User = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Student removes interest in a job."""
+    existing = db.query(InterestedJob).filter(
+        InterestedJob.student_id == current_user.id,
+        InterestedJob.job_id == job_id,
+    ).first()
+    if existing:
+        db.delete(existing)
+        db.commit()
+    return {"message": "Interest removed", "interested": False}
+
+
+@app.get("/api/jobs/interests")
+def get_my_interests(
+    current_user: User = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Get list of job IDs the current student is interested in."""
+    interests = db.query(InterestedJob.job_id).filter(
+        InterestedJob.student_id == current_user.id,
+    ).all()
+    return {"job_ids": [str(i.job_id) for i in interests]}
+
+
+@app.get("/api/tpo/jobs/{job_id}/interested-students")
+def get_interested_students(
+    job_id: str,
+    tpo: User = Depends(get_current_tpo),
+    db: Session = Depends(get_db),
+):
+    """TPO views students who clicked 'Interested' for a job."""
+    job = db.query(Job).filter(Job.id == job_id, Job.posted_by == tpo.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    interests = db.query(InterestedJob).filter(InterestedJob.job_id == job_id).all()
+    students = []
+    for i in interests:
+        s = db.query(User).filter(User.id == i.student_id).first()
+        if s:
+            students.append({
+                "id": str(s.id),
+                "name": s.name,
+                "moodle_id": s.moodle_id or "",
+                "division": s.division or "",
+                "email": s.email,
+                "resume_score": s.resume_score or 0,
+                "cgpa": s.cgpa or 0,
+                "interested_at": str(i.created_at),
+            })
+
+    return {
+        "job": {"id": str(job.id), "title": job.title, "company": job.company},
+        "students": students,
+        "total": len(students),
+    }
+
+
+@app.get("/api/tpo/jobs/{job_id}/interested-students/export")
+def export_interested_students(
+    job_id: str,
+    tpo: User = Depends(get_current_tpo),
+    db: Session = Depends(get_db),
+):
+    """Export interested students as Excel (.xlsx)."""
+    from openpyxl import Workbook
+
+    job = db.query(Job).filter(Job.id == job_id, Job.posted_by == tpo.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    interests = db.query(InterestedJob).filter(InterestedJob.job_id == job_id).all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Interested Students"
+    ws.append(["Student Name", "Roll Number", "Department", "Email", "Resume Score", "CGPA"])
+
+    for i in interests:
+        s = db.query(User).filter(User.id == i.student_id).first()
+        if s:
+            ws.append([
+                s.name,
+                s.moodle_id or "",
+                s.division or "",
+                s.email,
+                s.resume_score or 0,
+                s.cgpa or 0,
+            ])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    filename = f"interested_students_{job.company}_{job.title}.xlsx".replace(" ", "_")
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NOTIFICATIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/notifications")
+def get_notifications(
+    current_user: User = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Get student's notifications, newest first."""
+    notifs = (
+        db.query(Notification)
+        .filter(Notification.student_id == current_user.id)
+        .order_by(Notification.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return {
+        "notifications": [
+            {
+                "id": str(n.id),
+                "message": n.message,
+                "status": n.status,
+                "created_at": str(n.created_at),
+            }
+            for n in notifs
+        ]
+    }
+
+
+@app.get("/api/notifications/unread-count")
+def get_unread_count(
+    current_user: User = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Get count of unread notifications."""
+    count = db.query(Notification).filter(
+        Notification.student_id == current_user.id,
+        Notification.status == "unread",
+    ).count()
+    return {"count": count}
+
+
+@app.put("/api/notifications/{notification_id}/read")
+def mark_notification_read(
+    notification_id: str,
+    current_user: User = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Mark a notification as read."""
+    notif = db.query(Notification).filter(
+        Notification.id == notification_id,
+        Notification.student_id == current_user.id,
+    ).first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    notif.status = "read"
+    db.commit()
+    return {"message": "Notification marked as read"}
+
+
+@app.post("/api/tpo/jobs/{job_id}/notify-shortlisted")
+def notify_shortlisted(
+    job_id: str,
+    payload: Optional[NotifyShortlistedRequest] = None,
+    tpo: User = Depends(get_current_tpo),
+    db: Session = Depends(get_db),
+):
+    """Send notifications to shortlisted students (all or selected IDs)."""
+    job = db.query(Job).filter(Job.id == job_id, Job.posted_by == tpo.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if payload and payload.job_id and payload.job_id != job_id:
+        raise HTTPException(status_code=400, detail="Job ID mismatch in request payload")
+
+    shortlisted_data = get_shortlisted_students(job_id=job_id, tpo=tpo, db=db)
+    shortlisted_students = shortlisted_data.get("shortlisted_students", [])
+    allowed_student_ids = {item["student"]["id"] for item in shortlisted_students}
+
+    selected_ids = set(payload.student_ids) if payload and payload.student_ids else None
+    if selected_ids is not None:
+        selected_ids = {sid for sid in selected_ids if sid in allowed_student_ids}
+        if len(selected_ids) == 0:
+            raise HTTPException(status_code=400, detail="No valid selected students found for this job")
+
+    notified_count = 0
+
+    for item in shortlisted_students:
+        student = item.get("student", {})
+        student_id = student.get("id")
+        if not student_id:
+            continue
+
+        if selected_ids is not None and student_id not in selected_ids:
+            continue
+
+        db_student = db.query(User).filter(User.id == student_id).first()
+        if not db_student:
+            continue
+
+        # Create notification
+        message = f"Congratulations! You have been shortlisted for the {job.job_role or job.title} role at {job.company}."
+        notif = Notification(
+            student_id=db_student.id,
+            message=message,
+        )
+        db.add(notif)
+        notified_count += 1
+
+    db.commit()
+    return {"message": f"Notifications sent to {notified_count} students.", "count": notified_count}
+
+
+@app.get("/api/jobs/{job_id}/shortlisted/export")
+def export_shortlisted_students_json(
+    job_id: str,
+    tpo: User = Depends(get_current_tpo),
+    db: Session = Depends(get_db),
+):
+    """Return shortlisted students data in JSON format for export workflows."""
+    shortlisted_data = get_shortlisted_students(job_id=job_id, tpo=tpo, db=db)
+    rows = []
+    for item in shortlisted_data.get("shortlisted_students", []):
+        student = item.get("student", {})
+        rows.append({
+            "student_name": student.get("name", ""),
+            "email": student.get("email", ""),
+            "phone": student.get("mobile_number", ""),
+            "cgpa": student.get("cgpa"),
+            "resume_score": student.get("resume_score"),
+            "match_percentage": item.get("match_score"),
+            "certifications": student.get("certifications", ""),
+            "preferred_role": student.get("preferred_job_roles", ""),
+        })
+
+    return {
+        "job": shortlisted_data.get("job", {}),
+        "total": len(rows),
+        "students": rows,
     }
 

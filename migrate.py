@@ -9,7 +9,7 @@ from services.models import Base
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
-# 1. Create any brand-new tables (jobs, applications)
+# 1. Create any brand-new tables (jobs, applications, interested_jobs, notifications)
 Base.metadata.create_all(bind=engine)
 print("[OK] create_all finished (new tables created if missing)")
 
@@ -47,6 +47,8 @@ new_user_cols = {
     "github_profile": "TEXT DEFAULT ''",
     "linkedin_profile": "TEXT DEFAULT ''",
     "achievements": "TEXT DEFAULT ''",
+    "password_reset_token": "VARCHAR(100)",
+    "password_reset_expires": "TIMESTAMPTZ",
 }
 for col_name, col_type in new_user_cols.items():
     if col_name not in cols:
@@ -64,6 +66,7 @@ new_job_cols = {
     "min_cgpa": "FLOAT",
     "required_certifications": "TEXT DEFAULT ''",
     "preferred_skills": "TEXT DEFAULT ''",
+    "company_logo": "TEXT DEFAULT ''",
 }
 for col_name, col_type in new_job_cols.items():
     if col_name not in job_cols:
@@ -73,12 +76,32 @@ for col_name, col_type in new_job_cols.items():
     else:
         print(f"[OK] '{col_name}' column already exists in jobs")
 
-# 5. Verify jobs table exists
+# 5. Add password reset columns to TPO_login table
+try:
+    tpo_cols = [c["name"] for c in insp.get_columns("TPO_login")]
+    print(f"[INFO] Current TPO_login columns: {tpo_cols}")
+    new_tpo_cols = {
+        "password_reset_token": "VARCHAR(100)",
+        "password_reset_expires": "TIMESTAMPTZ",
+    }
+    for col_name, col_type in new_tpo_cols.items():
+        if col_name not in tpo_cols:
+            with engine.begin() as conn:
+                conn.execute(text(f'ALTER TABLE "TPO_login" ADD COLUMN {col_name} {col_type}'))
+            print(f"[OK] Added '{col_name}' column to TPO_login table")
+        else:
+            print(f"[OK] '{col_name}' column already exists in TPO_login")
+except Exception as e:
+    print(f"[WARN] Could not check TPO_login table: {e}")
+
+# 6. Verify tables exist
 tables = insp.get_table_names()
 print(f"[INFO] All tables: {tables}")
-if "jobs" in tables:
-    print(f"[OK] Table 'jobs' exists")
-else:
-    print(f"[WARN] Table 'jobs' NOT found!")
+for t in ["jobs", "interested_jobs", "notifications"]:
+    if t in tables:
+        print(f"[OK] Table '{t}' exists")
+    else:
+        print(f"[WARN] Table '{t}' NOT found!")
 
 print("\nDone.")
+

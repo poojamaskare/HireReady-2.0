@@ -6,13 +6,14 @@ Tables:
   - analysis_results: Stored analysis outcomes linked to a user
   - quiz_results:     Quiz attempt records
   - jobs:             Job postings created by TPOs
+  - interested_jobs:  Student ↔ Job interest mapping
+  - notifications:    Student notification messages
 """
 
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, String, Float, Text, DateTime, ForeignKey, JSON, Integer
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Float, Text, DateTime, ForeignKey, JSON, Integer, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from services.database import Base
@@ -21,7 +22,7 @@ from services.database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(Text, nullable=False)
@@ -50,6 +51,9 @@ class User(Base):
     resume_score = Column(Float, nullable=True)        # from latest analysis readiness_score
     resume_filename = Column(String(255), default="")
     resume_text = Column(Text, default="")
+    # Password reset
+    password_reset_token = Column(String(100), nullable=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -58,14 +62,16 @@ class User(Base):
     # Relationships
     analyses = relationship("AnalysisResult", back_populates="user")
     quizzes = relationship("QuizResult", back_populates="user")
+    interested_jobs = relationship("InterestedJob", back_populates="student", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="student", cascade="all, delete-orphan")
 
 
 class AnalysisResult(Base):
     __tablename__ = "analysis_results"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -101,9 +107,9 @@ class AnalysisResult(Base):
 class QuizResult(Base):
     __tablename__ = "quiz_results"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -125,9 +131,9 @@ class QuizResult(Base):
 class Job(Base):
     __tablename__ = "jobs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     posted_by = Column(
-        UUID(as_uuid=True),
+        String(36),
         nullable=False,
         index=True,
     )
@@ -141,10 +147,14 @@ class Job(Base):
     preferred_skills = Column(Text, default="")             # comma-separated skills
     package_lpa = Column(Float, nullable=True)                # package per annum in LPA
     deadline = Column(String(100), default="")
+    company_logo = Column(Text, default="")                # base64 data URI
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
     )
+
+    # Relationships
+    interested_students = relationship("InterestedJob", back_populates="job", cascade="all, delete-orphan")
 
 
 class TpoLogin(Base):
@@ -153,3 +163,59 @@ class TpoLogin(Base):
 
     email = Column(String(255), primary_key=True)
     password = Column(Text, nullable=False)
+    # Password reset
+    password_reset_token = Column(String(100), nullable=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
+
+
+class InterestedJob(Base):
+    """Student ↔ Job interest mapping."""
+    __tablename__ = "interested_jobs"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    student_id = Column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    job_id = Column(
+        String(36),
+        ForeignKey("jobs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        UniqueConstraint("student_id", "job_id", name="uq_student_job_interest"),
+    )
+
+    # Relationships
+    student = relationship("User", back_populates="interested_jobs")
+    job = relationship("Job", back_populates="interested_students")
+
+
+class Notification(Base):
+    """Student notification messages."""
+    __tablename__ = "notifications"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    student_id = Column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    message = Column(Text, nullable=False)
+    status = Column(String(10), nullable=False, default="unread")  # "unread" | "read"
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    student = relationship("User", back_populates="notifications")

@@ -10,7 +10,7 @@ import {
 import { Tooltip } from '@/components/ui/tooltip';
 import {
   LayoutDashboard, FileText, Map, ClipboardList, Briefcase,
-  User, PanelLeftClose, PanelLeftOpen, LogOut, ChevronLeft,
+  User, PanelLeftClose, PanelLeftOpen, LogOut, ChevronLeft, Bell,
 } from 'lucide-react';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -22,17 +22,18 @@ import ResultCard from './components/ResultCard';
 import QuizPage from './pages/QuizPage';
 import StudentJobs from './pages/StudentJobs';
 import ResumeAnalysisPage from './pages/ResumeAnalysisPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 const API_BASE = '/api';
 
 /* ── Sidebar nav items ──────────────────────────────────────────────── */
 const NAV_ITEMS = [
-  { key: 'dashboard',  label: 'Dashboard',        icon: LayoutDashboard },
-  { key: 'resume',     label: 'Resume Analysis',   icon: FileText },
-  { key: 'roadmap',    label: 'Roadmap',           icon: Map },
-  { key: 'quiz',       label: 'Take Quizzes',      icon: ClipboardList },
-  { key: 'jobs',       label: 'Jobs',              icon: Briefcase },
-  { key: 'profile',    label: 'Profile',           icon: User },
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { key: 'resume', label: 'Resume Analysis', icon: FileText },
+  { key: 'roadmap', label: 'Roadmap', icon: Map },
+  { key: 'quiz', label: 'Take Quizzes', icon: ClipboardList },
+  { key: 'jobs', label: 'Jobs', icon: Briefcase },
+  { key: 'profile', label: 'Profile', icon: User },
 ];
 
 export default function App() {
@@ -55,6 +56,17 @@ export default function App() {
   });
 
   const isLoggedIn = !!token;
+  const isResetPasswordRoute = window.location.pathname === '/reset-password';
+
+  if (isResetPasswordRoute) {
+    return <ResetPasswordPage />;
+  }
+
+  /* ── Notification state ────────────────────────────────────────── */
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [notifsLoading, setNotifsLoading] = useState(false);
 
   /* ── Fetch profile & latest analysis on login ───────────────────── */
   useEffect(() => {
@@ -95,6 +107,53 @@ export default function App() {
     }
   };
 
+  /* ── Notification helpers ─────────────────────────────────────── */
+  const fetchUnreadCount = async () => {
+    if (!token) return;
+    try {
+      const resp = await fetch(`${API_BASE}/notifications/unread-count`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setUnreadCount(data.count || 0);
+      }
+    } catch { /* */ }
+  };
+
+  const fetchNotifications = async () => {
+    setNotifsLoading(true);
+    try {
+      const resp = await fetch(`${API_BASE}/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setNotifications(data.notifications || []);
+      }
+    } catch { /* */ }
+    finally { setNotifsLoading(false); }
+  };
+
+  const markNotifRead = async (id) => {
+    try {
+      await fetch(`${API_BASE}/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, status: 'read' } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch { /* */ }
+  };
+
+  // Poll unread count for students
+  useEffect(() => {
+    if (!token || user?.role === 'tpo') return;
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [token, user?.role]);
+
   const handleLogin = (newToken, newUser) => {
     setToken(newToken);
     setUser(newUser);
@@ -129,17 +188,17 @@ export default function App() {
   if (!isLoggedIn) {
     if (!selectedRole) {
       return (
-        <LandingPage 
-          onGetStarted={() => setSelectedRole('selecting')} 
-          onLoginClick={() => setSelectedRole('selecting')} 
+        <LandingPage
+          onGetStarted={() => setSelectedRole('selecting')}
+          onLoginClick={() => setSelectedRole('selecting')}
         />
       );
     }
     if (selectedRole === 'selecting') {
       return (
-        <RoleSelectionPage 
-          onSelectRole={setSelectedRole} 
-          onBack={() => setSelectedRole(null)} 
+        <RoleSelectionPage
+          onSelectRole={setSelectedRole}
+          onBack={() => setSelectedRole(null)}
         />
       );
     }
@@ -252,42 +311,142 @@ export default function App() {
             {NAV_ITEMS.find((n) => n.key === activeTab)?.label || 'Dashboard'}
           </Heading>
 
-          {/* Profile icon (right side) */}
-          <MenuRoot>
-            <MenuTrigger asChild>
-              <Button variant="ghost" p={0} borderRadius="full" _hover={{ bg: 'gray.800' }}>
-                <HStack gap={2}>
-                  <Text fontSize="sm" color="gray.400" display={{ base: 'none', md: 'block' }}>
-                    {user?.name || user?.email || 'User'}
-                  </Text>
-                  <Avatar
-                    name={user?.name || user?.email || 'U'}
-                    size="sm"
-                    bg="blue.500"
-                    color="white"
-                  />
-                </HStack>
-              </Button>
-            </MenuTrigger>
-            <MenuContent bg="gray.800" borderColor="gray.700">
-              <MenuItem
-                value="profile"
-                onClick={() => setActiveTab('profile')}
-                color="gray.200"
-                _hover={{ bg: 'gray.700' }}
+          {/* Notification bell + Profile icon (right side) */}
+          <HStack gap={2}>
+            {/* Notification Bell */}
+            <Box position="relative">
+              <IconButton
+                variant="ghost"
+                size="sm"
+                color="gray.400"
+                _hover={{ bg: 'gray.800', color: 'gray.100' }}
+                borderRadius="full"
+                onClick={() => {
+                  setShowNotifs(!showNotifs);
+                  if (!showNotifs) fetchNotifications();
+                }}
+                aria-label="Notifications"
               >
-                <Icon asChild w={4} h={4} mr={2}><User /></Icon> Profile
-              </MenuItem>
-              <MenuItem
-                value="logout"
-                onClick={handleLogout}
-                color="red.300"
-                _hover={{ bg: 'gray.700' }}
-              >
-                <Icon asChild w={4} h={4} mr={2}><LogOut /></Icon> Logout
-              </MenuItem>
-            </MenuContent>
-          </MenuRoot>
+                <Icon asChild w={5} h={5}><Bell /></Icon>
+              </IconButton>
+              {unreadCount > 0 && (
+                <Box
+                  position="absolute"
+                  top="-2px"
+                  right="-2px"
+                  bg="red.500"
+                  color="white"
+                  borderRadius="full"
+                  w="18px" h="18px"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  fontSize="10px"
+                  fontWeight="700"
+                  lineHeight="1"
+                >
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Box>
+              )}
+
+              {/* Notification Dropdown */}
+              {showNotifs && (
+                <Box
+                  position="absolute"
+                  top="44px"
+                  right="0"
+                  w="360px"
+                  maxH="400px"
+                  overflowY="auto"
+                  bg="gray.800"
+                  border="1px solid"
+                  borderColor="gray.700"
+                  borderRadius="xl"
+                  boxShadow="xl"
+                  zIndex={100}
+                  p={0}
+                >
+                  <Flex px={4} py={3} borderBottom="1px solid" borderColor="gray.700" align="center" justify="space-between">
+                    <Text fontWeight="600" color="gray.100" fontSize="sm">Notifications</Text>
+                    {unreadCount > 0 && (
+                      <Badge colorPalette="red" fontSize="xs">{unreadCount} new</Badge>
+                    )}
+                  </Flex>
+                  {notifsLoading ? (
+                    <Flex justify="center" py={6}><Spinner size="sm" color="blue.400" /></Flex>
+                  ) : notifications.length === 0 ? (
+                    <Text color="gray.500" fontSize="sm" p={4} textAlign="center">No notifications yet</Text>
+                  ) : (
+                    <VStack gap={0} align="stretch">
+                      {notifications.map((n) => (
+                        <Box
+                          key={n.id}
+                          px={4} py={3}
+                          borderBottom="1px solid"
+                          borderColor="gray.700"
+                          bg={n.status === 'unread' ? 'gray.750' : 'transparent'}
+                          cursor={n.status === 'unread' ? 'pointer' : 'default'}
+                          _hover={n.status === 'unread' ? { bg: 'gray.700' } : {}}
+                          onClick={() => { if (n.status === 'unread') markNotifRead(n.id); }}
+                        >
+                          <Flex gap={2} align="flex-start">
+                            {n.status === 'unread' && (
+                              <Box w="8px" h="8px" minW="8px" borderRadius="full" bg="blue.400" mt="6px" />
+                            )}
+                            <Box flex={1}>
+                              <Text fontSize="sm" color={n.status === 'unread' ? 'gray.100' : 'gray.400'} lineClamp={2}>
+                                {n.message}
+                              </Text>
+                              <Text fontSize="xs" color="gray.500" mt={1}>
+                                {new Date(n.created_at).toLocaleString()}
+                              </Text>
+                            </Box>
+                          </Flex>
+                        </Box>
+                      ))}
+                    </VStack>
+                  )}
+                </Box>
+              )}
+            </Box>
+
+            {/* Profile Menu */}
+            <MenuRoot>
+              <MenuTrigger asChild>
+                <Button variant="ghost" p={0} borderRadius="full" _hover={{ bg: 'gray.800' }}>
+                  <HStack gap={2}>
+                    <Text fontSize="sm" color="gray.400" display={{ base: 'none', md: 'block' }}>
+                      {user?.name || user?.email || 'User'}
+                    </Text>
+                    <Avatar
+                      name={user?.name || user?.email || 'U'}
+                      size="sm"
+                      bg="blue.500"
+                      color="white"
+                    />
+                  </HStack>
+                </Button>
+              </MenuTrigger>
+              <MenuContent bg="gray.800" borderColor="gray.700">
+                <MenuItem
+                  value="profile"
+                  onClick={() => setActiveTab('profile')}
+                  color="gray.200"
+                  _hover={{ bg: 'gray.700' }}
+                >
+                  <Icon asChild w={4} h={4} mr={2}><User /></Icon> Profile
+                </MenuItem>
+                <MenuItem
+                  value="logout"
+                  onClick={handleLogout}
+                  color="red.300"
+                  _hover={{ bg: 'gray.700' }}
+                >
+                  <Icon asChild w={4} h={4} mr={2}><LogOut /></Icon> Logout
+                </MenuItem>
+              </MenuContent>
+            </MenuRoot>
+          </HStack>
         </Flex>
 
         {/* ── Page Content ── */}
