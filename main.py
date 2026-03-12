@@ -371,11 +371,23 @@ def send_password_reset_email(recipient_email: str, token: str) -> None:
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     email_user = os.getenv("EMAIL_USER", "") or os.getenv("SMTP_USERNAME", "")
     email_pass = os.getenv("EMAIL_PASS", "") or os.getenv("SMTP_PASSWORD", "")
-    sender_email = os.getenv("EMAIL_FROM", email_user or "noreply@hireready.com")
+    email_from = os.getenv("EMAIL_FROM", "HireReady")
     frontend_base_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
 
     if not email_user or not email_pass:
-        raise RuntimeError("Email credentials are missing. Set EMAIL_USER and EMAIL_PASS in .env")
+        # SMTP not configured: don't treat this as an error for the
+        # forgot-password endpoint. Log the reset link so developers
+        # can copy it during local development / testing.
+        reset_link = f"{frontend_base_url}/reset-password?token={token}"
+        logger.warning("SMTP credentials missing; logging reset link instead of sending email.")
+        logger.info("Password reset link for %s: %s", recipient_email, reset_link)
+        return True
+
+    # Format the 'From' header for branding (e.g., "HireReady <user@gmail.com>")
+    if "@" in email_from:
+        display_from = email_from
+    else:
+        display_from = f"{email_from} <{email_user}>"
 
     reset_link = f"{frontend_base_url}/reset-password?token={token}"
     body = (
@@ -389,17 +401,27 @@ def send_password_reset_email(recipient_email: str, token: str) -> None:
 
     msg = MIMEMultipart()
     msg["Subject"] = "Password Reset - HireReady"
-    msg["From"] = sender_email
+    msg["From"] = display_from
     msg["To"] = recipient_email
     msg.attach(MIMEText(body, "plain"))
 
-    with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(email_user, email_pass)
-        server.sendmail(sender_email, [recipient_email], msg.as_string())
-    logger.info("Password reset email sent to %s", recipient_email)
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(email_user, email_pass)
+            # CRITICAL: Envelope sender MUST be a valid email address (email_user)
+            server.sendmail(email_user, [recipient_email], msg.as_string())
+        logger.info("Password reset email sent to %s", recipient_email)
+        return True
+    except Exception as e:
+        logger.error("Failed to send password reset email: %s", str(e))
+        # Do NOT raise here. Email delivery failures should not crash the
+        # forgot-password endpoint — we return a generic success message
+        # to avoid revealing account existence and to keep the endpoint
+        # resilient to SMTP issues.
+        return False
 
 
 @app.post("/api/auth/forgot-password")
@@ -409,32 +431,37 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
     generic_message = "If the email exists, a password reset link has been sent."
     token = secrets.token_urlsafe(32)
     expiry = datetime.now(timezone.utc) + timedelta(minutes=15)
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            user.password_reset_token = token
+            user.password_reset_expires = expiry
+            db.commit()
+            try:
+                send_password_reset_email(email, token)
+            except Exception:
+                # send_password_reset_email now returns False on failure,
+                # but keep defensive logging in case of unexpected errors.
+                logger.exception("Failed to send password reset email (student) to %s", email)
+            return {"message": generic_message}
 
-    user = db.query(User).filter(User.email == email).first()
-    if user:
-        user.password_reset_token = token
-        user.password_reset_expires = expiry
-        db.commit()
-        try:
-            send_password_reset_email(email, token)
-        except Exception as exc:
-            print("Email sending error:", exc)
-            logger.exception("Failed to send password reset email (student) to %s", email)
+        tpo = db.query(TpoLogin).filter(TpoLogin.email == email).first()
+        if tpo:
+            tpo.password_reset_token = token
+            tpo.password_reset_expires = expiry
+            db.commit()
+            try:
+                send_password_reset_email(email, token)
+            except Exception:
+                logger.exception("Failed to send password reset email (tpo) to %s", email)
+            return {"message": generic_message}
+
         return {"message": generic_message}
-
-    tpo = db.query(TpoLogin).filter(TpoLogin.email == email).first()
-    if tpo:
-        tpo.password_reset_token = token
-        tpo.password_reset_expires = expiry
-        db.commit()
-        try:
-            send_password_reset_email(email, token)
-        except Exception as exc:
-            print("Email sending error:", exc)
-            logger.exception("Failed to send password reset email (tpo) to %s", email)
+    except Exception as exc:
+        # Catch anything unexpected (DB disconnected, schema error, etc.)
+        logger.exception("Error processing forgot-password for %s: %s", email, exc)
+        # Still return the generic message so the UI doesn't receive a 500.
         return {"message": generic_message}
-
-    return {"message": generic_message}
 
 
 @app.post("/api/auth/reset-password")
