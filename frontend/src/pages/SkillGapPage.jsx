@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -9,11 +9,17 @@ import {
   VStack,
   HStack,
   SimpleGrid,
+  Badge,
   Icon,
   Flex,
+  IconButton,
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  CloseButton,
 } from '@chakra-ui/react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Sparkles, CheckCircle2, BookOpen, Briefcase } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Search, Sparkles, Plus, BookOpen, Briefcase, ArrowRight, MessageCircle, X, ExternalLink, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
 import { toaster } from '@/components/ui/toaster';
 import RoadmapViewport from '../components/RoadmapViewport';
@@ -49,8 +55,24 @@ export default function SkillGapPage() {
 
   // Roadmap state
   const [roadmapData, setRoadmapData] = useState(null);
-  const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
   const [activeSkillForRoadmap, setActiveSkillForRoadmap] = useState(null);
+  const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
+  const [newSkill, setNewSkill] = useState('');
+  const [roleResources, setRoleResources] = useState(null);
+  const [roleResourcesError, setRoleResourcesError] = useState(null);
+  const [roleActiveTab, setRoleActiveTab] = useState('courses');
+
+  // Assistant state
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantInput, setAssistantInput] = useState('');
+  const [assistantMessages, setAssistantMessages] = useState([
+    {
+      from: 'assistant',
+      text: 'Hi! Ask me anything about your role, skills, or what to learn next.',
+    },
+  ]);
+  const [assistantLoading, setAssistantLoading] = useState(false);
+  const [assistantSuggestions, setAssistantSuggestions] = useState([]);
 
   const filteredRoles = role.trim()
     ? ROLE_SUGGESTIONS.filter(r => r.toLowerCase().includes(role.toLowerCase())).slice(0, 8)
@@ -68,13 +90,24 @@ export default function SkillGapPage() {
     setIsLoading(true);
     try {
       const response = await axios.post('/api/predict-skills', { role });
-      const predictedSkills = response.data.skills.map(s => ({
-        name: s,
-        isKnown: false
-      }));
+      const predictedSkills = response.data.skills.map(name => ({ name }));
       setSkills(predictedSkills);
       setHasSearched(true);
       setRoadmapData(null);
+      // Fetch role-level resources (courses/certificates/youtube) using role roadmap endpoint
+      try {
+        // Use the cached, validated resources endpoint which returns per-role results
+        const r = await axios.post('/api/generate-resources-for-roles', { roles: [role] });
+        const payload = r.data && r.data[role] ? r.data[role] : null;
+        setRoleResources(cleanResources(payload));
+        setRoleResourcesError(null);
+      } catch (err) {
+        // non-fatal: log but show a visible banner so user can retry
+        const msg = err?.response?.data?.detail || err.message || 'Failed to fetch resources';
+        console.warn('Failed to fetch role resources', msg);
+        setRoleResources(null);
+        setRoleResourcesError(msg);
+      }
     } catch (error) {
       toaster.create({
         title: 'Prediction Failed',
@@ -85,6 +118,25 @@ export default function SkillGapPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Keep only trusted, direct links from the backend response
+  const cleanResources = (raw) => {
+    if (!raw) return { courses: [], certificates: [], youtube: [] };
+
+    const courses = (raw.courses || []).filter((c) =>
+      c && !c.isFallback && c.url && /^https?:\/\//.test(c.url)
+    );
+
+    const certificates = (raw.certificates || []).filter((cert) =>
+      cert && !cert.isFallback && cert.url && /^https?:\/\//.test(cert.url)
+    );
+
+    const youtube = (raw.youtube || []).filter((vid) =>
+      vid && !vid.isFallback && vid.videoId && vid.videoId.length === 11
+    );
+
+    return { courses, certificates, youtube };
   };
 
   const generateRoadmap = async (skillName) => {
@@ -109,28 +161,157 @@ export default function SkillGapPage() {
     }
   };
 
-  const toggleSkill = (skillName) => {
-    setSkills(prev => prev.map(s =>
-      s.name === skillName ? { ...s, isKnown: !s.isKnown } : s
-    ));
+  const generateRoleRoadmap = async () => {
+    if (!role.trim()) return;
+
+    setIsGeneratingRoadmap(true);
+    setActiveSkillForRoadmap(role);
+
+    try {
+      const response = await axios.post('/api/generate-role-learning-path', { role });
+      setRoadmapData(response.data);
+    } catch (error) {
+      toaster.create({
+        title: 'Roadmap Generation Failed',
+        description: error.response?.data?.detail || 'Groq API error',
+        type: 'error',
+        duration: 3000,
+      });
+      setActiveSkillForRoadmap(null);
+    } finally {
+      setIsGeneratingRoadmap(false);
+    }
   };
 
-  const remainingSkills = skills.filter(s => !s.isKnown);
+  const handleAddSkill = () => {
+    const trimmed = newSkill.trim();
+    if (!trimmed) return;
 
-  if (roadmapData && activeSkillForRoadmap) {
-    return (
-      <RoadmapViewport
-        data={roadmapData}
-        skillName={activeSkillForRoadmap}
-        onBack={() => setRoadmapData(null)}
-      />
-    );
-  }
+    setSkills(prev => {
+      if (prev.some(s => s.name.toLowerCase() === trimmed.toLowerCase())) {
+        return prev;
+      }
+      const updated = [...prev, { name: trimmed }];
+      // Keep skills ordered consistently (basic -> advanced approximation)
+      updated.sort((a, b) => a.name.localeCompare(b.name));
+      return updated;
+    });
+
+    setNewSkill('');
+  };
+
+  useEffect(() => {
+    const primarySkill = activeSkillForRoadmap || (skills[0]?.name || '');
+    const suggestionList = [];
+
+    if (role) {
+      suggestionList.push(`What skills do I need to become a ${role}?`);
+    }
+    if (primarySkill) {
+      suggestionList.push(`How should I start learning ${primarySkill}?`);
+      suggestionList.push(`Can you suggest projects to practice ${primarySkill}?`);
+    }
+    if (!role && !primarySkill) {
+      suggestionList.push('How can I get started in tech?');
+    }
+    suggestionList.push('How do I balance theory and practice while learning?');
+
+    const unique = Array.from(new Set(suggestionList));
+    setAssistantSuggestions(unique.slice(0, 4));
+  }, [role, skills, activeSkillForRoadmap]);
+
+  // Helper: fetch resources for a role (used for retry)
+  const fetchRoleResources = async (targetRole) => {
+    if (!targetRole) return;
+    setRoleResourcesError(null);
+    try {
+      const r = await axios.post('/api/generate-resources-for-roles', { roles: [targetRole] });
+      const payload = r.data && r.data[targetRole] ? r.data[targetRole] : null;
+      setRoleResources(cleanResources(payload));
+      setRoleResourcesError(null);
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err.message || 'Failed to fetch resources';
+      setRoleResources(null);
+      setRoleResourcesError(msg);
+    }
+  };
+
+  // Helpers for role resources links and badge colors
+  const youtubeWatch = (videoId) => `https://www.youtube.com/watch?v=${videoId}`;
+
+  const courseLink = (course) => {
+    if (course?.url && /^https?:\/\//.test(course.url)) return course.url;
+    const q = encodeURIComponent(course.title || '');
+    const p = (course.platform || '').toLowerCase();
+    if (p.includes('udemy')) return `https://www.udemy.com/courses/search/?q=${q}`;
+    if (p.includes('coursera')) return `https://www.coursera.org/search?query=${q}`;
+    return `https://www.google.com/search?q=${q}`;
+  };
+
+  const certLink = (cert) => {
+    if (cert?.url && /^https?:\/\//.test(cert.url)) return cert.url;
+    return `https://www.google.com/search?q=${encodeURIComponent((cert.title || '') + ' ' + (cert.provider || ''))}`;
+  };
+
+  const levelColor = (level) => {
+    if (!level) return 'green.500';
+    const l = level.toLowerCase();
+    if (l.includes('beginner')) return 'green.500';
+    if (l.includes('intermediate')) return 'orange.500';
+    return 'red.500';
+  };
+
+
+  const sendAssistantMessage = async (questionOverride) => {
+    const raw = (questionOverride ?? assistantInput).trim();
+    if (!raw) return;
+
+    setAssistantMessages((prev) => [...prev, { from: 'user', text: raw }]);
+    setAssistantInput('');
+    setAssistantLoading(true);
+
+    try {
+      const historyPayload = assistantMessages.slice(-6).map((m) => ({
+        from: m.from,
+        text: m.text,
+      }));
+
+      const response = await axios.post('/api/roadmap-assistant', {
+        question: raw,
+        role: role || null,
+        skill: activeSkillForRoadmap || (skills[0]?.name || null),
+        history: historyPayload,
+      });
+
+      const answer = response.data?.answer || 'Sorry, I could not generate an answer right now.';
+      setAssistantMessages((prev) => [...prev, { from: 'assistant', text: answer }]);
+    } catch (error) {
+      setAssistantMessages((prev) => [
+        ...prev,
+        {
+          from: 'assistant',
+          text:
+            error.response?.data?.detail ||
+            'Something went wrong while talking to the assistant.',
+        },
+      ]);
+    } finally {
+      setAssistantLoading(false);
+    }
+  };
 
   return (
     <Box color="white" fontFamily="'Inter', sans-serif">
-      <Container maxW="5xl">
-        <VStack gap={6} align="stretch">
+      {roadmapData && activeSkillForRoadmap ? (
+        <RoadmapViewport
+          data={roadmapData}
+          skillName={activeSkillForRoadmap}
+          onBack={() => setRoadmapData(null)}
+          showResources={false}
+        />
+      ) : (
+        <Container maxW="5xl">
+          <VStack gap={6} align="stretch">
           {/* Header Section */}
           <VStack gap={3} textAlign="center">
             <MotionBox
@@ -141,9 +322,6 @@ export default function SkillGapPage() {
               <Heading size="2xl" fontWeight="900" letterSpacing="tight" mb={2}>
                 AI <Text as="span" color="blue.400">Skill Gap</Text> Analyzer
               </Heading>
-              <Text color="gray.400" fontSize="md" maxW="2xl">
-                Enter your target role. Click skills you know to reveal your gap.
-              </Text>
             </MotionBox>
 
             {/* Input Bar with Suggestions */}
@@ -236,15 +414,72 @@ export default function SkillGapPage() {
             </Box>
           </VStack>
 
+          {!hasSearched && (
+            <Box py={24}>
+              <Text
+                color="gray.400"
+                fontSize="lg"
+                maxW="3xl"
+                mx="auto"
+                textAlign="center"
+              >
+                Tell us your dream tech role and we&apos;ll map every core skill from beginner to advanced, then build an AI-powered learning roadmap with real courses, certifications, and practice projects.
+              </Text>
+            </Box>
+          )}
+
+          {/* Role-level resources moved above so they appear under the Roadmap header */}
+
+          {/* role-level roadmap button (styled like skill buttons) placed under the search bar */}
+          {hasSearched && role.trim() && (
+            <Flex justify="center" mt={2}>
+              <Button
+                size="sm"
+                variant="outline"
+                borderColor="blue.400"
+                color="blue.400"
+                _hover={{ bg: 'blue.400', color: 'white' }}
+                borderRadius="full"
+                onClick={generateRoleRoadmap}
+                loading={isGeneratingRoadmap && activeSkillForRoadmap === role}
+              >
+                <Icon asChild h={4} w={4}><BookOpen /></Icon>
+                Roadmap for {role}
+              </Button>
+            </Flex>
+          )}
+
           {/* Skill Bubbles Section */}
           {hasSearched && (
             <VStack gap={5} align="stretch">
               <Flex justify="space-between" align="center">
-                <Heading size="md" color="gray.100">Predicted Core Tech Skills</Heading>
-                <Text color="blue.400" fontWeight="bold" fontSize="sm">
-                  {remainingSkills.length} Remaining
+                <Heading size="md" color="gray.100">Core Tech Skills Required</Heading>
+                <Text color="gray.500" fontSize="sm">
+                  Ordered from basic-advanced
                 </Text>
               </Flex>
+
+              {/* Add custom skill */}
+              <HStack gap={3} flexWrap="wrap">
+                <Text color="gray.500" fontSize="sm">Add a custom skill:</Text>
+                <HStack gap={2} flex="1" maxW="420px">
+                  <Input
+                    size="sm"
+                    placeholder="e.g. Machine Learning"
+                    value={newSkill}
+                    onChange={(e) => setNewSkill(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddSkill(); }}
+                  />
+                  <Button
+                    size="sm"
+                    colorPalette="blue"
+                    borderRadius="lg"
+                    onClick={handleAddSkill}
+                  >
+                    Add
+                  </Button>
+                </HStack>
+              </HStack>
 
               <Box
                 p={6}
@@ -256,61 +491,60 @@ export default function SkillGapPage() {
                 position="relative"
                 overflow="hidden"
               >
-                <SimpleGrid columns={{ base: 2, md: 3, lg: 4, xl: 5 }} gap={3}>
-
-                  <AnimatePresence mode="popLayout">
-                    {skills.map((skill) => (
-                      !skill.isKnown && (
+                {skills.length > 0 ? (
+                  <Flex align="center" gap={3} wrap="wrap">
+                    {skills.map((skill, index) => (
+                      <HStack key={skill.name} align="center" gap={2}>
                         <MotionBox
-                          key={skill.name}
-                          layout
-                          initial={{ scale: 0, opacity: 0 }}
+                          initial={{ scale: 0.9, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 1.5, opacity: 0, filter: 'blur(20px)' }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => toggleSkill(skill.name)}
-                          cursor="pointer"
+                          transition={{ duration: 0.2, delay: index * 0.03 }}
                         >
                           <Box
                             bg="blue.900/40"
                             px={3}
                             py={1.5}
                             borderRadius="lg"
-                            textAlign="center"
                             boxShadow="0 0 10px rgba(59,130,246,0.15)"
                             border="1px solid"
                             borderColor="blue.400/50"
                           >
-                            <Text fontWeight="600" fontSize="xs">{skill.name}</Text>
+                            <Flex align="center" justify="space-between" gap={2}>
+                              <Text fontWeight="600" fontSize="xs" noOfLines={2}>{skill.name}</Text>
+                              <IconButton
+                                aria-label={`Open roadmap for ${skill.name}`}
+                                size="xs"
+                                variant="ghost"
+                                colorScheme="blue"
+                                onClick={() => generateRoadmap(skill.name)}
+                              >
+                                <Icon asChild w={3} h={3}><Plus /></Icon>
+                              </IconButton>
+                            </Flex>
                           </Box>
                         </MotionBox>
-                      )
+                        {index < skills.length - 1 && (
+                          <Icon asChild w={4} h={4} color="gray.600">
+                            <ArrowRight />
+                          </Icon>
+                        )}
+                      </HStack>
                     ))}
-                  </AnimatePresence>
-                </SimpleGrid>
-
-                {remainingSkills.length === 0 && skills.length > 0 && (
-                  <MotionBox
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    textAlign="center"
-                    py={20}
-                  >
-                    <Icon asChild w={16} h={16} color="green.400" mb={4}><CheckCircle2 /></Icon>
-                    <Heading size="xl" color="white">You're All Set!</Heading>
-                    <Text color="gray.400" mt={2}>You've mastered all the core skills for this role.</Text>
-                  </MotionBox>
+                  </Flex>
+                ) : (
+                  <Flex align="center" justify="center" h="full">
+                    <Text color="gray.500" fontSize="sm">No skills predicted yet. Try another role.</Text>
+                  </Flex>
                 )}
               </Box>
 
-              {/* Roadmap buttons for remaining skills */}
-              {remainingSkills.length > 0 && (
+              {skills.length > 0 && (
                 <VStack gap={6} align="center" pt={8}>
                   <Text color="gray.500">Select a skill to dive deeper into its learning path</Text>
 
                   <Flex gap={4} wrap="wrap" justify="center">
-                    {remainingSkills.map(skill => (
+                    {/* role button intentionally omitted here to keep it at the top */}
+                    {skills.map(skill => (
                       <Button
                         key={skill.name}
                         variant="outline"
@@ -329,10 +563,336 @@ export default function SkillGapPage() {
                   </Flex>
                 </VStack>
               )}
+
+            {/* Role-level resources shown under the roadmap blocks */}
+              {roleResourcesError && (
+              <Alert status="warning" borderRadius="lg" mb={4} alignItems="center">
+                <Icon as={AlertTriangle} boxSize={5} mr={2} />
+                <Box flex="1">
+                  <AlertTitle>Resources unavailable</AlertTitle>
+                  <AlertDescription display="block">{roleResourcesError}</AlertDescription>
+                </Box>
+                <Button size="sm" ml={4} onClick={() => fetchRoleResources(role)}>Retry</Button>
+                <CloseButton ml={2} onClick={() => setRoleResourcesError(null)} />
+              </Alert>
+            )}
+
+            {roleResources && (
+              <Box mt={6} mb={6}>
+                <Heading size="sm" color="gray.100" mb={3}>
+                  Resources for <Text as="span" color="blue.400">{role}</Text>
+                </Heading>
+
+                <Flex gap={2} mb={4} wrap="wrap">
+                  <Button
+                    size="xs"
+                    bg={roleActiveTab === 'courses' ? 'blue.500' : 'gray.800'}
+                    color={roleActiveTab === 'courses' ? 'white' : 'gray.400'}
+                    borderRadius="full"
+                    onClick={() => setRoleActiveTab('courses')}
+                  >
+                    Courses <Box as="span" ml={2} bg="whiteAlpha.200" px={2} borderRadius="full">{(roleResources.courses || []).length}</Box>
+                  </Button>
+
+                  <Button
+                    size="xs"
+                    bg={roleActiveTab === 'certificates' ? 'blue.500' : 'gray.800'}
+                    color={roleActiveTab === 'certificates' ? 'white' : 'gray.400'}
+                    borderRadius="full"
+                    onClick={() => setRoleActiveTab('certificates')}
+                  >
+                    Certificates <Box as="span" ml={2} bg="whiteAlpha.200" px={2} borderRadius="full">{(roleResources.certificates || []).length}</Box>
+                  </Button>
+
+                  <Button
+                    size="xs"
+                    bg={roleActiveTab === 'youtube' ? 'blue.500' : 'gray.800'}
+                    color={roleActiveTab === 'youtube' ? 'white' : 'gray.400'}
+                    borderRadius="full"
+                    onClick={() => setRoleActiveTab('youtube')}
+                  >
+                    YouTube <Box as="span" ml={2} bg="whiteAlpha.200" px={2} borderRadius="full">{(roleResources.youtube || []).length}</Box>
+                  </Button>
+                </Flex>
+
+                {/* Courses grid */}
+                {roleActiveTab === 'courses' && (
+                  <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                    {(roleResources.courses || []).map((c, i) => (
+                      <Box
+                        key={`rc-${i}`}
+                        bg="gray.900"
+                        border="1px solid"
+                        borderColor="gray.800"
+                        borderRadius="xl"
+                        p={5}
+                        cursor="pointer"
+                        onClick={() => window.open(courseLink(c), '_blank')}
+                        _hover={{ borderColor: 'blue.500', transform: 'translateY(-2px)', boxShadow: '0 0 20px rgba(59,130,246,0.12)' }}
+                        transition="all 0.2s"
+                      >
+                        <Flex justify="space-between" align="start" mb={2}>
+                          <HStack gap={2}>
+                            <Icon asChild w={4} h={4} color="blue.400"><BookOpen /></Icon>
+                            <Text fontWeight="700" color="gray.100" fontSize="sm">{c.title}</Text>
+                          </HStack>
+                          <HStack align="center" gap={2}>
+                            {c.isFallback && (
+                              <Badge colorScheme="yellow" variant="subtle" fontSize="2xs">Fallback</Badge>
+                            )}
+                            <Icon asChild w={3.5} h={3.5} color="gray.500"><ExternalLink /></Icon>
+                          </HStack>
+                        </Flex>
+                        <Text color="gray.500" fontSize="xs" mb={2}>{c.description}</Text>
+                        <Flex gap={2} align="center">
+                          <Box as="span" bg={levelColor(c.level)} color="white" px={2} borderRadius="full" fontSize="2xs">{c.level || 'Beginner'}</Box>
+                          <Text color="gray.600" fontSize="2xs">{c.platform}</Text>
+                        </Flex>
+                      </Box>
+                    ))}
+                  </SimpleGrid>
+                )}
+
+                {/* Certificates grid */}
+                {roleActiveTab === 'certificates' && (
+                  <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                    {(roleResources.certificates || []).map((cert, i) => (
+                      <Box
+                        key={`cert-${i}`}
+                        bg="gray.900"
+                        border="1px solid"
+                        borderColor="gray.800"
+                        borderRadius="xl"
+                        p={5}
+                        cursor="pointer"
+                        onClick={() => window.open(certLink(cert), '_blank')}
+                        _hover={{ borderColor: 'yellow.500', transform: 'translateY(-2px)', boxShadow: '0 0 20px rgba(234,179,8,0.1)' }}
+                        transition="all 0.2s"
+                      >
+                        <Flex justify="space-between" align="start" mb={2}>
+                          <HStack gap={2}>
+                            <Icon asChild w={4} h={4} color="yellow.400"><BookOpen /></Icon>
+                            <Text fontWeight="700" color="gray.100" fontSize="sm">{cert.title}</Text>
+                          </HStack>
+                          <HStack align="center" gap={2}>
+                            {cert.isFallback && (
+                              <Badge colorScheme="yellow" variant="subtle" fontSize="2xs">Fallback</Badge>
+                            )}
+                            <Icon asChild w={3.5} h={3.5} color="gray.500"><ExternalLink /></Icon>
+                          </HStack>
+                        </Flex>
+                        <Text color="gray.500" fontSize="xs" mb={2}>{cert.description}</Text>
+                        <Badge bg="whiteAlpha.100" color="white" borderRadius="full" px={2} fontSize="2xs">{cert.provider}</Badge>
+                      </Box>
+                    ))}
+                  </SimpleGrid>
+                )}
+
+                {/* YouTube grid */}
+                {roleActiveTab === 'youtube' && (
+                  <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                    {(roleResources.youtube || []).map((vid, i) => (
+                      <Box
+                        key={`yt-${i}`}
+                        bg="gray.900"
+                        border="1px solid"
+                        borderColor="gray.800"
+                        borderRadius="xl"
+                        p={5}
+                        cursor="pointer"
+                        onClick={() => window.open(youtubeWatch(vid.videoId), '_blank')}
+                        _hover={{ borderColor: 'red.500', transform: 'translateY(-2px)', boxShadow: '0 0 20px rgba(239,68,68,0.1)' }}
+                        transition="all 0.2s"
+                      >
+                        <Flex justify="space-between" align="start" mb={2}>
+                          <HStack gap={2}>
+                            <Icon asChild w={4} h={4} color="red.400"><BookOpen /></Icon>
+                            <Text fontWeight="700" color="gray.100" fontSize="sm">{vid.title}</Text>
+                          </HStack>
+                          <HStack align="center" gap={2}>
+                            {vid.isFallback && (
+                              <Badge colorScheme="yellow" variant="subtle" fontSize="2xs">Fallback</Badge>
+                            )}
+                            <Icon asChild w={3.5} h={3.5} color="gray.500"><ExternalLink /></Icon>
+                          </HStack>
+                        </Flex>
+                        <Text color="gray.600" fontSize="xs" mb={1}>{vid.channel}</Text>
+                        <Text color="gray.500" fontSize="xs">{vid.description}</Text>
+                      </Box>
+                    ))}
+                  </SimpleGrid>
+                )}
+              </Box>
+            )}
             </VStack>
           )}
         </VStack>
       </Container>
+      )}
+
+      {/* Floating Roadmap Assistant */}
+      <Box position="fixed" bottom="24px" right="24px" zIndex={50}>
+        {assistantOpen ? (
+          <Box
+            w={{ base: '280px', md: '340px' }}
+            bg="gray.900"
+            borderRadius="xl"
+            border="1px solid"
+            borderColor="gray.700"
+            boxShadow="0 18px 45px rgba(0,0,0,0.8)"
+            overflow="hidden"
+          >
+            <Flex
+              align="center"
+              justify="space-between"
+              px={4}
+              py={3}
+              bg="gray.800"
+              borderBottom="1px solid"
+              borderColor="gray.700"
+            >
+              <HStack gap={2}>
+                <Icon asChild w={4} h={4} color="blue.300">
+                  <Sparkles />
+                </Icon>
+                <Text fontSize="sm" fontWeight="600">
+                  Roadmap Assistant
+                </Text>
+              </HStack>
+              <IconButton
+                aria-label="Close assistant"
+                size="xs"
+                variant="ghost"
+                colorPalette="gray"
+                onClick={() => setAssistantOpen(false)}
+              >
+                <Icon asChild w={3.5} h={3.5}>
+                  <X />
+                </Icon>
+              </IconButton>
+            </Flex>
+
+            {/* Suggestions strip */}
+            <Box px={3} py={2} borderBottom="1px solid" borderColor="gray.700">
+              <Flex wrap="wrap" gap={2}>
+                {assistantSuggestions.map((s) => (
+                  <Button
+                    key={s}
+                    size="xs"
+                    variant="outline"
+                    borderColor="gray.600"
+                    color="gray.200"
+                    borderRadius="full"
+                    onClick={() => sendAssistantMessage(s)}
+                  >
+                    {s}
+                  </Button>
+                ))}
+              </Flex>
+            </Box>
+
+            {/* Messages area */}
+            <Box maxH="260px" overflowY="auto" px={3} py={3}>
+              <VStack align="stretch" gap={2}>
+                {assistantMessages.map((m, idx) => {
+                  const isUser = m.from === 'user';
+                  return (
+                    <Box
+                      key={idx}
+                      alignSelf={isUser ? 'flex-end' : 'flex-start'}
+                      maxW="92%"
+                    >
+                      <Box
+                        bg={
+                          isUser
+                            ? 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.5))'
+                            : 'gray.800'
+                        }
+                        px={3}
+                        py={2}
+                        borderRadius="lg"
+                        border={isUser ? '1px solid' : 'none'}
+                        borderColor={isUser ? 'blue.400/60' : 'transparent'}
+                        boxShadow={
+                          isUser
+                            ? '0 0 12px rgba(59,130,246,0.35)'
+                            : '0 0 6px rgba(15,23,42,0.6)'
+                        }
+                      >
+                        <Text fontSize="xs" color="white">
+                          {m.text}
+                        </Text>
+                      </Box>
+                    </Box>
+                  );
+                })}
+                {assistantLoading && (
+                  <Text fontSize="xs" color="gray.400">
+                    Thinking...
+                  </Text>
+                )}
+              </VStack>
+            </Box>
+
+            {/* Input row */}
+            <Flex
+              px={3}
+              py={3}
+              gap={2}
+              align="center"
+              borderTop="1px solid"
+              borderColor="gray.700"
+            >
+              <Input
+                size="sm"
+                placeholder="Ask about your roadmap..."
+                value={assistantInput}
+                onChange={(e) => setAssistantInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') sendAssistantMessage();
+                }}
+              />
+              <Button
+                size="sm"
+                colorPalette="blue"
+                borderRadius="lg"
+                disabled={assistantLoading}
+                onClick={() => sendAssistantMessage()}
+              >
+                Send
+              </Button>
+            </Flex>
+          </Box>
+        ) : (
+          <VStack align="flex-end" gap={2}>
+            <Box
+              bg="gray.900"
+              borderRadius="lg"
+              border="1px solid"
+              borderColor="gray.700"
+              px={3}
+              py={2}
+              boxShadow="0 14px 30px rgba(0,0,0,0.7)"
+            >
+              <Text fontSize="xs" color="gray.100">
+                Any query? Hey, I&apos;m here to help.
+              </Text>
+            </Box>
+            <IconButton
+              aria-label="Open roadmap assistant"
+              colorPalette="blue"
+              borderRadius="full"
+              size="lg"
+              boxShadow="0 18px 45px rgba(0,0,0,0.8)"
+              onClick={() => setAssistantOpen(true)}
+            >
+              <Icon asChild w={5} h={5}>
+                <MessageCircle />
+              </Icon>
+            </IconButton>
+          </VStack>
+        )}
+      </Box>
     </Box>
   );
 }

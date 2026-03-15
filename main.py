@@ -20,6 +20,10 @@ from email.mime.multipart import MIMEMultipart
 
 import json
 from groq import Groq
+import requests
+from urllib.parse import quote_plus
+import time
+import re
 from PyPDF2 import PdfReader
 from sqlalchemy.orm.session import Session
 from sqlalchemy import text
@@ -29,7 +33,7 @@ from urllib.parse import urlparse
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from services.role_engine import rank_roles
-from services.feature_analyzer import build_complete_feature_vector
+from services.feature_analyzer import build_complete_feature_vector, FEATURE_COLUMNS as DEFAULT_FEATURE_COLUMNS
 from services.database import engine, get_db, Base
 from services.models import User, AnalysisResult, QuizResult, Job, TpoLogin, InterestedJob, ShortlistedJob, Notification
 from services.quiz_generator import generate_quiz_questions
@@ -44,6 +48,15 @@ from services.auth import (
 
 logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
+
+# In this repo, the trained model files (.pkl) live one level above
+# HireReady-2.0/. Prefer the current directory, but fall back to the
+# parent folder if the files are located there.
+MODEL_DIR = BASE_DIR
+if not (MODEL_DIR / "readiness_model.pkl").exists():
+    parent = BASE_DIR.parent
+    if (parent / "readiness_model.pkl").exists():
+        MODEL_DIR = parent
 
 # Ensure EMAIL_* / SMTP_* vars from .env are available in this module.
 load_dotenv(dotenv_path=BASE_DIR / ".env")
@@ -119,13 +132,209 @@ def ensure_db_schema_compatibility() -> None:
 ensure_db_schema_compatibility()
 
 # ── Load ML model & columns ──────────────────────────────────────────────────
-model = joblib.load(BASE_DIR / "readiness_model.pkl")
-feature_columns = joblib.load(BASE_DIR / "feature_columns.pkl")
+model = joblib.load(MODEL_DIR / "readiness_model.pkl")
+
+try:
+    feature_columns = joblib.load(MODEL_DIR / "feature_columns.pkl")
+except FileNotFoundError:
+    # Fallback to the canonical in-code definition if the pickle is missing.
+    feature_columns = DEFAULT_FEATURE_COLUMNS
 
 # Roadmap Prediction Models
-roadmap_model = joblib.load(BASE_DIR / "roadmap_model.pkl")
-roadmap_mlb = joblib.load(BASE_DIR / "roadmap_mlb.pkl")
-roadmap_vectorizer = joblib.load(BASE_DIR / "roadmap_vectorizer.pkl")
+roadmap_model = joblib.load(MODEL_DIR / "roadmap_model.pkl")
+roadmap_mlb = joblib.load(MODEL_DIR / "roadmap_mlb.pkl")
+roadmap_vectorizer = joblib.load(MODEL_DIR / "roadmap_vectorizer.pkl")
+
+
+# ----------------- Helper: URL and YouTube validation -----------------
+def is_valid_url(url: str) -> bool:
+    try:
+        if not url or not isinstance(url, str):
+            return False
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        try:
+            r = requests.head(url, allow_redirects=True, timeout=5)
+            if 200 <= r.status_code < 400:
+                return True
+        except Exception:
+            pass
+        r = requests.get(url, allow_redirects=True, timeout=6, stream=True)
+        return 200 <= r.status_code < 400
+    except Exception:
+        return False
+
+
+def is_valid_youtube_id(video_id: str) -> bool:
+    try:
+        if not video_id or not isinstance(video_id, str):
+            return False
+        if len(video_id) != 11:
+            return False
+        oembed = f"https://www.youtube.com/oembed?url=http://www.youtube.com/watch?v={video_id}&format=json"
+        r = requests.get(oembed, timeout=6)
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
+def google_search_fallback(query: str) -> str:
+    return f"https://www.google.com/search?q={quote_plus(query)}"
+
+
+def _http_get_text(url: str, timeout: int = 8) -> Optional[str]:
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; HireReadyBot/1.0)"}
+        r = requests.get(url, headers=headers, timeout=timeout)
+        if r.status_code == 200:
+            return r.text
+    except Exception:
+        pass
+    return None
+
+
+def resolve_direct_link(query: str) -> Optional[str]:
+    """Try to find a direct link for the given query.
+
+    Strategy:
+    1. If Bing API key is configured, use Bing Web Search (recommended).
+    2. Else if Google Custom Search key + CX configured, use Google Custom Search.
+    3. Fallback to DuckDuckGo HTML scraping.
+
+    Returns the first HTTPS URL found, or None.
+    """
+    if not query:
+        return None
+
+    # 1) Bing Web Search (preferred if key present)
+    bing_key = os.getenv("BING_SEARCH_KEY")
+    bing_endpoint = os.getenv("BING_SEARCH_ENDPOINT", "https://api.bing.microsoft.com/v7.0/search")
+    if bing_key:
+        try:
+            headers = {"Ocp-Apim-Subscription-Key": bing_key}
+            r = requests.get(bing_endpoint, params={"q": query, "count": 1}, headers=headers, timeout=8)
+            if r.status_code == 200:
+                j = r.json()
+                url = j.get("webPages", {}).get("value", [{}])[0].get("url")
+                if url and is_valid_url(url):
+                    return url
+        except Exception:
+            pass
+
+    # 2) Google Custom Search
+    g_key = os.getenv("GOOGLE_SEARCH_KEY")
+    g_cx = os.getenv("GOOGLE_CX")
+    if g_key and g_cx:
+        try:
+            r = requests.get(
+                "https://www.googleapis.com/customsearch/v1",
+                params={"key": g_key, "cx": g_cx, "q": query, "num": 1},
+                timeout=8,
+            )
+            if r.status_code == 200:
+                j = r.json()
+                items = j.get("items") or []
+                if items:
+                    link = items[0].get("link")
+                    if link and is_valid_url(link):
+                        return link
+        except Exception:
+            pass
+
+    # 3) DuckDuckGo HTML fallback
+    dd_url = f"https://duckduckgo.com/html/?q={quote_plus(query)}"
+    html = _http_get_text(dd_url)
+    if not html:
+        return None
+
+    # Look for common anchor pattern for results: <a class="result__a" href="https://...">
+    m = re.search(r"<a[^>]+class=\"[^\"]*result__a[^\"]*\"[^>]+href=\"([^\"]+)\"", html)
+    if m:
+        href = m.group(1)
+        # Some DDG links can be redirects (uddg=...). If so, try to extract the uddg parameter.
+        uddg_m = re.search(r"uddg=([^&]+)", href)
+        if uddg_m:
+            try:
+                decoded = requests.utils.unquote(uddg_m.group(1))
+                if is_valid_url(decoded):
+                    return decoded
+            except Exception:
+                pass
+        if is_valid_url(href):
+            return href
+
+    # Fallback: extract first https link in page
+    m2 = re.search(r'https?://[^" ]+', html)
+    if m2:
+        candidate = m2.group(0)
+        if is_valid_url(candidate):
+            return candidate
+    return None
+
+
+def resolve_youtube_video_id(query: str) -> Optional[str]:
+    """Return a YouTube videoId for the query using the YouTube Data API when available,
+    otherwise fall back to scraping the YouTube search page.
+    """
+    if not query:
+        return None
+
+    yt_key = os.getenv("YOUTUBE_API_KEY")
+    if yt_key:
+        try:
+            r = requests.get(
+                "https://www.googleapis.com/youtube/v3/search",
+                params={"part": "snippet", "q": query, "type": "video", "maxResults": 1, "key": yt_key},
+                timeout=8,
+            )
+            if r.status_code == 200:
+                j = r.json()
+                items = j.get("items") or []
+                if items:
+                    vid = items[0].get("id", {}).get("videoId")
+                    if vid and is_valid_youtube_id(vid):
+                        return vid
+        except Exception:
+            pass
+
+    # Fallback: scrape YouTube search results page
+    yt_search = f"https://www.youtube.com/results?search_query={quote_plus(query)}"
+    html = _http_get_text(yt_search)
+    if not html:
+        return None
+
+    # look for /watch?v=VIDEOID
+    m = re.search(r"/watch\?v=([A-Za-z0-9_-]{11})", html)
+    if m:
+        vid = m.group(1)
+        if is_valid_youtube_id(vid):
+            return vid
+    return None
+
+
+# ----------------- Simple in-memory TTL cache for generated resources -----------------
+RESOURCE_CACHE_TTL = int(os.getenv("RESOURCE_CACHE_TTL_SECONDS", "86400"))  # seconds; default 24h
+RESOURCE_CACHE = {}  # maps cache_key -> (timestamp, value)
+
+
+def _cache_get(key: str):
+    entry = RESOURCE_CACHE.get(key)
+    if not entry:
+        return None
+    ts, val = entry
+    if time.time() - ts > RESOURCE_CACHE_TTL:
+        try:
+            del RESOURCE_CACHE[key]
+        except KeyError:
+            pass
+        return None
+    return val
+
+
+def _cache_set(key: str, value):
+    RESOURCE_CACHE[key] = (time.time(), value)
+
 
 # Precompute/Cache Skills for Roadmap
 ROLE_SKILLS_CACHE = {}
@@ -1121,10 +1330,476 @@ def generate_learning_path(data: LearningPathRequest):
         )
         
         roadmap_data = json.loads(completion.choices[0].message.content)
+        # Validate returned URLs and YouTube IDs before returning to frontend.
+        def is_valid_url(url: str) -> bool:
+            try:
+                if not url or not isinstance(url, str):
+                    return False
+                parsed = urlparse(url)
+                if parsed.scheme not in ("http", "https"):
+                    return False
+                # Try HEAD first (faster), fall back to GET if necessary.
+                try:
+                    r = requests.head(url, allow_redirects=True, timeout=5)
+                    if 200 <= r.status_code < 400:
+                        return True
+                except Exception:
+                    pass
+                # Fallback to GET with small response
+                r = requests.get(url, allow_redirects=True, timeout=6, stream=True)
+                return 200 <= r.status_code < 400
+            except Exception:
+                return False
+
+        def is_valid_youtube_id(video_id: str) -> bool:
+            try:
+                if not video_id or not isinstance(video_id, str):
+                    return False
+                # YouTube IDs are typically 11 characters; quick length check first
+                if len(video_id) != 11:
+                    return False
+                # Use YouTube oEmbed endpoint to verify existence
+                oembed = f"https://www.youtube.com/oembed?url=http://www.youtube.com/watch?v={video_id}&format=json"
+                r = requests.get(oembed, timeout=6)
+                return r.status_code == 200
+            except Exception:
+                return False
+
+        # Sanitize arrays in-place
+        removed = {"courses": 0, "certificates": 0, "youtube": 0}
+        if isinstance(roadmap_data, dict):
+            # Courses
+            courses = roadmap_data.get("courses") or []
+            valid_courses = []
+            for c in courses:
+                url = c.get("url") if isinstance(c, dict) else None
+                if is_valid_url(url):
+                    valid_courses.append(c)
+                else:
+                    removed["courses"] += 1
+            roadmap_data["courses"] = valid_courses
+
+            # Certificates
+            certs = roadmap_data.get("certificates") or []
+            valid_certs = []
+            for c in certs:
+                url = c.get("url") if isinstance(c, dict) else None
+                if is_valid_url(url):
+                    valid_certs.append(c)
+                else:
+                    removed["certificates"] += 1
+            roadmap_data["certificates"] = valid_certs
+
+            # YouTube
+            yts = roadmap_data.get("youtube") or []
+            valid_yts = []
+            for v in yts:
+                vid = v.get("videoId") if isinstance(v, dict) else None
+                if is_valid_youtube_id(vid):
+                    valid_yts.append(v)
+                else:
+                    removed["youtube"] += 1
+            roadmap_data["youtube"] = valid_yts
+
+            logger.info("Roadmap generated for skill '%s' - removed invalid links: %s", skill, removed)
+
         return roadmap_data
     except Exception as e:
         logger.error(f"Groq API error: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate roadmap")
+
+
+class RoleLearningPathRequest(BaseModel):
+    role: str
+
+
+@app.post("/api/generate-role-learning-path")
+def generate_role_learning_path(data: RoleLearningPathRequest):
+    """Generate a comprehensive learning + career roadmap for a target role.
+
+    Returns a strict JSON object with nodes/edges/courses/certificates/youtube similar
+    to the skill-level roadmap but scoped to the whole role (career steps, recommended
+    months of study, project milestones, first-job checklist).
+    """
+    role = data.role.strip()
+    if not role:
+        raise HTTPException(status_code=400, detail="Role name is required")
+
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured")
+
+    client = Groq(api_key=api_key)
+
+    # Use the same strict skill-level roadmap prompt so the returned JSON
+    # matches what the frontend `RoadmapViewport` expects (nodes, edges, courses, certificates, youtube).
+    system_prompt = (
+        "You are a professional curriculum designer. Generate a learning roadmap for the given role. "
+        "Return a STRICT JSON object with these keys:\n"
+        "1. 'nodes': array of 6-8 objects with 'id' (like 'n1','n2') and 'label' (short, max 4 words).\n"
+        "2. 'edges': array with 'id', 'source', 'target'.\n"
+        "3. 'courses': array of 4 objects with:\n"
+        "   - 'title': exact course name\n"
+        "   - 'platform': Udemy/Coursera/freeCodeCamp\n"
+        "   - 'url': the DIRECT link to the course page. Must be a real, working URL.\n"
+        "   - 'level': Beginner/Intermediate/Advanced\n"
+        "   - 'description': 1 short sentence\n"
+        "4. 'certificates': array of 3 objects with:\n"
+        "   - 'title': exact certification name\n"
+        "   - 'provider': Google/AWS/Meta/Microsoft/IBM\n"
+        "   - 'url': direct link to the certification page\n"
+        "   - 'description': 1 short sentence\n"
+        "5. 'youtube': array of 4 objects with:\n"
+        "   - 'title': exact video title\n"
+        "   - 'channel': real channel name\n"
+        "   - 'videoId': the real 11-character YouTube video ID\n"
+        "   - 'description': 1 short sentence\n"
+        "CRITICAL: All URLs and videoIds MUST be real and working. Use only well-known, popular resources. Do not include any text outside the JSON object."
+    )
+
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Generate a roadmap for role: {role}"}
+            ],
+            response_format={"type": "json_object"}
+        )
+
+        roadmap_data = json.loads(completion.choices[0].message.content)
+
+        # Validate returned URLs and YouTube IDs before returning to frontend.
+        def is_valid_url(url: str) -> bool:
+            try:
+                if not url or not isinstance(url, str):
+                    return False
+                parsed = urlparse(url)
+                if parsed.scheme not in ("http", "https"):
+                    return False
+                try:
+                    r = requests.head(url, allow_redirects=True, timeout=5)
+                    if 200 <= r.status_code < 400:
+                        return True
+                except Exception:
+                    pass
+                r = requests.get(url, allow_redirects=True, timeout=6, stream=True)
+                return 200 <= r.status_code < 400
+            except Exception:
+                return False
+
+        def is_valid_youtube_id(video_id: str) -> bool:
+            try:
+                if not video_id or not isinstance(video_id, str):
+                    return False
+                if len(video_id) != 11:
+                    return False
+                oembed = f"https://www.youtube.com/oembed?url=http://www.youtube.com/watch?v={video_id}&format=json"
+                r = requests.get(oembed, timeout=6)
+                return r.status_code == 200
+            except Exception:
+                return False
+
+        removed = {"courses": 0, "certificates": 0, "youtube": 0}
+        if isinstance(roadmap_data, dict):
+            courses = roadmap_data.get("courses") or []
+            valid_courses = []
+            for c in courses:
+                url = c.get("url") if isinstance(c, dict) else None
+                if is_valid_url(url):
+                    valid_courses.append(c)
+                else:
+                    removed["courses"] += 1
+            roadmap_data["courses"] = valid_courses
+
+            certs = roadmap_data.get("certificates") or []
+            valid_certs = []
+            for c in certs:
+                url = c.get("url") if isinstance(c, dict) else None
+                if is_valid_url(url):
+                    valid_certs.append(c)
+                else:
+                    removed["certificates"] += 1
+            roadmap_data["certificates"] = valid_certs
+
+            yts = roadmap_data.get("youtube") or []
+            valid_yts = []
+            for v in yts:
+                vid = v.get("videoId") if isinstance(v, dict) else None
+                if is_valid_youtube_id(vid):
+                    valid_yts.append(v)
+                else:
+                    removed["youtube"] += 1
+            roadmap_data["youtube"] = valid_yts
+
+            logger.info("Roadmap generated for role '%s' - removed invalid links: %s", role, removed)
+
+        return roadmap_data
+    except Exception as e:
+        logger.error(f"Groq role roadmap error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate role roadmap")
+
+
+class ResourcesForRolesRequest(BaseModel):
+    roles: Optional[List[str]] = None
+
+
+@app.post("/api/generate-resources-for-roles")
+def generate_resources_for_roles(data: ResourcesForRolesRequest):
+    """Generate courses/certificates/youtube lists for multiple roles.
+
+    If `roles` is omitted, generate for all cached roles. Returns a mapping
+    { role: { courses: [], certificates: [], youtube: [] } } with invalid
+    links replaced by safe search fallbacks.
+    """
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured")
+
+    client = Groq(api_key=api_key)
+
+    # Determine roles to generate for
+    roles = data.roles or list(ROLE_SKILLS_CACHE.keys())
+    if not roles:
+        # Fallback to a small curated list if nothing available
+        roles = [
+            "Full Stack Developer",
+            "Data Scientist",
+            "DevOps Engineer",
+            "Mobile Developer",
+        ]
+
+    results = {}
+
+    system_prompt = (
+        "You are a helpful curator. For the given ROLE, return a STRICT JSON object with these keys:\n"
+        "1. 'courses': array of 3 objects with 'title','platform','url','level','description'.\n"
+        "2. 'certificates': array of 2 objects with 'title','provider','url','description'.\n"
+        "3. 'youtube': array of 3 objects with 'title','channel','videoId','description'.\n"
+        "CRITICAL: Provide real, direct URLs and real YouTube video IDs when possible. Do not include any text outside the JSON object."
+    )
+
+    for role in roles:
+        cache_key = f"resources:{role.strip().lower()}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            results[role] = cached
+            continue
+
+        try:
+            completion = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Provide resources for role: {role}"},
+                ],
+                response_format={"type": "json_object"},
+                timeout=60,
+            )
+
+            payload = json.loads(completion.choices[0].message.content)
+        except Exception as e:
+            logger.error("Groq resources error for role %s: %s", role, e)
+            # Return empty sets with note
+            results[role] = {"courses": [], "certificates": [], "youtube": []}
+            continue
+
+        # Validate and strictly sanitize: only include validated items.
+        sanitized = {"courses": [], "certificates": [], "youtube": []}
+
+        TARGET_COUNTS = {"courses": 3, "certificates": 2, "youtube": 3}
+
+        # Courses: include only those with valid direct URLs. If Groq URL invalid,
+        # try to resolve a direct link using a search resolver.
+        for c in (payload.get("courses") or []):
+            try:
+                if not isinstance(c, dict):
+                    continue
+                url = c.get("url")
+                if is_valid_url(url):
+                    sanitized["courses"].append(c)
+                    continue
+
+                # Attempt to resolve a direct link using the course title and platform
+                title = (c.get("title") or "").strip()
+                platform = (c.get("platform") or "").strip()
+                query_parts = [role, title, platform]
+                query = " ".join([p for p in query_parts if p])
+                resolved = resolve_direct_link(query)
+                if resolved:
+                    c_copy = dict(c)
+                    c_copy["url"] = resolved
+                    c_copy["resolved"] = True
+                    sanitized["courses"].append(c_copy)
+            except Exception:
+                continue
+
+        # Certificates
+        for cert in (payload.get("certificates") or []):
+            try:
+                if not isinstance(cert, dict):
+                    continue
+                url = cert.get("url")
+                if is_valid_url(url):
+                    sanitized["certificates"].append(cert)
+                    continue
+
+                title = (cert.get("title") or "").strip()
+                provider = (cert.get("provider") or "").strip()
+                query_parts = [role, title, provider]
+                query = " ".join([p for p in query_parts if p])
+                resolved = resolve_direct_link(query)
+                if resolved:
+                    cert_copy = dict(cert)
+                    cert_copy["url"] = resolved
+                    cert_copy["resolved"] = True
+                    sanitized["certificates"].append(cert_copy)
+            except Exception:
+                continue
+
+        # YouTube: include only entries with valid videoId
+        for v in (payload.get("youtube") or []):
+            try:
+                if not isinstance(v, dict):
+                    continue
+                vid = v.get("videoId")
+                if is_valid_youtube_id(vid):
+                    sanitized["youtube"].append(v)
+                    continue
+
+                # Attempt to resolve a videoId by searching YouTube for role + title
+                title = (v.get("title") or "").strip()
+                query = " ".join([p for p in [role, title] if p])
+                resolved_vid = resolve_youtube_video_id(query)
+                if resolved_vid:
+                    v_copy = dict(v)
+                    v_copy["videoId"] = resolved_vid
+                    v_copy["resolved"] = True
+                    sanitized["youtube"].append(v_copy)
+            except Exception:
+                continue
+
+        # If we have fewer than target items, append search fallbacks (marked)
+        # so the frontend can render something useful while indicating it's a fallback.
+        # Courses fallback
+        while len(sanitized["courses"]) < TARGET_COUNTS["courses"]:
+            idx = len(sanitized["courses"]) + 1
+            fallback_title = f"{role} recommended course {idx}"
+            fallback = {
+                "title": fallback_title,
+                "platform": "search",
+                "url": google_search_fallback(f"{role} {fallback_title}"),
+                "level": "Beginner",
+                "description": "Search results for recommended course",
+                "isFallback": True,
+            }
+            sanitized["courses"].append(fallback)
+
+        # Certificates fallback
+        while len(sanitized["certificates"]) < TARGET_COUNTS["certificates"]:
+            idx = len(sanitized["certificates"]) + 1
+            fallback_title = f"{role} certification {idx}"
+            fallback = {
+                "title": fallback_title,
+                "provider": "search",
+                "url": google_search_fallback(f"{role} {fallback_title}"),
+                "description": "Search results for recommended certification",
+                "isFallback": True,
+            }
+            sanitized["certificates"].append(fallback)
+
+        # YouTube fallback
+        while len(sanitized["youtube"]) < TARGET_COUNTS["youtube"]:
+            idx = len(sanitized["youtube"]) + 1
+            fallback_title = f"{role} tutorial {idx}"
+            fallback = {
+                "title": fallback_title,
+                "channel": "search",
+                "videoId": None,
+                "fallback": f"https://www.youtube.com/results?search_query={quote_plus(role + ' ' + fallback_title)}",
+                "description": "YouTube search results for recommended tutorial",
+                "isFallback": True,
+            }
+            sanitized["youtube"].append(fallback)
+
+        # store sanitized result in cache
+        _cache_set(cache_key, sanitized)
+        results[role] = sanitized
+
+    return results
+
+
+class RoadmapAssistantRequest(BaseModel):
+    """Request body for the roadmap assistant chat.
+
+    - question: the latest user question
+    - role: optional target role (e.g. Full Stack Developer)
+    - skill: optional focus skill (e.g. React)
+    - history: optional short list of previous turns as generic dicts
+    """
+
+    question: str
+    role: Optional[str] = None
+    skill: Optional[str] = None
+    history: Optional[List[dict]] = None
+
+
+@app.post("/api/roadmap-assistant")
+def roadmap_assistant(data: RoadmapAssistantRequest):
+    """Lightweight Groq-powered assistant for roadmap & skill questions.
+
+    Returns a short, on-point natural language answer.
+    """
+
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured")
+
+    client = Groq(api_key=api_key)
+
+    system_prompt = (
+        "You are a friendly, concise mentor helping students with tech careers. "
+        "Answer in 2-4 short sentences, directly and clearly. "
+        "Focus on practical, actionable advice about skills, learning paths, and careers. "
+        "Keep the tone encouraging and simple. If the question is off-topic, gently steer it back."
+    )
+
+    messages: List[dict] = [{"role": "system", "content": system_prompt}]
+
+    context_bits = []
+    if data.role:
+        context_bits.append(f"target role: {data.role}")
+    if data.skill:
+        context_bits.append(f"focus skill: {data.skill}")
+    if context_bits:
+        messages.append({"role": "system", "content": "Context: " + "; ".join(context_bits)})
+
+    if data.history:
+        for turn in data.history[-6:]:  # only keep a short window
+            try:
+                sender = (turn.get("from") or turn.get("sender") or "user").lower()
+                text = (turn.get("text") or "").strip()
+            except AttributeError:
+                continue
+            if not text:
+                continue
+            role = "assistant" if sender == "assistant" else "user"
+            messages.append({"role": role, "content": text})
+
+    messages.append({"role": "user", "content": data.question})
+
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=messages,
+            max_tokens=256,
+            temperature=0.4,
+        )
+        answer = completion.choices[0].message.content.strip()
+        return {"answer": answer}
+    except Exception as e:
+        logger.error(f"Groq assistant error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get assistant answer")
 
 
 @app.post("/api/analyze-full-profile")

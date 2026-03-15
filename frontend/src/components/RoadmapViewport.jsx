@@ -83,7 +83,7 @@ const levelColor = (level) => {
 };
 
 /* ── Component ─────────────────────────────────────────────────────── */
-export default function RoadmapViewport({ data, onBack, skillName }) {
+export default function RoadmapViewport({ data, onBack, skillName, showResources = true }) {
   const [activeTab, setActiveTab] = useState('courses');
 
   const { nodes: initNodes, edges: initEdges } = useMemo(() => {
@@ -138,125 +138,129 @@ export default function RoadmapViewport({ data, onBack, skillName }) {
         </ReactFlow>
       </Box>
 
-      {/* Resource Tabs */}
-      <Heading size="sm" color="gray.100" mb={3}>
-        Resources for <Text as="span" color="blue.400">{skillName}</Text>
-      </Heading>
+      {/* Resource Tabs (optional) */}
+      {showResources && (
+        <>
+          <Heading size="sm" color="gray.100" mb={3}>
+            Resources for <Text as="span" color="blue.400">{skillName}</Text>
+          </Heading>
 
-      <Flex gap={2} mb={5} wrap="wrap">
-        {tabs.map((tab) => (
-          <Button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            bg={activeTab === tab.key ? 'blue.500' : 'gray.800'}
-            color={activeTab === tab.key ? 'white' : 'gray.400'}
-            _hover={{ bg: activeTab === tab.key ? 'blue.600' : 'gray.700' }}
-            borderRadius="full"
-            size="xs"
-            px={4}
-            fontWeight="600"
-            fontSize="xs"
-          >
-            <Icon asChild w={3.5} h={3.5}><tab.icon /></Icon>
-            {tab.label}
-            <Badge ml={1} bg="whiteAlpha.200" color="white" borderRadius="full" px={1.5} fontSize="2xs">
-              {tab.count}
-            </Badge>
-          </Button>
-        ))}
-      </Flex>
+          <Flex gap={2} mb={5} wrap="wrap">
+            {tabs.map((tab) => (
+              <Button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                bg={activeTab === tab.key ? 'blue.500' : 'gray.800'}
+                color={activeTab === tab.key ? 'white' : 'gray.400'}
+                _hover={{ bg: activeTab === tab.key ? 'blue.600' : 'gray.700' }}
+                borderRadius="full"
+                size="xs"
+                px={4}
+                fontWeight="600"
+                fontSize="xs"
+              >
+                <Icon asChild w={3.5} h={3.5}><tab.icon /></Icon>
+                {tab.label}
+                <Badge ml={1} bg="whiteAlpha.200" color="white" borderRadius="full" px={1.5} fontSize="2xs">
+                  {tab.count}
+                </Badge>
+              </Button>
+            ))}
+          </Flex>
 
-      {/* ── Courses ── */}
-      {activeTab === 'courses' && (
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-          {courses.map((c, i) => (
-            <Box
-              key={i}
-              bg="gray.900"
-              border="1px solid"
-              borderColor="gray.800"
-              borderRadius="xl"
-              p={5}
-              cursor="pointer"
-              onClick={() => window.open(courseLink(c), '_blank')}
-              _hover={{ borderColor: 'blue.500', transform: 'translateY(-2px)', boxShadow: '0 0 20px rgba(59,130,246,0.12)' }}
-              transition="all 0.2s"
-            >
-              <Flex justify="space-between" align="start" mb={2}>
-                <HStack gap={2}>
-                  <Icon asChild w={4} h={4} color="blue.400"><GraduationCap /></Icon>
-                  <Text fontWeight="700" color="gray.100" fontSize="sm">{c.title}</Text>
-                </HStack>
-                <Icon asChild w={3.5} h={3.5} color="gray.500"><ExternalLink /></Icon>
-              </Flex>
-              <Text color="gray.500" fontSize="xs" mb={2}>{c.description}</Text>
-              <Flex gap={2}>
-                <Badge colorPalette={levelColor(c.level)} borderRadius="full" px={2} fontSize="2xs">{c.level}</Badge>
-                <Text color="gray.600" fontSize="2xs">{c.platform}</Text>
-              </Flex>
-            </Box>
-          ))}
-        </SimpleGrid>
-      )}
+          {/* ── Courses ── */}
+          {activeTab === 'courses' && (
+            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+              {courses.map((c, i) => (
+                <Box
+                  key={i}
+                  bg="gray.900"
+                  border="1px solid"
+                  borderColor="gray.800"
+                  borderRadius="xl"
+                  p={5}
+                  cursor="pointer"
+                  onClick={() => window.open(courseLink(c), '_blank')}
+                  _hover={{ borderColor: 'blue.500', transform: 'translateY(-2px)', boxShadow: '0 0 20px rgba(59,130,246,0.12)' }}
+                  transition="all 0.2s"
+                >
+                  <Flex justify="space-between" align="start" mb={2}>
+                    <HStack gap={2}>
+                      <Icon asChild w={4} h={4} color="blue.400"><GraduationCap /></Icon>
+                      <Text fontWeight="700" color="gray.100" fontSize="sm">{c.title}</Text>
+                    </HStack>
+                    <Icon asChild w={3.5} h={3.5} color="gray.500"><ExternalLink /></Icon>
+                  </Flex>
+                  <Text color="gray.500" fontSize="xs" mb={2}>{c.description}</Text>
+                  <Flex gap={2}>
+                    <Badge colorPalette={levelColor(c.level)} borderRadius="full" px={2} fontSize="2xs">{c.level}</Badge>
+                    <Text color="gray.600" fontSize="2xs">{c.platform}</Text>
+                  </Flex>
+                </Box>
+              ))}
+            </SimpleGrid>
+          )}
 
-      {/* ── Certificates ── */}
-      {activeTab === 'certificates' && (
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-          {certificates.map((cert, i) => (
-            <Box
-              key={i}
-              bg="gray.900"
-              border="1px solid"
-              borderColor="gray.800"
-              borderRadius="xl"
-              p={5}
-              cursor="pointer"
-              onClick={() => window.open(certLink(cert), '_blank')}
-              _hover={{ borderColor: 'yellow.500', transform: 'translateY(-2px)', boxShadow: '0 0 20px rgba(234,179,8,0.1)' }}
-              transition="all 0.2s"
-            >
-              <Flex justify="space-between" align="start" mb={2}>
-                <HStack gap={2}>
-                  <Icon asChild w={4} h={4} color="yellow.400"><Award /></Icon>
-                  <Text fontWeight="700" color="gray.100" fontSize="sm">{cert.title}</Text>
-                </HStack>
-                <Icon asChild w={3.5} h={3.5} color="gray.500"><ExternalLink /></Icon>
-              </Flex>
-              <Text color="gray.500" fontSize="xs" mb={2}>{cert.description}</Text>
-              <Badge colorPalette="purple" borderRadius="full" px={2} fontSize="2xs">{cert.provider}</Badge>
-            </Box>
-          ))}
-        </SimpleGrid>
-      )}
+          {/* ── Certificates ── */}
+          {activeTab === 'certificates' && (
+            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+              {certificates.map((cert, i) => (
+                <Box
+                  key={i}
+                  bg="gray.900"
+                  border="1px solid"
+                  borderColor="gray.800"
+                  borderRadius="xl"
+                  p={5}
+                  cursor="pointer"
+                  onClick={() => window.open(certLink(cert), '_blank')}
+                  _hover={{ borderColor: 'yellow.500', transform: 'translateY(-2px)', boxShadow: '0 0 20px rgba(234,179,8,0.1)' }}
+                  transition="all 0.2s"
+                >
+                  <Flex justify="space-between" align="start" mb={2}>
+                    <HStack gap={2}>
+                      <Icon asChild w={4} h={4} color="yellow.400"><Award /></Icon>
+                      <Text fontWeight="700" color="gray.100" fontSize="sm">{cert.title}</Text>
+                    </HStack>
+                    <Icon asChild w={3.5} h={3.5} color="gray.500"><ExternalLink /></Icon>
+                  </Flex>
+                  <Text color="gray.500" fontSize="xs" mb={2}>{cert.description}</Text>
+                  <Badge colorPalette="purple" borderRadius="full" px={2} fontSize="2xs">{cert.provider}</Badge>
+                </Box>
+              ))}
+            </SimpleGrid>
+          )}
 
-      {/* ── YouTube ── */}
-      {activeTab === 'youtube' && (
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-          {youtube.map((vid, i) => (
-            <Box
-              key={i}
-              bg="gray.900"
-              border="1px solid"
-              borderColor="gray.800"
-              borderRadius="xl"
-              p={5}
-              cursor="pointer"
-              onClick={() => window.open(vid.videoId ? youtubeWatch(vid.videoId) : `https://www.youtube.com/results?search_query=${encodeURIComponent(vid.title)}`, '_blank')}
-              _hover={{ borderColor: 'red.500', transform: 'translateY(-2px)', boxShadow: '0 0 20px rgba(239,68,68,0.1)' }}
-              transition="all 0.2s"
-            >
-              <Flex justify="space-between" align="start" mb={2}>
-                <HStack gap={2}>
-                  <Icon asChild w={4} h={4} color="red.400"><Play /></Icon>
-                  <Text fontWeight="700" color="gray.100" fontSize="sm">{vid.title}</Text>
-                </HStack>
-                <Icon asChild w={3.5} h={3.5} color="gray.500"><ExternalLink /></Icon>
-              </Flex>
-              <Text color="gray.600" fontSize="xs" mb={1}>{vid.channel}</Text>
-              <Text color="gray.500" fontSize="xs">{vid.description}</Text>
-            </Box>
-          ))}
-        </SimpleGrid>
+          {/* ── YouTube ── */}
+          {activeTab === 'youtube' && (
+            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+              {youtube.map((vid, i) => (
+                <Box
+                  key={i}
+                  bg="gray.900"
+                  border="1px solid"
+                  borderColor="gray.800"
+                  borderRadius="xl"
+                  p={5}
+                  cursor="pointer"
+                  onClick={() => window.open(vid.videoId ? youtubeWatch(vid.videoId) : `https://www.youtube.com/results?search_query=${encodeURIComponent(vid.title)}`, '_blank')}
+                  _hover={{ borderColor: 'red.500', transform: 'translateY(-2px)', boxShadow: '0 0 20px rgba(239,68,68,0.1)' }}
+                  transition="all 0.2s"
+                >
+                  <Flex justify="space-between" align="start" mb={2}>
+                    <HStack gap={2}>
+                      <Icon asChild w={4} h={4} color="red.400"><Play /></Icon>
+                      <Text fontWeight="700" color="gray.100" fontSize="sm">{vid.title}</Text>
+                    </HStack>
+                    <Icon asChild w={3.5} h={3.5} color="gray.500"><ExternalLink /></Icon>
+                  </Flex>
+                  <Text color="gray.600" fontSize="xs" mb={1}>{vid.channel}</Text>
+                  <Text color="gray.500" fontSize="xs">{vid.description}</Text>
+                </Box>
+              ))}
+            </SimpleGrid>
+          )}
+        </>
       )}
     </Box>
   );
