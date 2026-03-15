@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSO
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import List, Optional
 import os
 from dotenv import load_dotenv
 import joblib
@@ -19,13 +19,11 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 import json
-import os
 from groq import Groq
 from PyPDF2 import PdfReader
 from sqlalchemy.orm.session import Session
 from sqlalchemy import text
 from sqlalchemy import or_
-from typing import Optional, List
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -45,9 +43,10 @@ from services.auth import (
 )
 
 logger = logging.getLogger(__name__)
+BASE_DIR = Path(__file__).resolve().parent
 
 # Ensure EMAIL_* / SMTP_* vars from .env are available in this module.
-load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
+load_dotenv(dotenv_path=BASE_DIR / ".env")
 
 # ── Create database tables on startup ─────────────────────────────────────────
 Base.metadata.create_all(bind=engine)
@@ -120,18 +119,18 @@ def ensure_db_schema_compatibility() -> None:
 ensure_db_schema_compatibility()
 
 # ── Load ML model & columns ──────────────────────────────────────────────────
-model = joblib.load("readiness_model.pkl")
-feature_columns = joblib.load("feature_columns.pkl")
+model = joblib.load(BASE_DIR / "readiness_model.pkl")
+feature_columns = joblib.load(BASE_DIR / "feature_columns.pkl")
 
 # Roadmap Prediction Models
-roadmap_model = joblib.load("roadmap_model.pkl")
-roadmap_mlb = joblib.load("roadmap_mlb.pkl")
-roadmap_vectorizer = joblib.load("roadmap_vectorizer.pkl")
+roadmap_model = joblib.load(BASE_DIR / "roadmap_model.pkl")
+roadmap_mlb = joblib.load(BASE_DIR / "roadmap_mlb.pkl")
+roadmap_vectorizer = joblib.load(BASE_DIR / "roadmap_vectorizer.pkl")
 
 # Precompute/Cache Skills for Roadmap
 ROLE_SKILLS_CACHE = {}
 try:
-    df_roles = pd.read_csv("technical_roles_and_skills.csv")
+    df_roles = pd.read_csv(BASE_DIR / "technical_roles_and_skills.csv")
     for _, row in df_roles.iterrows():
         # Map normalized role name to list of skills
         role_name = str(row["Role"]).strip().lower()
@@ -155,7 +154,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Paths for serving the built frontend
-BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
 FRONTEND_INDEX = FRONTEND_DIST / "index.html"
 FRONTEND_ASSETS = FRONTEND_DIST / "assets"
@@ -432,11 +430,23 @@ def send_password_reset_email(recipient_email: str, token: str) -> None:
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     email_user = os.getenv("EMAIL_USER", "") or os.getenv("SMTP_USERNAME", "")
     email_pass = os.getenv("EMAIL_PASS", "") or os.getenv("SMTP_PASSWORD", "")
-    sender_email = os.getenv("EMAIL_FROM", email_user or "noreply@hireready.com")
+    email_from = os.getenv("EMAIL_FROM", "HireReady")
     frontend_base_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
 
     if not email_user or not email_pass:
-        raise RuntimeError("Email credentials are missing. Set EMAIL_USER and EMAIL_PASS in .env")
+        # SMTP not configured: don't treat this as an error for the
+        # forgot-password endpoint. Log the reset link so developers
+        # can copy it during local development / testing.
+        reset_link = f"{frontend_base_url}/reset-password?token={token}"
+        logger.warning("SMTP credentials missing; logging reset link instead of sending email.")
+        logger.info("Password reset link for %s: %s", recipient_email, reset_link)
+        return True
+
+    # Format the 'From' header for branding (e.g., "HireReady <user@gmail.com>")
+    if "@" in email_from:
+        display_from = email_from
+    else:
+        display_from = f"{email_from} <{email_user}>"
 
     reset_link = f"{frontend_base_url}/reset-password?token={token}"
     body = (
@@ -450,17 +460,27 @@ def send_password_reset_email(recipient_email: str, token: str) -> None:
 
     msg = MIMEMultipart()
     msg["Subject"] = "Password Reset - HireReady"
-    msg["From"] = sender_email
+    msg["From"] = display_from
     msg["To"] = recipient_email
     msg.attach(MIMEText(body, "plain"))
 
-    with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(email_user, email_pass)
-        server.sendmail(sender_email, [recipient_email], msg.as_string())
-    logger.info("Password reset email sent to %s", recipient_email)
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(email_user, email_pass)
+            # CRITICAL: Envelope sender MUST be a valid email address (email_user)
+            server.sendmail(email_user, [recipient_email], msg.as_string())
+        logger.info("Password reset email sent to %s", recipient_email)
+        return True
+    except Exception as e:
+        logger.error("Failed to send password reset email: %s", str(e))
+        # Do NOT raise here. Email delivery failures should not crash the
+        # forgot-password endpoint — we return a generic success message
+        # to avoid revealing account existence and to keep the endpoint
+        # resilient to SMTP issues.
+        return False
 
 
 @app.post("/api/auth/forgot-password")
@@ -470,32 +490,37 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
     generic_message = "If the email exists, a password reset link has been sent."
     token = secrets.token_urlsafe(32)
     expiry = datetime.now(timezone.utc) + timedelta(minutes=15)
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            user.password_reset_token = token
+            user.password_reset_expires = expiry
+            db.commit()
+            try:
+                send_password_reset_email(email, token)
+            except Exception:
+                # send_password_reset_email now returns False on failure,
+                # but keep defensive logging in case of unexpected errors.
+                logger.exception("Failed to send password reset email (student) to %s", email)
+            return {"message": generic_message}
 
-    user = db.query(User).filter(User.email == email).first()
-    if user:
-        user.password_reset_token = token
-        user.password_reset_expires = expiry
-        db.commit()
-        try:
-            send_password_reset_email(email, token)
-        except Exception as exc:
-            print("Email sending error:", exc)
-            logger.exception("Failed to send password reset email (student) to %s", email)
+        tpo = db.query(TpoLogin).filter(TpoLogin.email == email).first()
+        if tpo:
+            tpo.password_reset_token = token
+            tpo.password_reset_expires = expiry
+            db.commit()
+            try:
+                send_password_reset_email(email, token)
+            except Exception:
+                logger.exception("Failed to send password reset email (tpo) to %s", email)
+            return {"message": generic_message}
+
         return {"message": generic_message}
-
-    tpo = db.query(TpoLogin).filter(TpoLogin.email == email).first()
-    if tpo:
-        tpo.password_reset_token = token
-        tpo.password_reset_expires = expiry
-        db.commit()
-        try:
-            send_password_reset_email(email, token)
-        except Exception as exc:
-            print("Email sending error:", exc)
-            logger.exception("Failed to send password reset email (tpo) to %s", email)
+    except Exception as exc:
+        # Catch anything unexpected (DB disconnected, schema error, etc.)
+        logger.exception("Error processing forgot-password for %s: %s", email, exc)
+        # Still return the generic message so the UI doesn't receive a 500.
         return {"message": generic_message}
-
-    return {"message": generic_message}
 
 
 @app.post("/api/auth/reset-password")
