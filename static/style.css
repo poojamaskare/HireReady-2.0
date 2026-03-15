@@ -1,4 +1,0 @@
-body { margin: 0; font-family: system-ui, sans-serif; background: #0e1117; color: #e8eaed; }
-.shell { max-width: 720px; margin: 64px auto; padding: 32px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; }
-button { background: #4f8bff; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; }
-button:hover { background: #3c74e6; }
