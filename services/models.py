@@ -54,6 +54,7 @@ class User(Base):
     resume_score = Column(Float, nullable=True)        # from latest analysis readiness_score
     resume_filename = Column(String(255), default="")
     resume_url = Column(Text, default="")
+    photo_url = Column(Text, default="")
     resume_text = Column(Text, default="")
     # Password reset
     password_reset_token = Column(String(100), nullable=True)

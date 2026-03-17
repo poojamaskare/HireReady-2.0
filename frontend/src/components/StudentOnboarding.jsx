@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box, VStack, HStack, Heading, Text, Input, Button,
   Textarea, IconButton, Flex, SimpleGrid,
   Stack, Separator, Card
 } from '@chakra-ui/react';
+import { Icon } from '@chakra-ui/react';
+import { Avatar } from './ui/avatar';
+import { createClient } from '@supabase/supabase-js';
 import { 
   ChevronRight, ChevronLeft, Plus, Trash2, 
   User, GraduationCap, Briefcase, Rocket, Award, FileText 
@@ -41,6 +44,13 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
     certifications: user?.certifications || '',
     achievements: user?.achievements || '',
   });
+  const [photoPreview, setPhotoPreview] = useState(user?.photo_url || null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Supabase client (reads Vite env vars)
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY) ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
   const [errors, setErrors] = useState({});
   const totalSteps = 6;
@@ -157,6 +167,56 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // Handle profile photo selection + direct upload to Supabase
+  const handlePhotoFile = async (file) => {
+    if (!file) return;
+    if (!supabase) {
+      toaster.create({ title: 'Upload Failed', description: 'Supabase is not configured.', type: 'error' });
+      return;
+    }
+
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      toaster.create({ title: 'Invalid file type', description: 'Only JPG/PNG/WEBP allowed', type: 'error' });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toaster.create({ title: 'File too large', description: 'Max 2MB allowed', type: 'error' });
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from('profile_photos').upload(filePath, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+
+      // Get public URL (if bucket public) — fallback to signed URL generation may be needed for private buckets
+      const { data: publicData } = supabase.storage.from('profile_photos').getPublicUrl(filePath);
+      const publicUrl = publicData?.publicUrl || '';
+
+      // Persist to backend so server can verify ownership and store in DB
+      const resp = await fetch('/api/profile/photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ filePath }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.detail || 'Failed to persist photo');
+      }
+      const j = await resp.json();
+      setPhotoPreview(j.photo_url || publicUrl);
+      toaster.create({ title: 'Photo uploaded', type: 'success' });
+    } catch (err) {
+      console.error('Photo upload error', err);
+      toaster.create({ title: 'Upload failed', description: err.message || String(err), type: 'error' });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const addInternship = () => {
     updateField('internships', [...formData.internships, { companyName: '', durationMonths: '', domain: '', knowledgeGained: '' }]);
   };
@@ -221,12 +281,27 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
                 </Heading>
               </HStack>
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={6}>
-                <Field label="Full Name" disabled opacity={0.6}>
-                  <Input value={formData.name} readOnly {...inputStyles} cursor="not-allowed" />
-                </Field>
-                <Field label="Email Address" disabled opacity={0.6}>
-                  <Input value={formData.email} readOnly {...inputStyles} cursor="not-allowed" />
-                </Field>
+                <Box>
+                  <Field label="Full Name" disabled opacity={0.6}>
+                    <Input value={formData.name} readOnly {...inputStyles} cursor="not-allowed" />
+                  </Field>
+                  <Field label="Email Address" disabled opacity={0.6}>
+                    <Input value={formData.email} readOnly {...inputStyles} cursor="not-allowed" />
+                  </Field>
+                </Box>
+                <Box display="flex" alignItems="center" justifyContent="center" flexDirection="column">
+                  <Avatar name={formData.name} src={photoPreview} size="xl" />
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    display="none"
+                    id="profile-photo-input"
+                    onChange={(e) => handlePhotoFile(e.target.files[0])}
+                  />
+                  <Button as="label" htmlFor="profile-photo-input" size="sm" mt={3} isLoading={uploadingPhoto} colorPalette="purple">
+                    {photoPreview ? 'Change Photo' : 'Upload Photo'}
+                  </Button>
+                </Box>
                 <Field label="Moodle ID (8 Digits)" required errorText={errors.moodle_id}>
                   <Input 
                     placeholder="Enter 8-digit Moodle ID" 

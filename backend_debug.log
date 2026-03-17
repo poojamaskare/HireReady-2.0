@@ -1,0 +1,185 @@
+2026-03-15 21:59:55,185 [INFO] __main__: Loaded 100 roles into skill cache.
+2026-03-17 17:04:02,579 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 17:05:18,814 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:05:36,549 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:05:51,087 [INFO] main: Roadmap generated for role 'DevOps Engineer' - removed invalid links: {'courses': 3, 'certificates': 2, 'youtube': 4}
+2026-03-17 17:06:48,617 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:07:01,624 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:07:14,680 [INFO] main: Roadmap generated for role 'Full Stack Developer' - removed invalid links: {'courses': 2, 'certificates': 1, 'youtube': 4}
+2026-03-17 17:12:49,657 [INFO] main: Loading ML models in background thread...
+2026-03-17 17:12:49,688 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 17:12:55,735 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:12:55,816 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:13:11,197 [INFO] main: Roadmap generated for role 'Full Stack Developer' - removed invalid links: {'courses': 4, 'certificates': 1, 'youtube': 2}
+2026-03-17 17:13:11,849 [INFO] main: Roadmap generated for skill 'Databases' - removed invalid links: {'courses': 4, 'certificates': 1, 'youtube': 4}
+2026-03-17 17:13:32,791 [INFO] main: Loading ML models in background thread...
+2026-03-17 17:13:32,803 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 17:13:55,204 [INFO] main: Loading ML models in background thread...
+2026-03-17 17:13:55,245 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 17:14:53,407 [INFO] main: ML models loaded successfully in 58.20 seconds.
+2026-03-17 17:17:51,460 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:17:56,893 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:22:59,270 [INFO] main: Loading ML models in background thread...
+2026-03-17 17:22:59,281 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 17:23:27,491 [INFO] main: ML models loaded successfully in 28.22 seconds.
+2026-03-17 17:46:57,095 [INFO] main: Loading ML models in background thread...
+2026-03-17 17:46:57,118 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 17:47:39,104 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:47:39,523 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:47:43,688 [INFO] main: is_valid_url: VALID (HEAD 200) - https://aws.amazon.com/certification/certified-developer-associate/
+2026-03-17 17:47:43,698 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.udacity.com/course/full-stack-development--ud083
+2026-03-17 17:47:44,515 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.hackerrank.com/domains/fullstack
+2026-03-17 17:47:46,133 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.udacity.com/course/full-stack-development--ud083
+2026-03-17 17:47:47,375 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.hackerrank.com/domains/fullstack
+2026-03-17 17:47:47,385 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.pluralsight.com/courses/node-js-full-stack-development
+2026-03-17 17:47:48,488 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://analytics.google.com/analytics/academy/
+2026-03-17 17:47:50,316 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.pluralsight.com/courses/node-js-full-stack-development
+2026-03-17 17:47:54,880 [INFO] main: Roadmap generated for role 'Full Stack Developer' - removed invalid links: {'courses': 3, 'certificates': 2, 'youtube': 4}
+2026-03-17 17:47:55,846 [INFO] main: is_valid_url: VALID (GET 200) - https://analytics.google.com/analytics/academy/
+2026-03-17 17:48:16,825 [INFO] main: ML models loaded successfully in 79.73 seconds.
+2026-03-17 17:49:24,735 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:49:34,502 [INFO] main: Roadmap generated for role 'Full Stack Developer' - removed invalid links: {'courses': 3, 'certificates': 1, 'youtube': 4}
+2026-03-17 17:52:09,177 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:52:17,735 [INFO] main: Roadmap generated for role 'Full Stack Developer' - removed invalid links: {'courses': 4, 'certificates': 0, 'youtube': 4}
+2026-03-17 17:56:48,767 [INFO] main: Loading ML models in background thread...
+2026-03-17 17:56:48,782 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 17:57:21,597 [INFO] main: ML models loaded successfully in 32.83 seconds.
+2026-03-17 17:58:38,976 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 17:58:40,403 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/web-development-fundamentals/
+2026-03-17 17:58:40,405 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/react-the-complete-guide/
+2026-03-17 17:58:41,171 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.coursera.org/specializations/node-js
+2026-03-17 17:58:41,584 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/web-development-fundamentals/
+2026-03-17 17:58:41,586 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/react-the-complete-guide/
+2026-03-17 17:58:41,881 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.freecodecamp.org/learn/database-systems-and-cloud-databases/
+2026-03-17 17:58:42,473 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/specializations/node-js
+2026-03-17 17:58:43,440 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.freecodecamp.org/learn/database-systems-and-cloud-databases/
+2026-03-17 17:58:44,779 [INFO] main: is_valid_url: VALID (HEAD 200) - https://aws.amazon.com/certification/certified-developer-associate/
+2026-03-17 17:58:45,220 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://cloud.google.com/certified-cloud-developer
+2026-03-17 17:58:45,619 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.scrumalliance.org/certifications/csm
+2026-03-17 17:58:46,878 [INFO] main: is_valid_url: INVALID (GET 404) - https://cloud.google.com/certified-cloud-developer
+2026-03-17 17:58:47,072 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.scrumalliance.org/certifications/csm
+2026-03-17 17:58:48,665 [INFO] main: Roadmap generated for role 'Full Stack Developer' - removed invalid links: {'courses': 4, 'certificates': 2, 'youtube': 4}
+2026-03-17 17:58:48,679 [INFO] main: Serving cached roadmap for role: Full Stack Developer
+2026-03-17 18:01:30,368 [INFO] main: Serving cached roadmap for role: Full Stack Developer
+2026-03-17 18:01:30,374 [INFO] main: Serving cached roadmap for role: Full Stack Developer
+2026-03-17 18:02:19,300 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 18:02:22,162 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.aws.training/Path/PathAWSDeveloperAssoc
+2026-03-17 18:02:22,745 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/full-stack-masterclass/
+2026-03-17 18:02:23,134 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://education.oracle.com/java-se-8-programmer-i/learning-path
+2026-03-17 18:02:23,480 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://djangogirls.org/en/tutorial/advanced/
+2026-03-17 18:02:24,451 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.aws.training/Path/PathAWSDeveloperAssoc
+2026-03-17 18:02:25,438 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/full-stack-masterclass/
+2026-03-17 18:02:25,997 [INFO] main: is_valid_url: INVALID (GET 404) - https://education.oracle.com/java-se-8-programmer-i/learning-path
+2026-03-17 18:02:26,800 [INFO] main: is_valid_url: INVALID (GET 404) - https://djangogirls.org/en/tutorial/advanced/
+2026-03-17 18:02:27,827 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 18:02:30,672 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/database-fundamentals-in-postgresql/
+2026-03-17 18:02:31,113 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.coursera.org/specializations/relational-databases
+2026-03-17 18:02:31,496 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.coursera.org/learn/mongodb-for-developers
+2026-03-17 18:02:31,945 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.freecodecamp.org/learn/data-visualization-with-python/databases-system-implementation/
+2026-03-17 18:02:32,993 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/database-fundamentals-in-postgresql/
+2026-03-17 18:02:33,522 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/specializations/relational-databases
+2026-03-17 18:02:34,061 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/learn/mongodb-for-developers
+2026-03-17 18:02:34,657 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.freecodecamp.org/learn/data-visualization-with-python/databases-system-implementation/
+2026-03-17 18:02:37,531 [INFO] main: is_valid_url: VALID (HEAD 200) - https://aws.amazon.com/certification/certified-database-specialty/
+2026-03-17 18:02:37,532 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://cloud.google.com/certification/databases-administrator
+2026-03-17 18:02:39,179 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://docs.microsoft.com/en-us/learn/certifications/data-platform-developer-associate/
+2026-03-17 18:02:40,631 [INFO] main: is_valid_url: INVALID (GET 404) - https://cloud.google.com/certification/databases-administrator
+2026-03-17 18:02:44,132 [INFO] main: is_valid_url: INVALID (GET 404) - https://docs.microsoft.com/en-us/learn/certifications/data-platform-developer-associate/
+2026-03-17 18:02:46,978 [INFO] main: Roadmap generated for skill 'Databases' - removed invalid links: {'courses': 4, 'certificates': 2, 'youtube': 4}
+2026-03-17 18:03:04,454 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 18:03:06,569 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/the-modern-python-3-bootcamp/
+2026-03-17 18:03:07,019 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.coursera.org/learn/mongodb-for-developers-fundamentals
+2026-03-17 18:03:07,540 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.freecodecamp.org/learn/rest-api-design-restful-api-design
+2026-03-17 18:03:08,599 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/the-modern-python-3-bootcamp/
+2026-03-17 18:03:09,397 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/learn/mongodb-for-developers-fundamentals
+2026-03-17 18:03:10,402 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.freecodecamp.org/learn/rest-api-design-restful-api-design
+2026-03-17 18:03:12,783 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://cloud.google.com/certification/compute-engine-developer
+2026-03-17 18:03:15,485 [INFO] main: is_valid_url: INVALID (GET 404) - https://cloud.google.com/certification/compute-engine-developer
+2026-03-17 18:03:15,569 [INFO] main: is_valid_url: VALID (HEAD 200) - https://aka.ms/cloudsecurityforyou
+2026-03-17 18:03:15,605 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.pythoninstitute.org/certification/pi-cp/
+2026-03-17 18:03:18,482 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.pythoninstitute.org/certification/pi-cp/
+2026-03-17 18:03:20,863 [INFO] main: Roadmap generated for role 'Backend Developer' - removed invalid links: {'courses': 4, 'certificates': 2, 'youtube': 4}
+2026-03-17 18:08:44,824 [INFO] main: Loading ML models in background thread...
+2026-03-17 18:08:44,852 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 18:09:19,383 [INFO] main: ML models loaded successfully in 34.56 seconds.
+2026-03-17 18:09:22,815 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 18:09:26,729 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.coursera.org/specializations/databases
+2026-03-17 18:09:26,732 [INFO] main: is_valid_url: VALID (HEAD 200) - https://aws.amazon.com/certification/certified-developer-associate/
+2026-03-17 18:09:26,733 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://cloud.google.com/certification/computing-developer?authuser=1
+2026-03-17 18:09:27,004 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/cloud-architecture-gcp/
+2026-03-17 18:09:27,087 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/introduction-to-python/
+2026-03-17 18:09:27,850 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.freecodecamp.org/learn/interpersonal-skills/advanced-algorithm-challenges/
+2026-03-17 18:09:29,789 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/cloud-architecture-gcp/
+2026-03-17 18:09:29,810 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/introduction-to-python/
+2026-03-17 18:09:30,067 [INFO] main: is_valid_url: INVALID (GET 404) - https://cloud.google.com/certification/computing-developer?authuser=1
+2026-03-17 18:09:30,311 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/specializations/databases
+2026-03-17 18:09:30,603 [INFO] main: is_valid_url: VALID (HEAD 200) - https://docs.microsoft.com/en-us/learn/certifications/azure-developer/
+2026-03-17 18:09:31,729 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.freecodecamp.org/learn/interpersonal-skills/advanced-algorithm-challenges/
+2026-03-17 18:11:05,185 [INFO] main: Loading ML models in background thread...
+2026-03-17 18:11:05,195 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 18:11:56,912 [INFO] main: Loading ML models in background thread...
+2026-03-17 18:11:56,923 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 18:12:19,532 [INFO] main: ML models loaded successfully in 22.62 seconds.
+2026-03-17 18:12:21,741 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 18:12:23,400 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/api-design-in-nodejs/
+2026-03-17 18:12:23,692 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/the-complete-javascript-course/
+2026-03-17 18:12:23,758 [INFO] main: is_valid_url: VALID (HEAD 200) - https://aws.amazon.com/certification/certified-developer-associate/
+2026-03-17 18:12:23,894 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://cloud.google.com/certified-cloud-developer
+2026-03-17 18:12:23,928 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.coursera.org/learn/database-design
+2026-03-17 18:12:24,164 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.coursera.org/learn/node-js-mongodb
+2026-03-17 18:12:24,459 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.freecodecamp.org/learn/2022-nodejs-challenge/
+2026-03-17 18:12:24,709 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.edx.org/course/cloud-native-node-js-application-development
+2026-03-17 18:12:24,941 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/api-design-in-nodejs/
+2026-03-17 18:12:25,449 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/the-complete-javascript-course/
+2026-03-17 18:12:25,885 [INFO] main: is_valid_url: VALID (HEAD 200) - https://docs.microsoft.com/en-us/learn/certifications/azure-developer/
+2026-03-17 18:12:26,105 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/learn/database-design
+2026-03-17 18:12:26,133 [INFO] main: is_valid_url: INVALID (GET 404) - https://cloud.google.com/certified-cloud-developer
+2026-03-17 18:12:26,357 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/learn/node-js-mongodb
+2026-03-17 18:12:26,797 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.edx.org/course/cloud-native-node-js-application-development
+2026-03-17 18:12:26,835 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.freecodecamp.org/learn/2022-nodejs-challenge/
+2026-03-17 18:17:10,265 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 18:17:11,644 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/test-automation-with-selenium-and-java/
+2026-03-17 18:17:11,984 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.coursera.org/specializations/selenium-webdriver-python
+2026-03-17 18:17:12,333 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.pluralsight.com/courses/cypress-testing-modern-applications
+2026-03-17 18:17:12,999 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/test-automation-with-selenium-and-java/
+2026-03-17 18:17:13,587 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://qai-global.com/certification/cat-certification/
+2026-03-17 18:17:13,754 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/specializations/selenium-webdriver-python
+2026-03-17 18:17:14,817 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.pluralsight.com/courses/cypress-testing-modern-applications
+2026-03-17 18:17:14,859 [INFO] main: is_valid_url: INVALID (GET 404) - https://qai-global.com/certification/cat-certification/
+2026-03-17 18:17:15,237 [INFO] main: is_valid_url: VALID (HEAD 200) - https://www.istqb.org/certification/
+2026-03-17 18:17:37,628 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 18:17:39,499 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/python-crash-course/
+2026-03-17 18:17:39,802 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/automate/
+2026-03-17 18:17:40,152 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://grow.google/computing/certificates/it-automation-python/
+2026-03-17 18:17:40,226 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.microsoft.com/en-us/learning/certificate/professional-data-scientist-python/
+2026-03-17 18:17:40,227 [INFO] main: is_valid_url: VALID (HEAD 200) - https://www.coursera.org/learn/python-data
+2026-03-17 18:17:40,456 [INFO] main: is_valid_url: VALID (HEAD 200) - https://www.coursera.org/specializations/python
+2026-03-17 18:17:40,913 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/python-crash-course/
+2026-03-17 18:17:41,227 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/automate/
+2026-03-17 18:17:42,103 [INFO] main: is_valid_url: INVALID (GET 404) - https://grow.google/computing/certificates/it-automation-python/
+2026-03-17 18:17:42,229 [INFO] main: is_valid_url: VALID (HEAD 200) - https://www.ibm.com/services/learning/course/certification/python-programming
+2026-03-17 18:17:42,573 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.microsoft.com/en-us/learning/certificate/professional-data-scientist-python/
+2026-03-17 18:18:30,255 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-17 18:18:31,844 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/test-automation-frameworks-with-python/
+2026-03-17 18:18:32,059 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/python-for-automation-testing/
+2026-03-17 18:18:32,325 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.coursera.org/specializations/selenium-java
+2026-03-17 18:18:33,307 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.freecodecamp.org/learn/mobile-front-end-development-with-reactnative/
+2026-03-17 18:18:33,345 [INFO] main: is_valid_url: INVALID (HEAD 405) - https://www.ctse.org/certi%C3%A9
+2026-03-17 18:18:33,472 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/test-automation-frameworks-with-python/
+2026-03-17 18:18:34,028 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/python-for-automation-testing/
+2026-03-17 18:18:34,502 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.istqb.org/certifications/certified-automation-tester-cat/
+2026-03-17 18:18:34,698 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/specializations/selenium-java
+2026-03-17 18:18:35,284 [INFO] main: is_valid_url: VALID (GET 200) - https://www.ctse.org/certi%C3%A9
+2026-03-17 18:18:35,538 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.freecodecamp.org/learn/mobile-front-end-development-with-reactnative/
+2026-03-17 18:18:38,430 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.istqb.org/certifications/certified-automation-tester-cat/
+2026-03-17 18:21:58,482 [INFO] main: Loading ML models in background thread...
+2026-03-17 18:21:58,503 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 18:22:14,270 [INFO] main: Loading ML models in background thread...
+2026-03-17 18:22:14,281 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 18:22:36,787 [INFO] main: ML models loaded successfully in 22.52 seconds.
+2026-03-17 18:22:53,905 [INFO] main: Loading ML models in background thread...
+2026-03-17 18:22:53,925 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 18:23:18,581 [INFO] main: ML models loaded successfully in 24.67 seconds.
+2026-03-17 18:27:57,059 [INFO] main: Loading ML models in background thread...
+2026-03-17 18:27:57,070 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-17 18:28:18,258 [INFO] main: ML models loaded successfully in 21.20 seconds.

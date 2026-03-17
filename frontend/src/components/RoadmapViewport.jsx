@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -6,6 +6,7 @@ import {
   applyEdgeChanges,
   applyNodeChanges,
   Panel,
+  MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
@@ -37,13 +38,13 @@ const certLink = (cert) => {
 };
 
 /* ── Dagre Layout ──────────────────────────────────────────────────── */
-const nodeWidth = 160;
-const nodeHeight = 50;
+const nodeWidth = 180;
+const nodeHeight = 60;
 
 const getLayoutedElements = (nodes, edges) => {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 50 });
+  g.setGraph({ rankdir: 'TB', nodesep: 70, ranksep: 100 });
 
   nodes.forEach((node) => g.setNode(node.id, { width: nodeWidth, height: nodeHeight }));
   edges.forEach((edge) => g.setEdge(edge.source, edge.target));
@@ -60,14 +61,17 @@ const getLayoutedElements = (nodes, edges) => {
         background: 'linear-gradient(135deg, #1e293b, #0f172a)',
         color: '#e2e8f0',
         border: '1.5px solid #3b82f6',
-        borderRadius: '10px',
-        padding: '8px 12px',
-        fontSize: '12px',
+        borderRadius: '12px',
+        padding: '10px 16px',
+        fontSize: '13px',
         fontFamily: "'Inter', sans-serif",
         fontWeight: '600',
         width: nodeWidth,
         textAlign: 'center',
-        boxShadow: '0 0 12px rgba(59, 130, 246, 0.2)',
+        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3), 0 0 10px rgba(59, 130, 246, 0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       },
     };
   });
@@ -121,20 +125,31 @@ export default function RoadmapViewport({ data, onBack, skillName, showResources
       </Flex>
 
       {/* Flowchart — compact */}
-      <Box h="350px" bg="gray.900" borderRadius="xl" border="1px solid" borderColor="gray.800" overflow="hidden" mb={6}>
+      <Box h="450px" bg="gray.950" borderRadius="2xl" border="1px solid" borderColor="whiteAlpha.100" overflow="hidden" mb={6} boxShadow="inset 0 0 40px rgba(0,0,0,0.5)">
         <ReactFlow
           nodes={nodes}
-          edges={edges.map((e) => ({ ...e, animated: true, style: { stroke: '#60a5fa', strokeWidth: 2 } }))}
+          edges={edges.map((e) => ({
+            ...e,
+            type: 'smoothstep',
+            animated: true,
+            style: { stroke: '#3b82f6', strokeWidth: 2.5, opacity: 0.8 },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 15,
+              height: 15,
+              color: '#3b82f6',
+            },
+          }))}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           fitView
-          fitViewOptions={{ padding: 0.3 }}
+          fitViewOptions={{ padding: 0.4 }}
           proOptions={{ hideAttribution: true }}
           minZoom={0.3}
           maxZoom={1.5}
         >
-          <Background color="#1e293b" variant="dots" gap={20} size={1} />
-          <Controls style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }} />
+          <Background color="#1e293b" variant="dots" gap={25} size={1} />
+          <Controls style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '4px' }} />
         </ReactFlow>
       </Box>
 

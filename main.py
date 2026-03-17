@@ -4,33 +4,33 @@ from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSO
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from pydantic import BaseModel, EmailStr
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, Tuple
 import os
-from dotenv import load_dotenv
-import joblib
-import pandas as pd
 import io
+import re
+import json
 import logging
 import secrets
 import base64
-import re
 import smtplib
+import time
+import concurrent.futures
+from datetime import datetime, timedelta, timezone
+from urllib.parse import quote_plus, urlparse
+from zipfile import ZipFile, ZIP_DEFLATED
+from functools import lru_cache
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from dotenv import load_dotenv
 
-import json
-from groq import Groq
+import joblib
+import pandas as pd
 import requests
-from urllib.parse import quote_plus
-import time
-import re
+from groq import Groq
 from PyPDF2 import PdfReader
 from sqlalchemy.orm.session import Session
-from sqlalchemy import text
-from sqlalchemy import or_
-from datetime import datetime, timedelta, timezone
-from urllib.parse import urlparse
-from zipfile import ZipFile, ZIP_DEFLATED
+from sqlalchemy import text, or_
+from openpyxl import Workbook
 
 from services.role_engine import rank_roles
 from services.feature_analyzer import build_complete_feature_vector, FEATURE_COLUMNS as DEFAULT_FEATURE_COLUMNS
@@ -46,6 +46,15 @@ from services.auth import (
     get_current_tpo,
 )
 
+# Logger Setup
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler(filename="backend_debug.log"),
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -110,6 +119,8 @@ def ensure_db_schema_compatibility() -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_text TEXT DEFAULT ''"))
         conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(100)'))
         conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP WITH TIME ZONE'))
+        # Profile photo URL storage
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_url TEXT DEFAULT ''"))
 
         # Jobs table columns introduced for richer posting details.
         conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_role VARCHAR(255) DEFAULT ''"))
@@ -131,41 +142,84 @@ def ensure_db_schema_compatibility() -> None:
 
 ensure_db_schema_compatibility()
 
-# ── Load ML model & columns ──────────────────────────────────────────────────
-model = joblib.load(MODEL_DIR / "readiness_model.pkl")
+# ── Global ML model placeholders ───────────────────────────────────────────
+# We initialize these as None and load them in a background thread to
+# prevent blocking the ASGI server startup.
+model = None
+feature_columns = DEFAULT_FEATURE_COLUMNS
+roadmap_model = None
+roadmap_mlb = None
+roadmap_vectorizer = None
+models_loaded = False
 
-try:
-    feature_columns = joblib.load(MODEL_DIR / "feature_columns.pkl")
-except FileNotFoundError:
-    # Fallback to the canonical in-code definition if the pickle is missing.
-    feature_columns = DEFAULT_FEATURE_COLUMNS
+def load_ml_models_background():
+    global model, feature_columns, roadmap_model, roadmap_mlb, roadmap_vectorizer, models_loaded
+    logger.info("Loading ML models in background thread...")
+    try:
+        start_time = time.time()
+        model = joblib.load(MODEL_DIR / "readiness_model.pkl")
+        
+        try:
+            feature_columns = joblib.load(MODEL_DIR / "feature_columns.pkl")
+        except FileNotFoundError:
+            feature_columns = DEFAULT_FEATURE_COLUMNS
+            
+        roadmap_model = joblib.load(MODEL_DIR / "roadmap_model.pkl")
+        roadmap_mlb = joblib.load(MODEL_DIR / "roadmap_mlb.pkl")
+        roadmap_vectorizer = joblib.load(MODEL_DIR / "roadmap_vectorizer.pkl")
+        
+        models_loaded = True
+        logger.info(f"ML models loaded successfully in {time.time() - start_time:.2f} seconds.")
+    except Exception as e:
+        logger.error(f"Critical error loading ML models: {e}")
 
-# Roadmap Prediction Models
-roadmap_model = joblib.load(MODEL_DIR / "roadmap_model.pkl")
-roadmap_mlb = joblib.load(MODEL_DIR / "roadmap_mlb.pkl")
-roadmap_vectorizer = joblib.load(MODEL_DIR / "roadmap_vectorizer.pkl")
+import threading
+threading.Thread(target=load_ml_models_background, daemon=True).start()
+
 
 
 # ----------------- Helper: URL and YouTube validation -----------------
+@lru_cache(maxsize=1000)
 def is_valid_url(url: str) -> bool:
     try:
         if not url or not isinstance(url, str):
+            logger.debug("is_valid_url: empty or non-string URL")
             return False
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https"):
+            logger.debug(f"is_valid_url: invalid scheme for {url}")
             return False
+        
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+        
+        # Try HEAD first as it's faster
         try:
-            r = requests.head(url, allow_redirects=True, timeout=5)
+            r = requests.head(url, allow_redirects=True, timeout=3, headers=headers)
             if 200 <= r.status_code < 400:
+                logger.info(f"is_valid_url: VALID (HEAD {r.status_code}) - {url}")
                 return True
-        except Exception:
-            pass
-        r = requests.get(url, allow_redirects=True, timeout=6, stream=True)
-        return 200 <= r.status_code < 400
-    except Exception:
+            else:
+                logger.info(f"is_valid_url: INVALID (HEAD {r.status_code}) - {url}")
+        except Exception as e:
+            logger.debug(f"is_valid_url: HEAD exception for {url}: {e}")
+            
+        # Fallback to GET for sites that block HEAD
+        try:
+            r = requests.get(url, allow_redirects=True, timeout=3, stream=True, headers=headers)
+            if 200 <= r.status_code < 400:
+                logger.info(f"is_valid_url: VALID (GET {r.status_code}) - {url}")
+                return True
+            logger.info(f"is_valid_url: INVALID (GET {r.status_code}) - {url}")
+        except Exception as e:
+            logger.debug(f"is_valid_url: GET exception for {url}: {e}")
+            
+        return False
+    except Exception as e:
+        logger.error(f"is_valid_url: unexpected error for {url}: {e}")
         return False
 
 
+@lru_cache(maxsize=1000)
 def is_valid_youtube_id(video_id: str) -> bool:
     try:
         if not video_id or not isinstance(video_id, str):
@@ -173,7 +227,7 @@ def is_valid_youtube_id(video_id: str) -> bool:
         if len(video_id) != 11:
             return False
         oembed = f"https://www.youtube.com/oembed?url=http://www.youtube.com/watch?v={video_id}&format=json"
-        r = requests.get(oembed, timeout=6)
+        r = requests.get(oembed, timeout=3)
         return r.status_code == 200
     except Exception:
         return False
@@ -181,6 +235,123 @@ def is_valid_youtube_id(video_id: str) -> bool:
 
 def google_search_fallback(query: str) -> str:
     return f"https://www.google.com/search?q={quote_plus(query)}"
+
+
+def sanitize_roadmap_resources(roadmap_data: dict, topic_name: str) -> dict:
+    """Shared helper to validate and fill roadmap resources with direct links.
+    Ensures that we don't return 0 counts and that links are DIRECT wherever possible.
+    """
+    if not isinstance(roadmap_data, dict):
+        return roadmap_data
+
+    sanitized = {
+        "nodes": roadmap_data.get("nodes", []),
+        "edges": roadmap_data.get("edges", []),
+        "courses": [],
+        "certificates": [],
+        "youtube": []
+    }
+    TARGETS = {"courses": 3, "certificates": 2, "youtube": 3}
+
+    def process_course(c: Any) -> Optional[Dict[str, Any]]:
+        if not isinstance(c, dict): return None
+        url = c.get("url")
+        if url and is_valid_url(url): return c
+        # Try to resolve direct link if missing or invalid
+        title = c.get("title", "")
+        platform = c.get("platform", "")
+        if not title: return None
+        query = f"{topic_name} {title} {platform} course".strip()
+        resolved = resolve_direct_link(query)
+        if resolved:
+            c_copy = dict(c)
+            c_copy["url"] = resolved
+            return c_copy
+        return None
+
+    def process_cert(cert: Any) -> Optional[Dict[str, Any]]:
+        if not isinstance(cert, dict): return None
+        url = cert.get("url")
+        if url and is_valid_url(url): return cert
+        title = cert.get("title", "")
+        provider = cert.get("provider", "")
+        if not title: return None
+        query = f"{topic_name} {title} {provider} certification".strip()
+        resolved = resolve_direct_link(query)
+        if resolved:
+            cert_copy = dict(cert)
+            cert_copy["url"] = resolved
+            return cert_copy
+        return None
+
+    def process_youtube(v: Any) -> Optional[Dict[str, Any]]:
+        if not isinstance(v, dict): return None
+        vid = v.get("videoId")
+        if vid and is_valid_youtube_id(vid): return v
+        title = v.get("title", "")
+        if not title: return None
+        query = f"{topic_name} {title} tutorial".strip()
+        resolved_vid = resolve_youtube_video_id(query)
+        if resolved_vid:
+            v_copy = dict(v)
+            v_copy["videoId"] = resolved_vid
+            return v_copy
+        return None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        fut_c = [executor.submit(process_course, c) for c in (roadmap_data.get("courses") or [])]
+        fut_cert = [executor.submit(process_cert, c) for c in (roadmap_data.get("certificates") or [])]
+        fut_yt = [executor.submit(process_youtube, v) for v in (roadmap_data.get("youtube") or [])]
+
+        for f in concurrent.futures.as_completed(fut_c):
+            if res := f.result(): sanitized["courses"].append(res)
+        for f in concurrent.futures.as_completed(fut_cert):
+            if res := f.result(): sanitized["certificates"].append(res)
+        for f in concurrent.futures.as_completed(fut_yt):
+            if res := f.result(): sanitized["youtube"].append(res)
+
+    # Fallback logic: if still below targets, generate generic items and resolve them
+    def add_fallbacks(key, count, query_suffix, item_factory):
+        while len(sanitized[key]) < count:
+            idx = len(sanitized[key]) + 1
+            title = f"{topic_name} {key[:-1].capitalize()} {idx}"
+            query = f"{topic_name} {title} {query_suffix}".strip()
+            
+            # 1. Try resolving a direct link
+            resolved = resolve_direct_link(query) if key != "youtube" else resolve_youtube_video_id(query)
+            
+            # 2. If resolution fails, construct a platform-specific search link
+            # This redirects the user directly to the target website's internal search.
+            if not resolved:
+                q = quote_plus(query)
+                if key == "courses":
+                    resolved = f"https://www.udemy.com/courses/search/?q={q}"
+                elif key == "certificates":
+                    resolved = f"https://www.coursera.org/search?query={q}"
+
+            if resolved:
+                item = item_factory(title, resolved)
+                sanitized[key].append(item)
+            else:
+                # Last resort for YouTube if no ID found
+                if key == "youtube":
+                    sanitized[key].append({
+                        "title": title, 
+                        "channel": "YouTube", 
+                        "videoId": None, 
+                        "description": "Click to search for this tutorial."
+                    })
+                else:
+                    break
+
+    add_fallbacks("courses", TARGETS["courses"], "online course", 
+                  lambda t, r: {"title": t, "platform": "Udemy", "url": r, "level": "Beginner", "description": "Recommended learning resource."})
+    add_fallbacks("certificates", TARGETS["certificates"], "certification",
+                  lambda t, r: {"title": t, "provider": "Coursera", "url": r, "description": "Professional certification path."})
+    add_fallbacks("youtube", TARGETS["youtube"], "tutorial", 
+                  lambda t, r: {"title": r if isinstance(r, str) and len(r) == 11 else t, "channel": "YouTube", "videoId": r if isinstance(r, str) and len(r) == 11 else None, "description": "Helpful overview video."})
+
+    return sanitized
 
 
 def _http_get_text(url: str, timeout: int = 8) -> Optional[str]:
@@ -315,7 +486,7 @@ def resolve_youtube_video_id(query: str) -> Optional[str]:
 
 # ----------------- Simple in-memory TTL cache for generated resources -----------------
 RESOURCE_CACHE_TTL = int(os.getenv("RESOURCE_CACHE_TTL_SECONDS", "86400"))  # seconds; default 24h
-RESOURCE_CACHE = {}  # maps cache_key -> (timestamp, value)
+RESOURCE_CACHE: Dict[str, Tuple[float, Any]] = {}  # maps cache_key -> (timestamp, value)
 
 
 def _cache_get(key: str):
@@ -323,11 +494,8 @@ def _cache_get(key: str):
     if not entry:
         return None
     ts, val = entry
-    if time.time() - ts > RESOURCE_CACHE_TTL:
-        try:
-            del RESOURCE_CACHE[key]
-        except KeyError:
-            pass
+    if (time.time() - ts) > RESOURCE_CACHE_TTL:
+        RESOURCE_CACHE.pop(key, None)
         return None
     return val
 
@@ -462,6 +630,87 @@ class ShortlistStudentRequest(BaseModel):
 class ShortlistAllRequest(BaseModel):
     job_id: str
     student_ids: List[str] = []
+
+
+class ProfilePhotoRequest(BaseModel):
+    # The storage file path (recommended) or a public URL
+    filePath: str
+
+
+@app.post('/api/profile/photo')
+def save_profile_photo(payload: ProfilePhotoRequest, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Persist a user's profile photo path/url after upload to storage.
+
+    The frontend should upload directly to Supabase (or another bucket) and then POST
+    the saved `filePath` (or public URL) here. The server verifies the object exists
+    when possible and stores the path in the users table under `photo_url`.
+    """
+    file_path = (payload.filePath or '').strip()
+    if not file_path:
+        raise HTTPException(status_code=400, detail='filePath is required')
+
+    # If SUPABASE_URL is configured and file_path does not look like a full URL,
+    # check the public object URL for existence. For private buckets, backend
+    # verification with the service role key is recommended (not required here).
+    supabase_url = os.getenv('SUPABASE_URL')
+    public_url = file_path
+    try:
+        if supabase_url and not re.match(r'^https?://', file_path):
+            public_url = f"{supabase_url}/storage/v1/object/public/profile_photos/{file_path}"
+
+        # HEAD is faster; fallback to GET if HEAD not allowed
+        r = requests.head(public_url, allow_redirects=True, timeout=6)
+        if r.status_code >= 400:
+            r2 = requests.get(public_url, allow_redirects=True, timeout=6, stream=True)
+            if r2.status_code >= 400:
+                raise HTTPException(status_code=400, detail='Uploaded file not found in storage')
+    except requests.RequestException:
+        # If supabase isn't configured or request failed, reject to be safe.
+        if supabase_url:
+            raise HTTPException(status_code=400, detail='Failed to verify uploaded file')
+
+    # Update the user record
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    # Attempt to remove previous photo from Supabase storage (if present and service key available).
+    try:
+        prev = (user.photo_url or '').strip()
+        supabase_service_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+        supabase_url_cfg = os.getenv('SUPABASE_URL')
+        # Determine previous file path within profile_photos bucket
+        prev_path = None
+        if prev:
+            if prev.startswith('http') and '/profile_photos/' in prev:
+                prev_path = prev.split('/profile_photos/', 1)[1]
+            elif prev.startswith('profile_photos/'):
+                prev_path = prev[len('profile_photos/'):]
+            else:
+                # If stored earlier as just a path, accept it
+                prev_path = prev
+
+        # Only attempt deletion when service key + supabase URL available and prev_path exists
+        if prev_path and supabase_service_key and supabase_url_cfg:
+            # Avoid deleting the same file we are about to save
+            if prev_path != file_path:
+                delete_url = requests.utils.requote_uri(f"{supabase_url_cfg}/storage/v1/object/profile_photos/{prev_path}")
+                headers_del = {"apikey": supabase_service_key, "Authorization": f"Bearer {supabase_service_key}"}
+                try:
+                    dresp = requests.delete(delete_url, headers=headers_del, timeout=8)
+                    if dresp.status_code not in (200, 204):
+                        logger.info("Failed to delete previous profile photo (%s): %s", delete_url, dresp.status_code)
+                except Exception:
+                    logger.exception("Error while deleting previous profile photo")
+    except Exception:
+        logger.exception("Unexpected error when attempting to delete previous profile photo")
+
+    # Store the public URL for ease of use in the frontend; store the path if you prefer.
+    user.photo_url = public_url
+    db.add(user)
+    db.commit()
+
+    return {"ok": True, "photo_url": user.photo_url}
 
 
 @app.post("/api/auth/register")
@@ -848,7 +1097,14 @@ def run_analysis_pipeline(
             df[col] = 0
     df = df[feature_columns]
 
-    raw_score = float(model.predict(df)[0])
+    raw_score = 40.0 # Default fallback
+    if models_loaded and model is not None:
+        try:
+            raw_score = float(model.predict(df)[0])
+        except Exception as e:
+            logger.error(f"Prediction failed: {e}")
+    else:
+        logger.warning("Profile analysis: models not loaded, using fallback score.")
 
     # 3. Calibrate score
     MODEL_MIN = 6.0
@@ -1259,6 +1515,14 @@ def predict_skills(data: SkillPredictionRequest):
         }
     
     # 2. Fallback to ML Model (Predictive)
+    if not models_loaded or roadmap_model is None:
+        logger.warning("ML Prediction skipped: models not yet loaded.")
+        return {
+            "role": role,
+            "skills": ["Loading models...", "Please wait"],
+            "note": "AI models are still initializing in the background. Please try again in 30 seconds."
+        }
+
     try:
         v = roadmap_vectorizer.transform([role])
         p = roadmap_model.predict(v)
@@ -1287,6 +1551,12 @@ def generate_learning_path(data: LearningPathRequest):
     skill = data.skill.strip()
     if not skill:
         raise HTTPException(status_code=400, detail="Skill name is required")
+
+    cache_key = f"roadmap:skill:{skill.lower()}"
+    cached = _cache_get(cache_key)
+    if cached:
+        logger.info(f"Serving cached roadmap for skill: {skill}")
+        return cached
 
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
@@ -1330,79 +1600,11 @@ def generate_learning_path(data: LearningPathRequest):
         )
         
         roadmap_data = json.loads(completion.choices[0].message.content)
-        # Validate returned URLs and YouTube IDs before returning to frontend.
-        def is_valid_url(url: str) -> bool:
-            try:
-                if not url or not isinstance(url, str):
-                    return False
-                parsed = urlparse(url)
-                if parsed.scheme not in ("http", "https"):
-                    return False
-                # Try HEAD first (faster), fall back to GET if necessary.
-                try:
-                    r = requests.head(url, allow_redirects=True, timeout=5)
-                    if 200 <= r.status_code < 400:
-                        return True
-                except Exception:
-                    pass
-                # Fallback to GET with small response
-                r = requests.get(url, allow_redirects=True, timeout=6, stream=True)
-                return 200 <= r.status_code < 400
-            except Exception:
-                return False
-
-        def is_valid_youtube_id(video_id: str) -> bool:
-            try:
-                if not video_id or not isinstance(video_id, str):
-                    return False
-                # YouTube IDs are typically 11 characters; quick length check first
-                if len(video_id) != 11:
-                    return False
-                # Use YouTube oEmbed endpoint to verify existence
-                oembed = f"https://www.youtube.com/oembed?url=http://www.youtube.com/watch?v={video_id}&format=json"
-                r = requests.get(oembed, timeout=6)
-                return r.status_code == 200
-            except Exception:
-                return False
-
-        # Sanitize arrays in-place
-        removed = {"courses": 0, "certificates": 0, "youtube": 0}
-        if isinstance(roadmap_data, dict):
-            # Courses
-            courses = roadmap_data.get("courses") or []
-            valid_courses = []
-            for c in courses:
-                url = c.get("url") if isinstance(c, dict) else None
-                if is_valid_url(url):
-                    valid_courses.append(c)
-                else:
-                    removed["courses"] += 1
-            roadmap_data["courses"] = valid_courses
-
-            # Certificates
-            certs = roadmap_data.get("certificates") or []
-            valid_certs = []
-            for c in certs:
-                url = c.get("url") if isinstance(c, dict) else None
-                if is_valid_url(url):
-                    valid_certs.append(c)
-                else:
-                    removed["certificates"] += 1
-            roadmap_data["certificates"] = valid_certs
-
-            # YouTube
-            yts = roadmap_data.get("youtube") or []
-            valid_yts = []
-            for v in yts:
-                vid = v.get("videoId") if isinstance(v, dict) else None
-                if is_valid_youtube_id(vid):
-                    valid_yts.append(v)
-                else:
-                    removed["youtube"] += 1
-            roadmap_data["youtube"] = valid_yts
-
-            logger.info("Roadmap generated for skill '%s' - removed invalid links: %s", skill, removed)
-
+        
+        # Sanitize and fill using shared helper
+        roadmap_data = sanitize_roadmap_resources(roadmap_data, skill)
+        
+        _cache_set(f"roadmap:skill:{skill.lower()}", roadmap_data)
         return roadmap_data
     except Exception as e:
         logger.error(f"Groq API error: {e}")
@@ -1424,6 +1626,12 @@ def generate_role_learning_path(data: RoleLearningPathRequest):
     role = data.role.strip()
     if not role:
         raise HTTPException(status_code=400, detail="Role name is required")
+
+    cache_key = f"roadmap:role:{role.lower()}"
+    cached = _cache_get(cache_key)
+    if cached:
+        logger.info(f"Serving cached roadmap for role: {role}")
+        return cached
 
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
@@ -1469,71 +1677,10 @@ def generate_role_learning_path(data: RoleLearningPathRequest):
 
         roadmap_data = json.loads(completion.choices[0].message.content)
 
-        # Validate returned URLs and YouTube IDs before returning to frontend.
-        def is_valid_url(url: str) -> bool:
-            try:
-                if not url or not isinstance(url, str):
-                    return False
-                parsed = urlparse(url)
-                if parsed.scheme not in ("http", "https"):
-                    return False
-                try:
-                    r = requests.head(url, allow_redirects=True, timeout=5)
-                    if 200 <= r.status_code < 400:
-                        return True
-                except Exception:
-                    pass
-                r = requests.get(url, allow_redirects=True, timeout=6, stream=True)
-                return 200 <= r.status_code < 400
-            except Exception:
-                return False
-
-        def is_valid_youtube_id(video_id: str) -> bool:
-            try:
-                if not video_id or not isinstance(video_id, str):
-                    return False
-                if len(video_id) != 11:
-                    return False
-                oembed = f"https://www.youtube.com/oembed?url=http://www.youtube.com/watch?v={video_id}&format=json"
-                r = requests.get(oembed, timeout=6)
-                return r.status_code == 200
-            except Exception:
-                return False
-
-        removed = {"courses": 0, "certificates": 0, "youtube": 0}
-        if isinstance(roadmap_data, dict):
-            courses = roadmap_data.get("courses") or []
-            valid_courses = []
-            for c in courses:
-                url = c.get("url") if isinstance(c, dict) else None
-                if is_valid_url(url):
-                    valid_courses.append(c)
-                else:
-                    removed["courses"] += 1
-            roadmap_data["courses"] = valid_courses
-
-            certs = roadmap_data.get("certificates") or []
-            valid_certs = []
-            for c in certs:
-                url = c.get("url") if isinstance(c, dict) else None
-                if is_valid_url(url):
-                    valid_certs.append(c)
-                else:
-                    removed["certificates"] += 1
-            roadmap_data["certificates"] = valid_certs
-
-            yts = roadmap_data.get("youtube") or []
-            valid_yts = []
-            for v in yts:
-                vid = v.get("videoId") if isinstance(v, dict) else None
-                if is_valid_youtube_id(vid):
-                    valid_yts.append(v)
-                else:
-                    removed["youtube"] += 1
-            roadmap_data["youtube"] = valid_yts
-
-            logger.info("Roadmap generated for role '%s' - removed invalid links: %s", role, removed)
-
+        # Sanitize and fill using shared helper
+        roadmap_data = sanitize_roadmap_resources(roadmap_data, role)
+        
+        _cache_set(f"roadmap:role:{role.lower()}", roadmap_data)
         return roadmap_data
     except Exception as e:
         logger.error(f"Groq role roadmap error: {e}")
@@ -1598,129 +1745,16 @@ def generate_resources_for_roles(data: ResourcesForRolesRequest):
             )
 
             payload = json.loads(completion.choices[0].message.content)
+            
+            # Use shared helper
+            sanitized = sanitize_roadmap_resources(payload, role)
+            
+            _cache_set(cache_key, sanitized)
+            results[role] = sanitized
         except Exception as e:
             logger.error("Groq resources error for role %s: %s", role, e)
-            # Return empty sets with note
             results[role] = {"courses": [], "certificates": [], "youtube": []}
             continue
-
-        # Validate and strictly sanitize: only include validated items.
-        sanitized = {"courses": [], "certificates": [], "youtube": []}
-
-        TARGET_COUNTS = {"courses": 3, "certificates": 2, "youtube": 3}
-
-        # Courses: include only those with valid direct URLs. If Groq URL invalid,
-        # try to resolve a direct link using a search resolver.
-        for c in (payload.get("courses") or []):
-            try:
-                if not isinstance(c, dict):
-                    continue
-                url = c.get("url")
-                if is_valid_url(url):
-                    sanitized["courses"].append(c)
-                    continue
-
-                # Attempt to resolve a direct link using the course title and platform
-                title = (c.get("title") or "").strip()
-                platform = (c.get("platform") or "").strip()
-                query_parts = [role, title, platform]
-                query = " ".join([p for p in query_parts if p])
-                resolved = resolve_direct_link(query)
-                if resolved:
-                    c_copy = dict(c)
-                    c_copy["url"] = resolved
-                    c_copy["resolved"] = True
-                    sanitized["courses"].append(c_copy)
-            except Exception:
-                continue
-
-        # Certificates
-        for cert in (payload.get("certificates") or []):
-            try:
-                if not isinstance(cert, dict):
-                    continue
-                url = cert.get("url")
-                if is_valid_url(url):
-                    sanitized["certificates"].append(cert)
-                    continue
-
-                title = (cert.get("title") or "").strip()
-                provider = (cert.get("provider") or "").strip()
-                query_parts = [role, title, provider]
-                query = " ".join([p for p in query_parts if p])
-                resolved = resolve_direct_link(query)
-                if resolved:
-                    cert_copy = dict(cert)
-                    cert_copy["url"] = resolved
-                    cert_copy["resolved"] = True
-                    sanitized["certificates"].append(cert_copy)
-            except Exception:
-                continue
-
-        # YouTube: include only entries with valid videoId
-        for v in (payload.get("youtube") or []):
-            try:
-                if not isinstance(v, dict):
-                    continue
-                vid = v.get("videoId")
-                if is_valid_youtube_id(vid):
-                    sanitized["youtube"].append(v)
-                    continue
-
-                # Attempt to resolve a videoId by searching YouTube for role + title
-                title = (v.get("title") or "").strip()
-                query = " ".join([p for p in [role, title] if p])
-                resolved_vid = resolve_youtube_video_id(query)
-                if resolved_vid:
-                    v_copy = dict(v)
-                    v_copy["videoId"] = resolved_vid
-                    v_copy["resolved"] = True
-                    sanitized["youtube"].append(v_copy)
-            except Exception:
-                continue
-
-        # If we have fewer than target items, append search fallbacks (marked)
-        # so the frontend can render something useful while indicating it's a fallback.
-        # Courses fallback
-        while len(sanitized["courses"]) < TARGET_COUNTS["courses"]:
-            idx = len(sanitized["courses"]) + 1
-            fallback_title = f"{role} recommended course {idx}"
-            fallback = {
-                "title": fallback_title,
-                "platform": "search",
-                "url": google_search_fallback(f"{role} {fallback_title}"),
-                "level": "Beginner",
-                "description": "Search results for recommended course",
-                "isFallback": True,
-            }
-            sanitized["courses"].append(fallback)
-
-        # Certificates fallback
-        while len(sanitized["certificates"]) < TARGET_COUNTS["certificates"]:
-            idx = len(sanitized["certificates"]) + 1
-            fallback_title = f"{role} certification {idx}"
-            fallback = {
-                "title": fallback_title,
-                "provider": "search",
-                "url": google_search_fallback(f"{role} {fallback_title}"),
-                "description": "Search results for recommended certification",
-                "isFallback": True,
-            }
-            sanitized["certificates"].append(fallback)
-
-        # YouTube fallback
-        while len(sanitized["youtube"]) < TARGET_COUNTS["youtube"]:
-            idx = len(sanitized["youtube"]) + 1
-            fallback_title = f"{role} tutorial {idx}"
-            fallback = {
-                "title": fallback_title,
-                "channel": "search",
-                "videoId": None,
-                "fallback": f"https://www.youtube.com/results?search_query={quote_plus(role + ' ' + fallback_title)}",
-                "description": "YouTube search results for recommended tutorial",
-                "isFallback": True,
-            }
-            sanitized["youtube"].append(fallback)
 
         # store sanitized result in cache
         _cache_set(cache_key, sanitized)
@@ -2561,7 +2595,7 @@ def _build_resumes_zip(students: List[dict], archive_name: str) -> StreamingResp
             extension = resume_path.suffix or ".pdf"
             arcname = f"{safe_student_name}_{s.get('id', '')}{extension}"
             zip_file.write(resume_path, arcname=arcname)
-            added_files += 1
+            added_files = added_files + 1
 
     if added_files == 0:
         raise HTTPException(status_code=404, detail="No resume files found for the selected students")
@@ -2626,7 +2660,7 @@ def export_shortlisted_students(
     db: Session = Depends(get_db),
 ):
     """Export shortlisted students as Excel with job details and student details."""
-    from openpyxl import Workbook
+    wb = Workbook()
 
     job = db.query(Job).filter(Job.id == job_id, Job.posted_by == tpo.id).first()
     if not job:
@@ -2992,7 +3026,7 @@ def notify_shortlisted(
             message=message,
         )
         db.add(notif)
-        notified_count += 1
+        notified_count = notified_count + 1
 
     db.commit()
     return {"message": f"Notifications sent to {notified_count} students.", "count": notified_count}
@@ -3025,4 +3059,9 @@ def export_shortlisted_students_json(
         "total": len(rows),
         "students": rows,
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False)
+
 
