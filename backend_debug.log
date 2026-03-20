@@ -1628,3 +1628,231 @@ ValueError: Feature vector schema mismatch. Missing columns: none. Extra columns
 2026-03-20 23:01:14,081 [INFO] main: Loading ML models in background thread...
 2026-03-20 23:01:14,090 [INFO] main: Loaded 100 roles into skill cache.
 2026-03-20 23:01:20,151 [INFO] main: ML models loaded successfully in 6.07 seconds.
+2026-03-20 23:19:21,835 [INFO] main: Loading ML models in background thread...
+2026-03-20 23:19:21,844 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 23:19:28,299 [INFO] main: ML models loaded successfully in 6.46 seconds.
+2026-03-20 23:21:04,541 [INFO] main: Updated resume for user 24204015@apsit.edu.in: kartika resume .pdf
+2026-03-20 23:21:06,322 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-20 23:21:06,401 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-20 23:21:07,740 [INFO] main: Auto-analysis saved: fcb26f3e-d9cf-4ee5-98dd-6e39c82fb918
+2026-03-20 23:26:18,100 [INFO] main: Updated resume for user 24204015@apsit.edu.in: kartika resume .pdf
+2026-03-20 23:26:19,917 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-20 23:26:19,971 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-20 23:26:21,047 [INFO] main: Auto-analysis saved: d2b3fd43-3853-4d37-9bc6-d61bde33737e
+2026-03-20 23:34:47,085 [INFO] main: Loading ML models in background thread...
+2026-03-20 23:34:47,095 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 23:34:53,265 [INFO] main: ML models loaded successfully in 6.18 seconds.
+2026-03-20 23:35:00,958 [INFO] main: Loading ML models in background thread...
+2026-03-20 23:35:00,972 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 23:54:09,392 [INFO] main: Loading ML models in background thread...
+2026-03-20 23:54:09,402 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 23:54:15,972 [INFO] main: ML models loaded successfully in 6.58 seconds.
+2026-03-21 00:02:58,236 [INFO] main: Loading ML models in background thread...
+2026-03-21 00:02:58,247 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 00:03:04,787 [INFO] main: ML models loaded successfully in 6.55 seconds.
+2026-03-21 00:23:32,577 [INFO] main: Updated resume for user 24204015@apsit.edu.in: kartika resume .pdf
+2026-03-21 00:23:34,576 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-21 00:23:34,664 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-21 00:23:35,600 [INFO] main: Auto-analysis saved: 6fc9e730-0c76-428f-86fe-b0fd4b5a420c
+2026-03-21 00:26:54,241 [INFO] main: Loading ML models in background thread...
+2026-03-21 00:26:54,247 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 00:27:00,131 [INFO] main: ML models loaded successfully in 5.89 seconds.
+2026-03-21 00:29:51,455 [INFO] main: Loading ML models in background thread...
+2026-03-21 00:29:51,458 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 00:29:52,219 [ERROR] main: Unhandled error on GET /api/notifications/unread-count
+Traceback (most recent call last):
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column users.marks_10th does not exist
+LINE 1: ...ster AS users_semester, users.sgpa AS users_sgpa, users.mark...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 87, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/fastapi/routing.py", line 414, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/fastapi/dependencies/utils.py", line 616, in solve_dependencies
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/fastapi/dependencies/utils.py", line 647, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/services/auth.py", line 107, in get_current_user
+    user = db.query(User).filter(User.id == subject).first()
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/orm/query.py", line 2759, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column users.marks_10th does not exist
+LINE 1: ...ster AS users_semester, users.sgpa AS users_sgpa, users.mark...
+                                                             ^
+
+[SQL: SELECT users.id AS users_id, users.name AS users_name, users.first_name AS users_first_name, users.last_name AS users_last_name, users.email AS users_email, users.password_hash AS users_password_hash, users.role AS users_role, users.github_username AS users_github_username, users.leetcode_username AS users_leetcode_username, users.mobile_number AS users_mobile_number, users.prn_no AS users_prn_no, users.moodle_id AS users_moodle_id, users.year AS users_year, users.division AS users_division, users.semester AS users_semester, users.sgpa AS users_sgpa, users.marks_10th AS users_marks_10th, users.marks_12th AS users_marks_12th, users.diploma_avg AS users_diploma_avg, users.sem1 AS users_sem1, users.sem2 AS users_sem2, users.sem3 AS users_sem3, users.sem4 AS users_sem4, users.sem5 AS users_sem5, users.sem6 AS users_sem6, users.atkt_count AS users_atkt_count, users.atkt_subjects AS users_atkt_subjects, users.drop_year AS users_drop_year, users.internships AS users_internships, users.projects AS users_projects, users.core_interests AS users_core_interests, users.core_skills AS users_core_skills, users.github_profile AS users_github_profile, users.linkedin_profile AS users_linkedin_profile, users.achievements AS users_achievements, users.cgpa AS users_cgpa, users.certifications AS users_certifications, users.preferred_job_roles AS users_preferred_job_roles, users.resume_score AS users_resume_score, users.resume_filename AS users_resume_filename, users.resume_url AS users_resume_url, users.photo_url AS users_photo_url, users.resume_text AS users_resume_text, users.password_reset_token AS users_password_reset_token, users.password_reset_expires AS users_password_reset_expires, users.created_at AS users_created_at 
+FROM users 
+WHERE users.id = %(id_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'id_1': '52a67acb-d51a-43f4-b32a-94774557957c', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-03-21 00:30:09,276 [INFO] main: Loading ML models in background thread...
+2026-03-21 00:30:09,279 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 00:30:15,013 [INFO] main: ML models loaded successfully in 5.74 seconds.
+2026-03-21 00:30:55,557 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-21 00:30:55,662 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-21 00:30:56,549 [INFO] main: Auto-analysis saved: 9422a877-432b-4f1a-9809-756f1b00d9fc
+2026-03-21 00:34:23,600 [INFO] main: Password reset email sent to 24204015@apsit.edu.in
+2026-03-21 00:36:47,179 [INFO] main: Loading ML models in background thread...
+2026-03-21 00:36:47,187 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 00:36:52,882 [INFO] main: ML models loaded successfully in 5.70 seconds.
+2026-03-21 01:01:42,331 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-21 01:01:42,395 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-21 01:01:43,330 [INFO] main: Auto-analysis saved: a5cd2b74-14ff-4200-9e89-f173fba6980d
+2026-03-21 01:03:57,392 [INFO] main: Loading ML models in background thread...
+2026-03-21 01:03:57,395 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 01:04:03,054 [INFO] main: ML models loaded successfully in 5.66 seconds.
+2026-03-21 01:10:22,564 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-21 01:10:22,629 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-21 01:10:23,672 [INFO] main: Auto-analysis saved: d629f474-5880-425a-b65e-77cc6f52709d
+2026-03-21 01:15:36,139 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-21 01:15:36,310 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-21 01:15:37,220 [INFO] main: Auto-analysis saved: 4e715f11-e5b2-4849-83db-819f42b66986
+2026-03-21 01:17:46,349 [INFO] main: Loading ML models in background thread...
+2026-03-21 01:17:46,358 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 01:17:52,034 [INFO] main: ML models loaded successfully in 5.68 seconds.

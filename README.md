@@ -69,6 +69,21 @@ JWT_SECRET=your_super_secret_jwt_key
 # External APIs
 GITHUB_TOKEN=your_github_personal_access_token
 GROQ_API_KEY=your_groq_api_key
+
+# Password reset email (SMTP)
+# Works with Gmail app password or any SMTP provider.
+EMAIL_USER=your_email_username_or_address
+EMAIL_PASS=your_email_password_or_app_password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USE_TLS=true
+# Optional (use true + 465 for implicit SSL providers)
+SMTP_USE_SSL=false
+# Optional display name or sender address
+EMAIL_FROM=HireReady
+
+# Frontend URL used in reset links
+FRONTEND_BASE_URL=http://localhost:5173
 ```
 
 ### 3. Backend Setup
