@@ -1463,3 +1463,6 @@ WHERE users.id = %(id_1)s
 2026-03-20 13:25:35,581 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/natural-language-processing-with-nltk-and-spacy/
 2026-03-20 13:25:35,591 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/python-programming-mastering-the-basics/
 2026-03-20 13:25:36,508 [INFO] main: is_valid_url: INVALID (GET 404) - https://cloud.google.com/certification/professional-machine-learning-engineer
+2026-03-20 18:44:36,424 [INFO] main: Loading ML models in background thread...
+2026-03-20 18:44:36,466 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 18:46:08,648 [INFO] main: ML models loaded successfully in 92.22 seconds.
