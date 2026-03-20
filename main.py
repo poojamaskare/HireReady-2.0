@@ -32,7 +32,6 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy import text, or_
 from openpyxl import Workbook
 
-from services.role_engine import rank_roles
 from services.feature_analyzer import build_complete_feature_vector, FEATURE_COLUMNS as DEFAULT_FEATURE_COLUMNS
 from services.database import engine, get_db, Base
 from services.models import User, AnalysisResult, QuizResult, Job, TpoLogin, InterestedJob, ShortlistedJob, Notification, JobResult
@@ -58,13 +57,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 
-# In this repo, the trained model files (.pkl) live one level above
-# HireReady-2.0/. Prefer the current directory, but fall back to the
-# parent folder if the files are located there.
+# Roadmap skill artifacts (.pkl) may live one level above this folder.
+# Prefer current directory, fall back to parent if needed.
 MODEL_DIR = BASE_DIR
-if not (MODEL_DIR / "readiness_model.pkl").exists():
+if not (MODEL_DIR / "roadmap_model.pkl").exists():
     parent = BASE_DIR.parent
-    if (parent / "readiness_model.pkl").exists():
+    if (parent / "roadmap_model.pkl").exists():
         MODEL_DIR = parent
 
 # Ensure EMAIL_* / SMTP_* vars from .env are available in this module.
@@ -146,33 +144,24 @@ def ensure_db_schema_compatibility() -> None:
 
 ensure_db_schema_compatibility()
 
-# ── Global ML model placeholders ───────────────────────────────────────────
-# We initialize these as None and load them in a background thread to
-# prevent blocking the ASGI server startup.
-model = None
+# ── Global model placeholders ───────────────────────────────────────────────
 feature_columns = DEFAULT_FEATURE_COLUMNS
 roadmap_model = None
 roadmap_mlb = None
 roadmap_vectorizer = None
-models_loaded = False
+roadmap_models_loaded = False
 
 def load_ml_models_background():
-    global model, feature_columns, roadmap_model, roadmap_mlb, roadmap_vectorizer, models_loaded
+    global roadmap_model, roadmap_mlb, roadmap_vectorizer, roadmap_models_loaded
     logger.info("Loading ML models in background thread...")
     try:
         start_time = time.time()
-        model = joblib.load(MODEL_DIR / "readiness_model.pkl")
-        
-        try:
-            feature_columns = joblib.load(MODEL_DIR / "feature_columns.pkl")
-        except FileNotFoundError:
-            feature_columns = DEFAULT_FEATURE_COLUMNS
-            
+
         roadmap_model = joblib.load(MODEL_DIR / "roadmap_model.pkl")
         roadmap_mlb = joblib.load(MODEL_DIR / "roadmap_mlb.pkl")
         roadmap_vectorizer = joblib.load(MODEL_DIR / "roadmap_vectorizer.pkl")
         
-        models_loaded = True
+        roadmap_models_loaded = True
         logger.info(f"ML models loaded successfully in {time.time() - start_time:.2f} seconds.")
     except Exception as e:
         logger.error(f"Critical error loading ML models: {e}")
@@ -1108,6 +1097,226 @@ def get_me(current_user: User = Depends(get_current_user)):
     }
 
 
+SKILL_FEATURE_KEYS = set(DEFAULT_FEATURE_COLUMNS[:45])
+PROJECT_FEATURE_KEYS = [
+    "num_backend_projects",
+    "num_ai_projects",
+    "num_mobile_projects",
+    "num_cloud_projects",
+    "num_security_projects",
+]
+
+
+def _extract_first_json_object(text: str) -> Optional[Dict[str, Any]]:
+    """Extract the first JSON object from an LLM response string."""
+    if not text:
+        return None
+
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or start >= end:
+        return None
+
+    try:
+        return json.loads(text[start:end + 1])
+    except Exception:
+        return None
+
+
+def build_structured_candidate_data(
+    feature_vector: Dict[str, Any],
+    resume_text: str,
+    **_kwargs,
+) -> Dict[str, Any]:
+    """Convert extracted features into the structured payload consumed by the LLM.
+
+    Extra keyword arguments (e.g. legacy github_username, leetcode_username)
+    are silently ignored for backward compatibility.
+    """
+    skills = sorted(
+        [
+            key
+            for key, value in feature_vector.items()
+            if key in SKILL_FEATURE_KEYS and isinstance(value, (int, float)) and value > 0
+        ]
+    )
+
+    project_counts = {
+        "backend": int(feature_vector.get("num_backend_projects", 0) or 0),
+        "ai": int(feature_vector.get("num_ai_projects", 0) or 0),
+        "mobile": int(feature_vector.get("num_mobile_projects", 0) or 0),
+        "cloud": int(feature_vector.get("num_cloud_projects", 0) or 0),
+        "security": int(feature_vector.get("num_security_projects", 0) or 0),
+    }
+    projects = [f"{k} projects ({v})" for k, v in project_counts.items() if v > 0]
+
+    # Internship domains detected from resume
+    internship_domains = [
+        key.replace("internship_", "").title()
+        for key in ["internship_backend", "internship_ai", "internship_cloud",
+                    "internship_security", "internship_mobile", "internship_data"]
+        if feature_vector.get(key, 0) > 0
+    ]
+
+    return {
+        "skills": skills,
+        "projects": projects,
+        "internship_domains": internship_domains,
+        "project_counts": project_counts,
+        "resume_excerpt": (resume_text or "")[:1200],
+    }
+
+
+def _fallback_prediction(extracted_data: Dict[str, Any], feature_vector: Dict[str, Any]) -> Dict[str, Any]:
+    """Deterministic fallback if the LLM is unavailable.
+
+    Scoring: skills 50%, projects 30%, internships 20%.
+    """
+    skills_count = len(extracted_data.get("skills", []))
+    projects_total = sum(int(v) for v in extracted_data.get("project_counts", {}).values())
+    internship_count = len(extracted_data.get("internship_domains", []))
+
+    score = 0.0
+    score += min(skills_count / 20.0, 1.0) * 50.0  # skills 50%
+    score += min(projects_total / 5.0, 1.0) * 30.0  # projects 30%
+    score += min(internship_count / 3.0, 1.0) * 20.0  # internships 20%
+    score = round(max(0.0, min(100.0, score)), 2)
+
+    suggested_role = "Software Engineer"
+    if extracted_data.get("project_counts", {}).get("ai", 0) > 0:
+        suggested_role = "ML Engineer"
+    elif extracted_data.get("project_counts", {}).get("mobile", 0) > 0:
+        suggested_role = "Mobile Developer"
+    elif extracted_data.get("project_counts", {}).get("cloud", 0) > 0:
+        suggested_role = "Cloud Engineer"
+    elif extracted_data.get("project_counts", {}).get("backend", 0) > 0:
+        suggested_role = "Backend Developer"
+
+    recommended_roles = [
+        {"role": suggested_role, "score": score},
+        {"role": "Software Engineer", "score": max(0.0, round(score - 6, 2))},
+        {"role": "Full Stack Developer", "score": max(0.0, round(score - 10, 2))},
+    ]
+
+    weaknesses = []
+    if skills_count < 8:
+        weaknesses.append("Limited technical skill breadth")
+    if projects_total < 3:
+        weaknesses.append("Insufficient project volume")
+    if internship_count == 0:
+        weaknesses.append("No relevant internship experience detected")
+    if not weaknesses:
+        weaknesses.append("No major weaknesses detected from available signals")
+
+    suggestions = []
+    if skills_count < 8:
+        suggestions.append("Learn more in-demand technologies to broaden your skill set")
+    if projects_total < 3:
+        suggestions.append("Build 2 to 3 production-style portfolio projects")
+    if internship_count == 0:
+        suggestions.append("Pursue a relevant internship to gain industry experience")
+    if not suggestions:
+        suggestions.append("Keep improving system design and interview communication")
+
+    return {
+        "score": score,
+        "role": recommended_roles[0]["role"] if recommended_roles else "Software Engineer",
+        "recommended_roles": recommended_roles,
+        "weakness": weaknesses,
+        "suggestions": suggestions,
+        "source": "fallback",
+    }
+
+
+def get_ai_prediction(extracted_data: Dict[str, Any], feature_vector: Dict[str, Any]) -> Dict[str, Any]:
+    """Predict readiness and role using Groq with structured candidate data."""
+    api_key = (os.getenv("GROQ_API_KEY") or "").strip()
+    if not api_key:
+        logger.warning("GROQ_API_KEY missing; using fallback prediction.")
+        return _fallback_prediction(extracted_data, feature_vector)
+
+    model_name = (os.getenv("GROQ_READINESS_MODEL") or "llama-3.3-70b-versatile").strip()
+    client = Groq(api_key=api_key)
+
+    prompt = (
+        "You are an expert placement evaluator. "
+        "Evaluate the candidate based solely on their resume skills, projects, and internship experience. "
+        "Return ONLY valid JSON with this exact schema: "
+        "{\"score\": number, \"role\": string, \"recommended_roles\": [{\"role\": string, \"score\": number}], "
+        "\"weakness\": [string], \"suggestions\": [string]}. "
+        "Rules: score must be between 0 and 100, recommended_roles max 3 entries, weakness/suggestions max 5 each.\n\n"
+        f"Candidate Data:\n{json.dumps(extracted_data, ensure_ascii=True)}"
+    )
+
+    try:
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": "Return strict JSON only."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+            max_tokens=500,
+        )
+
+        raw = (completion.choices[0].message.content or "").strip()
+        parsed = _extract_first_json_object(raw)
+        if not parsed:
+            logger.warning("AI prediction parse failed; using fallback prediction.")
+            return _fallback_prediction(extracted_data, feature_vector)
+
+        score = float(parsed.get("score", 0))
+        score = round(max(0.0, min(100.0, score)), 2)
+
+        role = str(parsed.get("role") or "").strip()
+        recommended_roles = parsed.get("recommended_roles") or []
+        normalized_roles = []
+        for item in recommended_roles[:3]:
+            if not isinstance(item, dict):
+                continue
+            r = str(item.get("role") or "").strip()
+            if not r:
+                continue
+            try:
+                s = round(float(item.get("score", 0)), 2)
+            except Exception:
+                s = 0.0
+            normalized_roles.append({"role": r, "score": max(0.0, min(100.0, s))})
+
+        if not normalized_roles:
+            normalized_roles = _fallback_prediction(extracted_data, feature_vector)["recommended_roles"]
+
+        if not role:
+            role = normalized_roles[0]["role"] if normalized_roles else "Software Engineer"
+
+        weakness = parsed.get("weakness") if isinstance(parsed.get("weakness"), list) else []
+        suggestions = parsed.get("suggestions") if isinstance(parsed.get("suggestions"), list) else []
+        weakness = [str(x).strip() for x in weakness if str(x).strip()][:5]
+        suggestions = [str(x).strip() for x in suggestions if str(x).strip()][:5]
+
+        if not weakness:
+            weakness = ["Unable to infer weaknesses confidently from provided data"]
+        if not suggestions:
+            suggestions = ["Improve weak areas with consistent weekly practice"]
+
+        return {
+            "score": score,
+            "role": role,
+            "recommended_roles": normalized_roles,
+            "weakness": weakness,
+            "suggestions": suggestions,
+            "source": "groq",
+        }
+    except Exception as exc:
+        logger.error("Groq readiness prediction failed: %s", exc)
+        return _fallback_prediction(extracted_data, feature_vector)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # HELPER: Analysis Pipeline
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1116,52 +1325,31 @@ def run_analysis_pipeline(
     user: User,
     db: Session,
     resume_text: str = "",
-    github_username: str = "",
-    leetcode_username: str = "",
+    **_kwargs,
 ):
     """
     Core logic to extract features, run model, and save result.
-    call this whenever profile details change.
+    Call this whenever profile details change.
+
+    Extra keyword arguments (e.g. legacy github_username, leetcode_username)
+    are silently ignored for backward compatibility.
     """
     # If no resume text provided, try to use saved
     if not resume_text:
         resume_text = user.resume_text or ""
-    
-    # If no usernames provided, use saved
-    if not github_username:
-        github_username = user.github_username or ""
-    if not leetcode_username:
-        leetcode_username = user.leetcode_username or ""
 
-    # 1. Extract feature vector
+    # 1. Extract feature vector (resume-only)
     feature_vector = build_complete_feature_vector(
         resume_text=resume_text,
-        github_username=github_username,
-        leetcode_username=leetcode_username,
     )
 
-    # 2. Run readiness prediction
-    df = pd.DataFrame([feature_vector])
-    for col in feature_columns:
-        if col not in df.columns:
-            df[col] = 0
-    df = df[feature_columns]
-
-    raw_score = 40.0 # Default fallback
-    if models_loaded and model is not None:
-        try:
-            raw_score = float(model.predict(df)[0])
-        except Exception as e:
-            logger.error(f"Prediction failed: {e}")
-    else:
-        logger.warning("Profile analysis: models not loaded, using fallback score.")
-
-    # 3. Calibrate score
-    MODEL_MIN = 6.0
-    MODEL_MAX = 80.0
-    readiness = ((raw_score - MODEL_MIN) / (MODEL_MAX - MODEL_MIN)) * 100
-    readiness = max(0, min(100, readiness))
-    readiness = round(readiness, 2)
+    # 2. AI readiness + role prediction using structured extracted data.
+    extracted_data = build_structured_candidate_data(
+        feature_vector=feature_vector,
+        resume_text=resume_text,
+    )
+    ai_prediction = get_ai_prediction(extracted_data, feature_vector)
+    readiness = float(ai_prediction.get("score", 0))
 
     # 4. Categorise
     if readiness >= 75:
@@ -1171,9 +1359,8 @@ def run_analysis_pipeline(
     else:
         category = "Needs Improvement"
 
-    # 5. Role ranking
-    top_roles = rank_roles(feature_vector, top_k=3)
-    role_list = [{"role": role, "score": round(score, 4)} for role, score in top_roles]
+    # 5. Role recommendation from AI
+    role_list = ai_prediction.get("recommended_roles", [])
 
     # 6. Calculate category-specific scores (scale 0-10)
     def calculate_category_scores(fvec, u):
@@ -1200,17 +1387,17 @@ def run_analysis_pipeline(
         if len(detected_skills) < 10:
             missing_info["skill"].extend(missing_skills[:3])
         
-        # Contact: Name, Email (always present), Mobile, Github
+        # Contact: Name, Email (always present), Mobile, LinkedIn
         contact = 5.0 # baseline for registered user
         if u.mobile_number: 
             contact += 2.5
         else:
             missing_info["contact"].append("Mobile Number")
             
-        if u.github_username: 
+        if u.linkedin_profile: 
             contact += 2.5
         else:
-            missing_info["contact"].append("GitHub Link")
+            missing_info["contact"].append("LinkedIn Profile")
         
         # Internships: 1=5, 2=8, 3+=10
         intern_keys = ["internship_backend", "internship_ai", "internship_cloud", "internship_security", "internship_mobile", "internship_data"]
@@ -1252,20 +1439,29 @@ def run_analysis_pipeline(
 
     # 7. Generate AI Suggestions
     from services.suggestion_engine import generate_suggestions
-    ai_suggestions = generate_suggestions(
+    engine_suggestions = generate_suggestions(
         readiness_score=readiness,
         features=feature_vector,
         categories_scores=cat_scores,
         resume_text=resume_text
     )
+    ai_suggestions = {
+        "llm": {
+            "weakness": ai_prediction.get("weakness", []),
+            "suggestions": ai_prediction.get("suggestions", []),
+            "role": ai_prediction.get("role", ""),
+            "source": ai_prediction.get("source", "fallback"),
+        },
+        "rules": engine_suggestions,
+    }
 
     # 8. Save result
     try:
         analysis = AnalysisResult(
             user_id=user.id,
             resume_text_preview=resume_text[:200] if resume_text else "",
-            github_username=github_username,
-            leetcode_username=leetcode_username,
+            github_username="",
+            leetcode_username="",
             features=json.dumps(feature_vector) if isinstance(feature_vector, dict) else feature_vector,
             readiness_score=readiness,
             readiness_category=category,
@@ -1526,21 +1722,16 @@ class StudentFeatures(BaseModel):
 
 class FeatureExtractionRequest(BaseModel):
     resume_text: str = ""
-    github_username: str = ""
-    leetcode_username: str = ""
 
 
 @app.post("/api/extract-features")
 def extract_features(data: FeatureExtractionRequest):
     """
-    Extract a 64-feature dictionary from resume text, GitHub profile,
-    and LeetCode profile. The output is directly usable as input to
-    the /analyze-student endpoint.
+    Extract a 56-feature dictionary from resume text.
+    The output is directly usable as input to the /analyze-student endpoint.
     """
     feature_vector = build_complete_feature_vector(
         resume_text=data.resume_text,
-        github_username=data.github_username,
-        leetcode_username=data.leetcode_username,
     )
     return {"features": feature_vector}
 
@@ -1569,7 +1760,7 @@ def predict_skills(data: SkillPredictionRequest):
         }
     
     # 2. Fallback to ML Model (Predictive)
-    if not models_loaded or roadmap_model is None:
+    if not roadmap_models_loaded or roadmap_model is None:
         logger.warning("ML Prediction skipped: models not yet loaded.")
         return {
             "role": role,
@@ -1893,8 +2084,6 @@ def roadmap_assistant(data: RoadmapAssistantRequest):
 @app.post("/api/analyze-full-profile")
 async def analyze_full_profile(
     resume: Optional[UploadFile] = File(None),
-    github_username: str = Form(""),
-    leetcode_username: str = Form(""),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1938,27 +2127,15 @@ async def analyze_full_profile(
     # ── 2. Extract feature vector ─────────────────────────────────────
     feature_vector = build_complete_feature_vector(
         resume_text=resume_text,
-        github_username=github_username.strip(),
-        leetcode_username=leetcode_username.strip(),
     )
 
-    # ── 3. Run readiness prediction ───────────────────────────────────
-    df = pd.DataFrame([feature_vector])
-    for col in feature_columns:
-        if col not in df.columns:
-            df[col] = 0
-    df = df[feature_columns]
-
-    raw_score = float(model.predict(df)[0])
-
-    # ── 3b. Calibrate score ──────────────────────────────────────────
-    # The XGBoost model outputs in a compressed range (~6 to ~80).
-    # Normalize to a 0-100 scale for user-friendly display.
-    MODEL_MIN = 6.0    # model output when all features = 0
-    MODEL_MAX = 80.0   # model output when all features maxed
-    readiness = ((raw_score - MODEL_MIN) / (MODEL_MAX - MODEL_MIN)) * 100
-    readiness = max(0, min(100, readiness))  # clamp to 0-100
-    readiness = round(readiness, 2)
+    # ── 3. Run readiness + role prediction using Groq AI ─────────────
+    extracted_data = build_structured_candidate_data(
+        feature_vector=feature_vector,
+        resume_text=resume_text,
+    )
+    ai_prediction = get_ai_prediction(extracted_data, feature_vector)
+    readiness = float(ai_prediction.get("score", 0))
 
     # ── 4. Categorise readiness ───────────────────────────────────────
     if readiness >= 75:
@@ -1968,17 +2145,18 @@ async def analyze_full_profile(
     else:
         category = "Needs Improvement"
 
-    # ── 5. Role ranking ───────────────────────────────────────────────
-    top_roles = rank_roles(feature_vector, top_k=3)
-    role_list = [{"role": role, "score": round(score, 4)} for role, score in top_roles]
+    # ── 5. Role recommendation from AI ───────────────────────────────
+    role_list = ai_prediction.get("recommended_roles", [])
+    if not role_list and ai_prediction.get("role"):
+        role_list = [{"role": ai_prediction["role"], "score": readiness}]
 
     # ── 6. Save result to Supabase ────────────────────────────────────
     try:
         analysis = AnalysisResult(
             user_id=current_user.id,
             resume_text_preview=resume_text[:200] if resume_text else "",
-            github_username=github_username.strip(),
-            leetcode_username=leetcode_username.strip(),
+            github_username="",
+            leetcode_username="",
             features=feature_vector,
             readiness_score=readiness,
             readiness_category=category,
@@ -1986,11 +2164,7 @@ async def analyze_full_profile(
         )
         db.add(analysis)
 
-        # Auto-save usernames and resume to user profile
-        if github_username.strip() and not current_user.github_username:
-            current_user.github_username = github_username.strip()
-        if leetcode_username.strip() and not current_user.leetcode_username:
-            current_user.leetcode_username = leetcode_username.strip()
+        # Auto-save resume to user profile
         if resume_text and resume_filename and not current_user.resume_filename:
             current_user.resume_text = resume_text
             current_user.resume_filename = resume_filename
@@ -2019,6 +2193,9 @@ async def analyze_full_profile(
         "readiness_score": readiness,
         "readiness_category": category,
         "recommended_roles": role_list,
+        "weakness": ai_prediction.get("weakness", []),
+        "suggestions": ai_prediction.get("suggestions", []),
+        "prediction_source": ai_prediction.get("source", "fallback"),
         "total_features_used": len(non_zero_features),
         "features": non_zero_features,
     }
@@ -2090,30 +2267,28 @@ def get_history(
 @app.post("/analyze-student")
 @app.post("/api/analyze-student")
 def analyze_student(data: StudentFeatures):
-
-    # Convert input dict to dataframe
-    df = pd.DataFrame([data.features])
-
-    # Ensure all expected columns exist
+    normalized_features = dict(data.features or {})
     for col in feature_columns:
-        if col not in df.columns:
-            df[col] = 0
+        if col not in normalized_features:
+            normalized_features[col] = 0
 
-    df = df[feature_columns]
+    extracted_data = build_structured_candidate_data(
+        feature_vector=normalized_features,
+        resume_text="",
+    )
+    ai_prediction = get_ai_prediction(extracted_data, normalized_features)
+    readiness = float(ai_prediction.get("score", 0))
 
-    # 1️⃣ Readiness Prediction (with calibration)
-    raw_score = float(model.predict(df)[0])
-    MODEL_MIN = 6.0
-    MODEL_MAX = 80.0
-    readiness = ((raw_score - MODEL_MIN) / (MODEL_MAX - MODEL_MIN)) * 100
-    readiness = max(0, min(100, readiness))
-
-    # 2️⃣ Role Ranking
-    top_roles = rank_roles(data.features)
+    top_roles = ai_prediction.get("recommended_roles", [])
+    if not top_roles and ai_prediction.get("role"):
+        top_roles = [{"role": ai_prediction["role"], "score": readiness}]
 
     return {
         "readiness_score": round(readiness, 2),
-        "recommended_roles": top_roles
+        "recommended_roles": top_roles,
+        "weakness": ai_prediction.get("weakness", []),
+        "suggestions": ai_prediction.get("suggestions", []),
+        "prediction_source": ai_prediction.get("source", "fallback"),
     }
 
 

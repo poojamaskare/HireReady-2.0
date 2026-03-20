@@ -6,7 +6,7 @@ An AI-powered placement readiness evaluation platform. HireReady assesses studen
 
 - **Automated Resume Parsing**: Upload a PDF resume and automatically extract key technical qualifications.
 - **GitHub & LeetCode Integration**: Fetch and aggregate coding activity natively.
-- **AI Readiness Scoring**: Employs an XGBoost Machine Learning model trained on placement data to calculate a realistic readiness percentage (0-100%).
+- **AI Readiness Scoring**: Uses Groq LLM evaluation over structured profile signals to generate readiness score and role recommendations.
 - **Dynamic Role Quizzes**: Uses the Groq API (LLMs) to generate real-time technical quizzes tailored to specific job roles and difficulties (e.g., "Frontend Developer" on "Hard").
 - **Quiz Retest System**: Users can securely re-take exact past quizzes to gauge their improvement, tracked in a PostgreSQL Supabase database.
 - **Modern UI/UX**: Built with React and Vite, featuring a sleek, dark-themed glassmorphic interface.
@@ -25,8 +25,7 @@ An AI-powered placement readiness evaluation platform. HireReady assesses studen
 - Passlib + JWT (Authentication)
 
 **Machine Learning / AI**
-- Scikit-Learn / XGBoost (`readiness_model.pkl`)
-- Groq (`llama3-8b-8192` or equivalent for quiz generation)
+- Groq (`llama3-8b-8192` or equivalent for readiness and quiz generation)
 
 ## Project Structure
 
@@ -47,7 +46,7 @@ Hire Ready 2.0/
 │   └── quiz_generator.py   # AI prompt logic using Groq
 │
 ├── main.py                 # FastAPI Application execution entrypoint
-└── readiness_model.pkl     # Pre-trained XGBoost weights
+└── uploads/                # User-uploaded files (resumes/results)
 ```
 
 ## Local Development Setup

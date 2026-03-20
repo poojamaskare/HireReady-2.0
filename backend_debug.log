@@ -1491,3 +1491,140 @@ WHERE users.id = %(id_1)s
 2026-03-20 17:52:32,704 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/specializations/deep-learning-for-computer-vision
 2026-03-20 17:52:33,032 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.freecodecamp.org/learn/intermediate-markdown/convolutional-neural-networks/
 2026-03-20 17:52:33,086 [INFO] main: is_valid_url: INVALID (GET 404) - https://cloud.google.com/certification/professional-machine-learning-engineer
+2026-03-20 21:50:47,555 [INFO] main: Loading ML models in background thread...
+2026-03-20 21:50:47,563 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 21:50:54,083 [INFO] main: ML models loaded successfully in 6.53 seconds.
+2026-03-20 22:01:22,149 [INFO] main: Loading ML models in background thread...
+2026-03-20 22:01:22,158 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 22:01:36,916 [INFO] main: Loading ML models in background thread...
+2026-03-20 22:01:36,919 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 22:01:42,928 [INFO] main: ML models loaded successfully in 6.01 seconds.
+2026-03-20 22:23:01,195 [INFO] main: Updated resume for user 24204015@apsit.edu.in: kartika resume .pdf
+2026-03-20 22:23:02,293 [INFO] services.feature_analyzer: GitHub: cleaned username = 'Kartika2005'
+2026-03-20 22:23:02,628 [ERROR] services.feature_analyzer: GitHub API request failed for 'Kartika2005': 401 Client Error: Unauthorized for url: https://api.github.com/users/Kartika2005/repos?per_page=100&page=1&type=owner
+2026-03-20 22:23:02,628 [INFO] services.feature_analyzer: LeetCode: cleaned username = 'Kartika15'
+2026-03-20 22:23:04,103 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-20 22:23:04,220 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-20 22:23:05,639 [INFO] main: Auto-analysis saved: 59e57f9f-7eb2-49e2-8404-103b0cd9f1db
+2026-03-20 22:46:22,498 [INFO] main: Loading ML models in background thread...
+2026-03-20 22:46:22,509 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 22:46:35,998 [INFO] main: ML models loaded successfully in 13.50 seconds.
+2026-03-20 22:51:50,395 [INFO] main: Loading ML models in background thread...
+2026-03-20 22:51:50,404 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 22:52:29,717 [INFO] main: Loading ML models in background thread...
+2026-03-20 22:52:29,727 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 22:52:35,735 [INFO] main: ML models loaded successfully in 6.02 seconds.
+2026-03-20 22:53:51,456 [INFO] main: Loading ML models in background thread...
+2026-03-20 22:53:51,465 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 22:53:57,521 [INFO] main: ML models loaded successfully in 6.06 seconds.
+2026-03-20 22:55:07,862 [INFO] main: Loading ML models in background thread...
+2026-03-20 22:55:07,872 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 22:55:13,961 [INFO] main: ML models loaded successfully in 6.10 seconds.
+2026-03-20 22:55:43,197 [INFO] main: Loading ML models in background thread...
+2026-03-20 22:55:43,206 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 22:55:57,503 [INFO] main: Loading ML models in background thread...
+2026-03-20 22:55:57,515 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 22:56:03,658 [INFO] main: ML models loaded successfully in 6.15 seconds.
+2026-03-20 22:56:52,036 [INFO] main: Loading ML models in background thread...
+2026-03-20 22:56:52,046 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 22:58:47,382 [INFO] main: Updated resume for user 24204015@apsit.edu.in: kartika resume .pdf
+2026-03-20 22:58:48,493 [ERROR] main: Unhandled error on PUT /api/auth/profile
+Traceback (most recent call last):
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/middleware/cors.py", line 95, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/middleware/cors.py", line 153, in simple_response
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/main.py", line 1614, in update_profile
+    latest_analysis = run_analysis_pipeline(
+                      ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/main.py", line 1342, in run_analysis_pipeline
+    feature_vector = build_complete_feature_vector(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/services/feature_analyzer.py", line 265, in build_complete_feature_vector
+    _validate_feature_vector(feature_vector)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/services/feature_analyzer.py", line 284, in _validate_feature_vector
+    raise ValueError(
+ValueError: Feature vector schema mismatch. Missing columns: none. Extra columns: {'Git'}.
+2026-03-20 22:59:28,104 [INFO] main: Updated resume for user 24204015@apsit.edu.in: kartika resume .pdf
+2026-03-20 22:59:29,186 [ERROR] main: Unhandled error on PUT /api/auth/profile
+Traceback (most recent call last):
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/middleware/cors.py", line 95, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/middleware/cors.py", line 153, in simple_response
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniforge/base/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/main.py", line 1614, in update_profile
+    latest_analysis = run_analysis_pipeline(
+                      ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/main.py", line 1342, in run_analysis_pipeline
+    feature_vector = build_complete_feature_vector(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/services/feature_analyzer.py", line 265, in build_complete_feature_vector
+    _validate_feature_vector(feature_vector)
+  File "/Users/kartika/Documents/GitHub/Hire Ready 2.0/services/feature_analyzer.py", line 284, in _validate_feature_vector
+    raise ValueError(
+ValueError: Feature vector schema mismatch. Missing columns: none. Extra columns: {'Git'}.
+2026-03-20 23:01:14,081 [INFO] main: Loading ML models in background thread...
+2026-03-20 23:01:14,090 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-20 23:01:20,151 [INFO] main: ML models loaded successfully in 6.07 seconds.

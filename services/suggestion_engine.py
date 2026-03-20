@@ -15,7 +15,7 @@ def generate_suggestions(readiness_score, features, categories_scores, resume_te
     Uses Groq API (Llama 3.3).
     """
     if not client:
-        return ["Add more technical skills to your profile.", "Complete more industry projects.", "Include links to your GitHub/LeetCode."]
+        return ["Add more technical skills to your profile.", "Complete more industry projects.", "Add relevant internship experience."]
 
     prompt = f"""
     You are an expert career coach. Analyze this student's resume data and provide 3-5 high-impact suggestions to reach a 10/10 placement-ready score.

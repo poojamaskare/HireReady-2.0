@@ -7,8 +7,8 @@ import {
 import { Alert } from '@/components/ui/alert';
 import { ProgressBar, ProgressRoot, ProgressValueText, ProgressLabel } from '@/components/ui/progress';
 import { 
-  FileUp, Paperclip, File, CheckCircle2, Lightbulb, 
-  Trophy, AlertTriangle, XCircle, Info 
+  FileUp, Paperclip, File, FileText, CheckCircle2, Lightbulb, 
+  Trophy, AlertTriangle, XCircle, Info, Briefcase 
 } from 'lucide-react';
 
 const API_BASE = '/api';
@@ -328,6 +328,46 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
                   missing={result.missing_details?.contact}
                 />
               </SimpleGrid>
+
+              {/* Predicted Job Roles */}
+              {result.recommended_roles?.length > 0 && (
+                <Box bg="gray.900/40" p={6} borderRadius="3xl" border="1px solid" borderColor="gray.800">
+                  <HStack mb={4} gap={3}>
+                    <Icon asChild color="purple.400" w={5} h={5}><Briefcase /></Icon>
+                    <Heading size="xs" color="gray.400" textTransform="uppercase" letterSpacing="widest">Predicted Job Roles</Heading>
+                  </HStack>
+                  <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
+                    {result.recommended_roles.map((r, idx) => (
+                      <Box
+                        key={idx}
+                        bg={idx === 0 ? 'purple.600/10' : 'gray.800/40'}
+                        p={5}
+                        borderRadius="2xl"
+                        border="1px solid"
+                        borderColor={idx === 0 ? 'purple.500/30' : 'gray.700'}
+                        textAlign="center"
+                        _hover={{ borderColor: 'purple.500/50', bg: idx === 0 ? 'purple.600/15' : 'gray.800/60' }}
+                        transition="all 0.3s"
+                      >
+                        <Badge
+                          colorPalette={idx === 0 ? 'purple' : 'gray'}
+                          variant="subtle"
+                          fontSize="2xs"
+                          mb={2}
+                        >
+                          #{idx + 1} Match
+                        </Badge>
+                        <Text fontSize="md" fontWeight="700" color="white" mb={1}>
+                          {r.role}
+                        </Text>
+                        <Text fontSize="2xl" fontWeight="800" color={idx === 0 ? 'purple.400' : 'gray.400'}>
+                          {r.score}<Text as="span" fontSize="xs" color="gray.500" fontWeight="400">/100</Text>
+                        </Text>
+                      </Box>
+                    ))}
+                  </SimpleGrid>
+                </Box>
+              )}
 
               {/* Skills Cloud */}
               <Box bg="gray.900/40" p={6} borderRadius="3xl" border="1px solid" borderColor="gray.800">
