@@ -39,6 +39,15 @@ class User(Base):
     division = Column(String(1), nullable=True)   # A, B, C
     semester = Column(Integer, nullable=True)     # 1-8
     sgpa = Column(Float, nullable=True)           # 0.0-10.0
+    marks_10th = Column(Float, nullable=True)
+    marks_12th = Column(Float, nullable=True)
+    diploma_avg = Column(Float, nullable=True)
+    sem1 = Column(Float, nullable=True)
+    sem2 = Column(Float, nullable=True)
+    sem3 = Column(Float, nullable=True)
+    sem4 = Column(Float, nullable=True)
+    sem5 = Column(Float, nullable=True)
+    sem6 = Column(Float, nullable=True)
     atkt_count = Column(Integer, default=0)
     atkt_subjects = Column(Text, default="")
     drop_year = Column(String(3), default="No")   # "Yes" | "No"

@@ -315,18 +315,7 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
                   color={result.project_score > 7 ? 'green' : result.project_score > 4 ? 'orange' : 'red'}
                   missing={result.missing_details?.proj}
                 />
-                <ScoreCard 
-                  label="Hands-on Experience" 
-                  value={result.experience_score || 0} 
-                  color={result.experience_score > 7 ? 'green' : result.experience_score > 4 ? 'orange' : 'red'}
-                  missing={result.missing_details?.exp}
-                />
-                <ScoreCard 
-                  label="Online Presence & Contact" 
-                  value={result.contact_score || 0} 
-                  color={result.contact_score > 7 ? 'green' : result.contact_score > 4 ? 'orange' : 'red'}
-                  missing={result.missing_details?.contact}
-                />
+
               </SimpleGrid>
 
               {/* Predicted Job Roles */}

@@ -101,6 +101,15 @@ def ensure_db_schema_compatibility() -> None:
         conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS division VARCHAR(1)'))
         conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS semester INTEGER'))
         conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sgpa DOUBLE PRECISION'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS marks_10th DOUBLE PRECISION'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS marks_12th DOUBLE PRECISION'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS diploma_avg DOUBLE PRECISION'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem1 DOUBLE PRECISION'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem2 DOUBLE PRECISION'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem3 DOUBLE PRECISION'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem4 DOUBLE PRECISION'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem5 DOUBLE PRECISION'))
+        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem6 DOUBLE PRECISION'))
         conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS atkt_count INTEGER DEFAULT 0'))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS atkt_subjects TEXT DEFAULT ''"))
         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS drop_year VARCHAR(3) DEFAULT 'No'"))
@@ -918,21 +927,54 @@ def resolve_frontend_base_url(request: Optional[Request] = None) -> str:
     return "http://localhost:5173"
 
 
+def _first_env(*names: str, default: str = "") -> str:
+    """Return first non-empty environment variable from a list of names."""
+    for name in names:
+        value = (os.getenv(name, "") or "").strip()
+        if value:
+            return value
+    return default
+
+
+def _env_bool(*names: str, default: bool = False) -> bool:
+    """Parse a boolean from env vars using common true/false strings."""
+    value = _first_env(*names)
+    if not value:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
 def send_password_reset_email(recipient_email: str, token: str, request: Optional[Request] = None) -> bool:
     """Send a password reset link to the given email using SMTP."""
-    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    email_user = os.getenv("EMAIL_USER", "") or os.getenv("SMTP_USERNAME", "")
-    email_pass = os.getenv("EMAIL_PASS", "") or os.getenv("SMTP_PASSWORD", "")
-    email_from = os.getenv("EMAIL_FROM", "HireReady")
+    smtp_host = _first_env("SMTP_HOST", "MAIL_HOST", "MAIL_SERVER", default="smtp.gmail.com")
+    smtp_port = int(_first_env("SMTP_PORT", "MAIL_PORT", default="587"))
+    email_user = _first_env(
+        "EMAIL_USER",
+        "EMAIL_USERNAME",
+        "SMTP_USERNAME",
+        "MAIL_USERNAME",
+        "MAIL_USER",
+    )
+    email_pass = _first_env(
+        "EMAIL_PASS",
+        "EMAIL_PASSWORD",
+        "SMTP_PASSWORD",
+        "MAIL_PASSWORD",
+        "APP_PASSWORD",
+    )
+    email_from = _first_env("EMAIL_FROM", "MAIL_FROM", default="HireReady")
     frontend_base_url = resolve_frontend_base_url(request)
+    smtp_use_ssl = _env_bool("SMTP_USE_SSL", "MAIL_USE_SSL", default=(smtp_port == 465))
+    smtp_use_tls = _env_bool("SMTP_USE_TLS", "MAIL_USE_TLS", default=(not smtp_use_ssl))
 
     if not email_user or not email_pass:
         # SMTP not configured: don't treat this as an error for the
         # forgot-password endpoint. Log the reset link so developers
         # can copy it during local development / testing.
         reset_link = f"{frontend_base_url}/reset-password?token={token}"
-        logger.warning("SMTP credentials missing; logging reset link instead of sending email.")
+        logger.warning(
+            "SMTP credentials missing; set EMAIL_USER/EMAIL_PASS (or SMTP_USERNAME/SMTP_PASSWORD, MAIL_USERNAME/MAIL_PASSWORD). Logging reset link instead of sending email."
+        )
         logger.info("Password reset link for %s: %s", recipient_email, reset_link)
         return True
 
@@ -959,10 +1001,12 @@ def send_password_reset_email(recipient_email: str, token: str, request: Optiona
     msg.attach(MIMEText(body, "plain"))
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+        smtp_client = smtplib.SMTP_SSL if smtp_use_ssl else smtplib.SMTP
+        with smtp_client(smtp_host, smtp_port, timeout=20) as server:
             server.ehlo()
-            server.starttls()
-            server.ehlo()
+            if smtp_use_tls and not smtp_use_ssl:
+                server.starttls()
+                server.ehlo()
             server.login(email_user, email_pass)
             # CRITICAL: Envelope sender MUST be a valid email address (email_user)
             server.sendmail(email_user, [recipient_email], msg.as_string())
@@ -1082,6 +1126,15 @@ def get_me(current_user: User = Depends(get_current_user)):
         "division": current_user.division or "",
         "semester": current_user.semester,
         "sgpa": current_user.sgpa,
+        "marks_10th": current_user.marks_10th,
+        "marks_12th": current_user.marks_12th,
+        "diploma_avg": current_user.diploma_avg,
+        "sem1": current_user.sem1,
+        "sem2": current_user.sem2,
+        "sem3": current_user.sem3,
+        "sem4": current_user.sem4,
+        "sem5": current_user.sem5,
+        "sem6": current_user.sem6,
         "atkt_count": current_user.atkt_count,
         "atkt_subjects": current_user.atkt_subjects or "",
         "drop_year": current_user.drop_year or "No",
@@ -1380,11 +1433,16 @@ def run_analysis_pipeline(
             "Python", "Java", "C++", "JavaScript", "SQL", "Node", "React", "NextJS",
             "Docker", "Kubernetes", "CI/CD", "AWS", "NLP", "LLM", "SystemDesign", "DBMS"
         ]
-        detected_skills = [k for k in skill_keys if fvec.get(k, 0) > 0]
-        skill_score = min(10.0, len(detected_skills) / 1.5) # Roughly 15 skills for 10/10
         
-        missing_skills = [k for k in skill_keys if k not in detected_skills]
-        if len(detected_skills) < 10:
+        # Calculate score based on core skills
+        core_detected_skills = [k for k in skill_keys if fvec.get(k, 0) > 0]
+        skill_score = min(10.0, len(core_detected_skills) / 1.5) # Roughly 15 skills for 10/10
+        
+        # Display ALL extracted skills, not just core scoring skills
+        all_detected_skills = [k for k, v in fvec.items() if k in SKILL_FEATURE_KEYS and isinstance(v, (int, float)) and v > 0]
+        
+        missing_skills = [k for k in skill_keys if k not in core_detected_skills]
+        if len(core_detected_skills) < 10:
             missing_info["skill"].extend(missing_skills[:3])
         
         # Contact: Name, Email (always present), Mobile, LinkedIn
@@ -1431,7 +1489,7 @@ def run_analysis_pipeline(
             "intern": round(intern_score, 1),
             "exp": round(exp_score, 1),
             "proj": round(proj_score, 1),
-            "skills_list": detected_skills,
+            "skills_list": sorted(all_detected_skills),
             "missing": missing_info
         }
 
@@ -1509,6 +1567,15 @@ async def update_profile(
     division: Optional[str] = Form(None),
     semester: Optional[int] = Form(None),
     sgpa: Optional[float] = Form(None),
+    marks_10th: Optional[str] = Form(None),
+    marks_12th: Optional[str] = Form(None),
+    diploma_avg: Optional[str] = Form(None),
+    sem1: Optional[str] = Form(None),
+    sem2: Optional[str] = Form(None),
+    sem3: Optional[str] = Form(None),
+    sem4: Optional[str] = Form(None),
+    sem5: Optional[str] = Form(None),
+    sem6: Optional[str] = Form(None),
     atkt_count: Optional[int] = Form(None),
     atkt_subjects: Optional[str] = Form(None),
     drop_year: Optional[str] = Form(None),
@@ -1556,6 +1623,44 @@ async def update_profile(
     if division is not None: current_user.division = division.strip()
     if semester is not None: current_user.semester = semester
     if sgpa is not None: current_user.sgpa = sgpa
+
+    def _parse_optional_float(value: Optional[str]) -> Optional[float]:
+        if value is None:
+            return None
+        value = value.strip()
+        if value == "":
+            return None
+        try:
+            return float(value)
+        except ValueError:
+            return None
+
+    if marks_10th is not None: current_user.marks_10th = _parse_optional_float(marks_10th)
+    if marks_12th is not None: current_user.marks_12th = _parse_optional_float(marks_12th)
+    if diploma_avg is not None: current_user.diploma_avg = _parse_optional_float(diploma_avg)
+    if sem1 is not None: current_user.sem1 = _parse_optional_float(sem1)
+    if sem2 is not None: current_user.sem2 = _parse_optional_float(sem2)
+    if sem3 is not None: current_user.sem3 = _parse_optional_float(sem3)
+    if sem4 is not None: current_user.sem4 = _parse_optional_float(sem4)
+    if sem5 is not None: current_user.sem5 = _parse_optional_float(sem5)
+    if sem6 is not None: current_user.sem6 = _parse_optional_float(sem6)
+
+    # Auto-calculate CGPA from available semester SGPIs.
+    # This keeps CGPA consistent with semester-wise academic inputs.
+    sgpi_values = [
+        current_user.sem1,
+        current_user.sem2,
+        current_user.sem3,
+        current_user.sem4,
+        current_user.sem5,
+        current_user.sem6,
+    ]
+    valid_sgpi_values = [v for v in sgpi_values if v is not None]
+    if valid_sgpi_values:
+        current_user.cgpa = round(sum(valid_sgpi_values) / len(valid_sgpi_values), 2)
+    else:
+        current_user.cgpa = None
+
     if atkt_count is not None: current_user.atkt_count = atkt_count
     if atkt_subjects is not None: current_user.atkt_subjects = atkt_subjects.strip()
     if drop_year is not None: current_user.drop_year = drop_year.strip()
@@ -1638,6 +1743,15 @@ async def update_profile(
             "division": current_user.division or "",
             "semester": current_user.semester,
             "sgpa": current_user.sgpa,
+            "marks_10th": current_user.marks_10th,
+            "marks_12th": current_user.marks_12th,
+            "diploma_avg": current_user.diploma_avg,
+            "sem1": current_user.sem1,
+            "sem2": current_user.sem2,
+            "sem3": current_user.sem3,
+            "sem4": current_user.sem4,
+            "sem5": current_user.sem5,
+            "sem6": current_user.sem6,
             "atkt_count": current_user.atkt_count,
             "atkt_subjects": current_user.atkt_subjects or "",
             "drop_year": current_user.drop_year or "No",
@@ -1663,6 +1777,7 @@ async def update_profile(
             "ai_suggestions": latest_analysis.ai_suggestions,
             "missing_details": latest_analysis.missing_details,
             "total_features_used": len([v for v in (json.loads(latest_analysis.features).values() if isinstance(latest_analysis.features, str) else latest_analysis.features.values() if latest_analysis.features else {}) if v > 0]),
+            "skills_list": sorted([k for k, v in (json.loads(latest_analysis.features) if isinstance(latest_analysis.features, str) else latest_analysis.features or {}).items() if k in SKILL_FEATURE_KEYS and isinstance(v, (int, float)) and v > 0]),
             "created_at": latest_analysis.created_at
         } if latest_analysis else None
     }
@@ -1703,6 +1818,7 @@ def get_latest_analysis(
         "ai_suggestions": latest.ai_suggestions,
         "missing_details": latest.missing_details,
         "total_features_used": len([v for v in (json.loads(latest.features).values() if isinstance(latest.features, str) else latest.features.values() if latest.features else {}) if v > 0]),
+        "skills_list": sorted([k for k, v in (json.loads(latest.features) if isinstance(latest.features, str) else latest.features or {}).items() if k in SKILL_FEATURE_KEYS and isinstance(v, (int, float)) and v > 0]),
         "created_at": latest.created_at
     }
 

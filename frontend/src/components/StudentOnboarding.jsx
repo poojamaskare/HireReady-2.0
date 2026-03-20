@@ -25,9 +25,11 @@ const API_BASE = '/api';
 export default function StudentOnboarding({ token, user, onComplete, onLogout }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [savedResumeFilename, setSavedResumeFilename] = useState(user?.resume_filename || '');
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
+    mobile_number: user?.mobile_number || '',
     moodle_id: user?.moodle_id || '',
     prn_no: user?.prn_no || '',
     year: user?.year || '',
@@ -68,6 +70,10 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
   const [errors, setErrors] = useState({});
   const totalSteps = 6;
 
+  useEffect(() => {
+    setSavedResumeFilename(user?.resume_filename || '');
+  }, [user?.resume_filename]);
+
   // Progress Calculation
   const calculateProgress = () => {
     const fields = [
@@ -82,7 +88,7 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
       formData.linkedin_profile,
       formData.certifications,
       formData.achievements,
-      formData.resumeFile
+      formData.resumeFile || savedResumeFilename
     ];
     
     let filledCount = fields.filter(f => f && String(f).trim() !== '').length;
@@ -97,9 +103,20 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
 
   const currentProgress = calculateProgress();
 
+  const getVisibleSemesters = () => {
+    const startSem = educationType === 'diploma' ? 3 : 1;
+    const selectedSem = Number(formData.semester);
+    const endSem = Number.isFinite(selectedSem) && selectedSem > 0
+      ? Math.min(6, selectedSem)
+      : 6;
+    const semesters = [];
+    for (let sem = startSem; sem <= endSem; sem += 1) semesters.push(sem);
+    return semesters;
+  };
+
   // Compute CGPI and converted percentage from semester SGPIs
   const computeCgpiAndPercentage = () => {
-    const semKeys = educationType === 'diploma' ? ['sem3','sem4','sem5','sem6'] : ['sem1','sem2','sem3','sem4','sem5','sem6'];
+    const semKeys = getVisibleSemesters().map((s) => `sem${s}`);
     const vals = semKeys
       .map(k => parseFloat(formData[k]))
       .filter(v => !Number.isNaN(v));
@@ -122,18 +139,9 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
       if (!formData.semester) newErrors.semester = 'Semester is required';
     }
     if (step === 2) {
-        // SGPA removed; validate semester SGPIs only
-        // basic marks validation
-        const checkPercent = (val) => val === '' || (Number(val) >= 0 && Number(val) <= 100);
-        if (!checkPercent(formData.marks_10th)) newErrors.marks_10th = 'Enter a valid 10th percentage (0-100)';
-        if (educationType === '12th') {
-          if (!checkPercent(formData.marks_12th)) newErrors.marks_12th = 'Enter a valid 12th percentage (0-100)';
-        } else {
-          if (!checkPercent(formData.diploma_avg)) newErrors.diploma_avg = 'Enter a valid diploma average (0-100)';
-        }
-        // semesters use SGPI (scale 0-10)
+        // Semesters use SGPI (scale 0-10).
         const checkSGPI = (val) => val === '' || (Number(val) >= 0 && Number(val) <= 10);
-        const semKeys = educationType === 'diploma' ? ['sem3','sem4','sem5','sem6'] : ['sem1','sem2','sem3','sem4','sem5','sem6'];
+        const semKeys = getVisibleSemesters().map((s) => `sem${s}`);
         semKeys.forEach(s => {
           if (!checkSGPI(formData[s])) newErrors[s] = 'Enter valid SGPI (0.00 - 10.00)';
         });
@@ -194,6 +202,8 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
       }
       
       const result = await resp.json();
+      setSavedResumeFilename(result?.user?.resume_filename || '');
+      updateField('resumeFile', null);
       toaster.create({ title: 'Profile Updated Successfully!', type: 'success' });
       onComplete(result.user, result.analysis);
     } catch (err) {
@@ -376,6 +386,15 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
                     {...inputStyles}
                   />
                 </Field>
+                <Field label="Phone Number">
+                  <Input
+                    type="tel"
+                    placeholder="Enter mobile number"
+                    value={formData.mobile_number}
+                    onChange={(e) => updateField('mobile_number', e.target.value)}
+                    {...inputStyles}
+                  />
+                </Field>
                 <Field label="Current Year" required errorText={errors.year}>
                   <NativeSelectRoot {...inputStyles}>
                     <NativeSelectField
@@ -426,95 +445,28 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
               </HStack>
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={6}>
                 <Box gridColumn={{ md: 'span 2' }}>
-                  <Text fontSize="sm" color="gray.300" mb={2} fontWeight="semibold">Education Type</Text>
-                  <HStack spacing={4}>
-                    <Button
-                      size="sm"
-                      variant={educationType === '12th' ? 'solid' : 'outline'}
-                      colorPalette={educationType === '12th' ? 'blue' : 'gray'}
-                      onClick={() => handleEducationTypeChange('12th')}
-                    >
-                      12th (Higher Secondary)
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={educationType === 'diploma' ? 'solid' : 'outline'}
-                      colorPalette={educationType === 'diploma' ? 'blue' : 'gray'}
-                      onClick={() => handleEducationTypeChange('diploma')}
-                    >
-                      Diploma
-                    </Button>
-                  </HStack>
+                  <Text fontSize="sm" color="gray.400">
+                    Enter SGPI semester-wise for your current academics.
+                  </Text>
                 </Box>
 
-                <Field label="10th Marks / Percentage" required>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    placeholder="e.g. 78.5"
-                    value={formData.marks_10th}
-                    onChange={(e) => updateField('marks_10th', e.target.value)}
-                    {...inputStyles}
-                  />
-                </Field>
-
-                {educationType === '12th' ? (
-                  <Field label="12th Marks / Percentage">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      placeholder="e.g. 82.0"
-                      value={formData.marks_12th}
-                      onChange={(e) => updateField('marks_12th', e.target.value)}
-                      {...inputStyles}
-                    />
-                  </Field>
-                ) : (
-                  <Field label="Diploma Average Percentage">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      placeholder="e.g. 74.5"
-                      value={formData.diploma_avg}
-                      onChange={(e) => updateField('diploma_avg', e.target.value)}
-                      {...inputStyles}
-                    />
-                  </Field>
-                )}
-
-                {educationType === '12th' && (
-                  <>
-                    <Field label="1st sem SGPI">
-                      <Input type="number" step="0.01" min="0" max="10" placeholder="e.g. 7.5" value={formData.sem1} onChange={(e) => updateField('sem1', e.target.value)} {...inputStyles} />
+                {getVisibleSemesters().map((sem) => {
+                  const key = `sem${sem}`;
+                  return (
+                    <Field key={key} label={`${sem}${sem === 1 ? 'st' : sem === 2 ? 'nd' : sem === 3 ? 'rd' : 'th'} sem SGPI`} errorText={errors[key]}>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="10"
+                        placeholder="e.g. 8.0"
+                        value={formData[key]}
+                        onChange={(e) => updateField(key, e.target.value)}
+                        {...inputStyles}
+                      />
                     </Field>
-
-                    <Field label="2nd sem SGPI">
-                      <Input type="number" step="0.01" min="0" max="10" placeholder="e.g. 7.8" value={formData.sem2} onChange={(e) => updateField('sem2', e.target.value)} {...inputStyles} />
-                    </Field>
-                  </>
-                )}
-
-                <Field label="3rd sem SGPI">
-                  <Input type="number" step="0.01" min="0" max="10" placeholder="e.g. 8.0" value={formData.sem3} onChange={(e) => updateField('sem3', e.target.value)} {...inputStyles} />
-                </Field>
-
-                <Field label="4th sem SGPI">
-                  <Input type="number" step="0.01" min="0" max="10" placeholder="e.g. 7.9" value={formData.sem4} onChange={(e) => updateField('sem4', e.target.value)} {...inputStyles} />
-                </Field>
-
-                <Field label="5th sem SGPI">
-                  <Input type="number" step="0.01" min="0" max="10" placeholder="e.g. 8.1" value={formData.sem5} onChange={(e) => updateField('sem5', e.target.value)} {...inputStyles} />
-                </Field>
-
-                <Field label="6th sem SGPI">
-                  <Input type="number" step="0.01" min="0" max="10" placeholder="e.g. 8.2" value={formData.sem6} onChange={(e) => updateField('sem6', e.target.value)} {...inputStyles} />
-                </Field>
+                  );
+                })}
 
                 {/* Computed CGPI -> Percentage field */}
                 {(() => {
@@ -525,45 +477,6 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
                     </Field>
                   );
                 })()}
-
-                {/* Current SGPA field removed — CGPI is computed from semester SGPIs above */}
-
-                <Field label="Current ATKT Count">
-                  <Input 
-                    type="number" min="0" value={formData.atkt_count}
-                    onChange={(e) => updateField('atkt_count', parseInt(e.target.value) || 0)}
-                    {...inputStyles}
-                  />
-                </Field>
-
-                {formData.atkt_count > 0 && (
-                  <Box gridColumn={{ md: "span 2" }}>
-                    <Field label="ATKT Subjects">
-                      <Input 
-                        placeholder="Enter subject names separated by commas"
-                        value={formData.atkt_subjects}
-                        onChange={(e) => updateField('atkt_subjects', e.target.value)}
-                        {...inputStyles}
-                      />
-                    </Field>
-                  </Box>
-                )}
-
-                <Box gridColumn={{ md: "span 2" }}>
-                  <Text fontWeight="semibold" fontSize="sm" color="gray.300" mb={3}>Have you had any drop year?</Text>
-                  <HStack gap={4}>
-                    <Button 
-                      size="sm" variant={formData.drop_year === 'Yes' ? 'solid' : 'outline'} 
-                      colorPalette={formData.drop_year === 'Yes' ? 'red' : 'gray'}
-                      onClick={() => updateField('drop_year', 'Yes')}
-                    >Yes</Button>
-                    <Button 
-                      size="sm" variant={formData.drop_year === 'No' ? 'solid' : 'outline'} 
-                      colorPalette={formData.drop_year === 'No' ? 'green' : 'gray'}
-                      onClick={() => updateField('drop_year', 'No')}
-                    >No</Button>
-                  </HStack>
-                </Box>
               </SimpleGrid>
             </VStack>
           )}
@@ -746,7 +659,11 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
                   <Plus size={16} style={{marginRight: '8px'}} /> Choose PDF Resume
                 </Button>
                 <Text color="gray.500" fontSize="sm">
-                  {formData.resumeFile ? `Selected: ${formData.resumeFile.name}` : 'Only .PDF files accepted'}
+                  {formData.resumeFile
+                    ? `Selected: ${formData.resumeFile.name}`
+                    : savedResumeFilename
+                      ? `Uploaded: ${savedResumeFilename}`
+                      : 'Only .PDF files accepted'}
                 </Text>
               </Box>
 
