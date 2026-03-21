@@ -16,7 +16,7 @@ import smtplib
 import time
 import concurrent.futures
 from datetime import datetime, timedelta, timezone
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import quote_plus, urlparse, unquote
 from zipfile import ZipFile, ZIP_DEFLATED
 from functools import lru_cache
 from email.mime.text import MIMEText
@@ -537,10 +537,11 @@ FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
 FRONTEND_INDEX = FRONTEND_DIST / "index.html"
 FRONTEND_ASSETS = FRONTEND_DIST / "assets"
 UPLOADS_DIR = BASE_DIR / "uploads"
-RESUMES_DIR = UPLOADS_DIR / "resumes"
-RESUMES_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR = UPLOADS_DIR / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+SUPABASE_STORAGE_BUCKET_RESUMES = "resumes"
+MAX_RESUME_UPLOAD_BYTES = 2 * 1024 * 1024
 
 # Allow CORS for the React dev server
 app.add_middleware(
@@ -562,6 +563,116 @@ else:
 
 if UPLOADS_DIR.exists():
     app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
+
+def _sanitize_resume_filename(filename: str) -> str:
+    raw = (filename or "resume.pdf").strip() or "resume.pdf"
+    base = Path(raw).name.replace(" ", "_")
+    clean = re.sub(r"[^a-zA-Z0-9._-]+", "_", base).strip("._") or "resume"
+    if not clean.lower().endswith(".pdf"):
+        clean = f"{clean}.pdf"
+    return clean
+
+
+def _build_supabase_public_resume_url(object_path: str) -> str:
+    supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/")
+    if not supabase_url:
+        raise HTTPException(status_code=500, detail="SUPABASE_URL is not configured")
+    encoded_path = requests.utils.requote_uri((object_path or "").lstrip("/"))
+    return f"{supabase_url}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET_RESUMES}/{encoded_path}"
+
+
+def _upload_resume_to_supabase(pdf_bytes: bytes, original_filename: str, user_id: str) -> tuple[str, str]:
+    supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/")
+    supabase_service_key = (os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+    supabase_anon_key = (
+        os.getenv("SUPABASE_ANON_KEY")
+        or os.getenv("SUPABASE_KEY")
+        or os.getenv("VITE_SUPABASE_ANON_KEY")
+        or ""
+    ).strip()
+    auth_key = supabase_service_key or supabase_anon_key
+    if not supabase_url or not auth_key:
+        raise HTTPException(status_code=500, detail="Supabase credentials are not configured")
+
+    safe_name = _sanitize_resume_filename(original_filename)
+    object_path = f"{user_id}/{int(datetime.now(timezone.utc).timestamp())}_{safe_name}"
+    upload_url = f"{supabase_url}/storage/v1/object/{SUPABASE_STORAGE_BUCKET_RESUMES}/{requests.utils.requote_uri(object_path)}"
+
+    headers = {
+        "apikey": auth_key,
+        "Authorization": f"Bearer {auth_key}",
+        "Content-Type": "application/pdf",
+        "x-upsert": "true",
+    }
+    response = requests.post(upload_url, headers=headers, data=pdf_bytes, timeout=30)
+    if response.status_code == 404:
+        response = requests.put(upload_url, headers=headers, data=pdf_bytes, timeout=30)
+    if response.status_code >= 400:
+        error_text = response.text
+        try:
+            payload = response.json()
+            error_text = payload.get("message") or payload.get("error") or str(payload)
+        except Exception:
+            pass
+        logger.error("Supabase resume upload failed (%s): %s", response.status_code, error_text)
+        raise HTTPException(status_code=400, detail=f"Supabase upload failed: {error_text}")
+
+    return _build_supabase_public_resume_url(object_path), object_path
+
+
+def _extract_pdf_text(pdf_bytes: bytes) -> str:
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    text = ""
+    for page in reader.pages:
+        extracted = page.extract_text()
+        if extracted:
+            text += extracted + "\n"
+    return text
+
+
+def _download_resume_pdf_from_url(resume_url: str) -> bytes:
+    candidate = (resume_url or "").strip()
+    if not candidate.startswith("http://") and not candidate.startswith("https://"):
+        raise HTTPException(status_code=400, detail="resume_url must be a valid public URL")
+
+    try:
+        response = requests.get(candidate, timeout=20)
+    except requests.RequestException as exc:
+        logger.error("Resume download failed: %s", exc)
+        raise HTTPException(status_code=400, detail="Unable to fetch resume from storage") from exc
+
+    if response.status_code >= 400:
+        raise HTTPException(status_code=400, detail="Resume URL is not accessible")
+    if len(response.content) > MAX_RESUME_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="Resume size must be 2MB or less")
+    return response.content
+
+
+def _normalize_resume_url_for_response(raw_url: Optional[str]) -> str:
+    url = (raw_url or "").strip()
+    if not url:
+        return ""
+
+    if url.startswith("http://") or url.startswith("https://"):
+        parsed = urlparse(url)
+        if parsed.path.startswith("/uploads/") and parsed.hostname in {"localhost", "127.0.0.1"}:
+            filename = Path(parsed.path).name
+            if filename:
+                try:
+                    return _build_supabase_public_resume_url(filename)
+                except HTTPException:
+                    return ""
+        return url
+
+    normalized = url.replace("\\", "/")
+    filename = Path(normalized).name
+    if not filename:
+        return ""
+    try:
+        return _build_supabase_public_resume_url(unquote(filename))
+    except HTTPException:
+        return ""
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -1586,6 +1697,8 @@ async def update_profile(
     github_profile: Optional[str] = Form(None),
     linkedin_profile: Optional[str] = Form(None),
     achievements: Optional[str] = Form(None),
+    resume_url: Optional[str] = Form(None),
+    resume_filename: Optional[str] = Form(None),
     resume: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1681,35 +1794,47 @@ async def update_profile(
         except:
             pass
 
-    # Handle resume upload
+    # Handle resume upload (store in Supabase only, keep URL in DB)
     if resume and resume.filename:
         try:
-            filename = resume.filename
-            pdf_bytes = await resume.read() # Use await for async file read
-            
-            # Extract text using PyPDF2
-            reader = PdfReader(io.BytesIO(pdf_bytes))
-            text = ""
-            for page in reader.pages:
-                extracted = page.extract_text()
-                if extracted:
-                    text += extracted + "\n"
+            filename = _sanitize_resume_filename(resume.filename)
+            pdf_bytes = await resume.read()
+            if len(pdf_bytes) > MAX_RESUME_UPLOAD_BYTES:
+                raise HTTPException(status_code=400, detail="Resume size must be 2MB or less")
+            if not filename.lower().endswith(".pdf"):
+                raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
-            safe_suffix = Path(filename).name.replace(" ", "_")
-            stored_name = f"{current_user.id}_{int(datetime.now(timezone.utc).timestamp())}_{safe_suffix}"
-            stored_path = RESUMES_DIR / stored_name
-            stored_path.write_bytes(pdf_bytes)
-            
-            # Save strictly necessary fields
+            public_url, _ = _upload_resume_to_supabase(pdf_bytes, filename, str(current_user.id))
+            text = _extract_pdf_text(pdf_bytes)
+
             current_user.resume_filename = filename
-            current_user.resume_url = f"/uploads/resumes/{stored_name}"
-            current_user.resume_text = text  # Store text for analysis
-            
+            current_user.resume_url = public_url
+            current_user.resume_text = text
+
             new_resume_text = text
-            logger.info("Updated resume for user %s: %s", current_user.email, filename)
+            logger.info("Updated resume for user %s via upload: %s", current_user.email, filename)
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error("Failed to process resume upload: %s", e)
             raise HTTPException(status_code=400, detail="Invalid PDF file")
+    elif resume_url is not None:
+        normalized_resume_url = (resume_url or "").strip()
+        if not normalized_resume_url:
+            current_user.resume_url = ""
+            current_user.resume_filename = ""
+            current_user.resume_text = ""
+            new_resume_text = ""
+        else:
+            pdf_bytes = _download_resume_pdf_from_url(normalized_resume_url)
+            text = _extract_pdf_text(pdf_bytes)
+            current_user.resume_url = normalized_resume_url
+            current_user.resume_filename = _sanitize_resume_filename(
+                resume_filename or Path(urlparse(normalized_resume_url).path).name or "resume.pdf"
+            )
+            current_user.resume_text = text
+            new_resume_text = text
+            logger.info("Updated resume for user %s via public URL", current_user.email)
 
     db.commit()
     db.refresh(current_user)
@@ -2218,20 +2343,14 @@ async def analyze_full_profile(
         resume_filename = resume.filename
         try:
             contents = await resume.read()
-            reader = PdfReader(io.BytesIO(contents))
-            for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    resume_text += page_text + "\n"
+            if len(contents) > MAX_RESUME_UPLOAD_BYTES:
+                raise HTTPException(status_code=400, detail="Resume size must be 2MB or less")
+            safe_resume_filename = _sanitize_resume_filename(resume_filename)
+            public_url, _ = _upload_resume_to_supabase(contents, safe_resume_filename, str(current_user.id))
+            resume_text = _extract_pdf_text(contents)
 
-            # Persist uploaded file so TPO resume viewer can open it later.
-            safe_suffix = Path(resume_filename).name.replace(" ", "_")
-            stored_name = f"{current_user.id}_{int(datetime.now(timezone.utc).timestamp())}_{safe_suffix}"
-            stored_path = RESUMES_DIR / stored_name
-            stored_path.write_bytes(contents)
-
-            current_user.resume_filename = resume_filename
-            current_user.resume_url = f"/uploads/resumes/{stored_name}"
+            current_user.resume_filename = safe_resume_filename
+            current_user.resume_url = public_url
             current_user.resume_text = resume_text
         except Exception as exc:
             logger.error("Failed to parse uploaded PDF: %s", exc)
@@ -2869,43 +2988,6 @@ def get_shortlisted_students(
 
     students = db.query(User).filter(User.role == "student").all()
 
-    def normalize_resume_url_for_response(raw_url: Optional[str]) -> str:
-        """Return a stable resume URL that works for both legacy and current stored values."""
-        url = (raw_url or "").strip()
-        if not url:
-            return ""
-
-        # Keep public external links untouched.
-        if url.startswith("http://") or url.startswith("https://"):
-            parsed = urlparse(url)
-            if parsed.path.startswith("/uploads/") and parsed.hostname in {"localhost", "127.0.0.1"}:
-                return parsed.path
-            return url
-
-        normalized = url.replace("\\", "/")
-        lower = normalized.lower()
-
-        # Legacy values may contain absolute filesystem paths. Extract app-relative uploads path.
-        uploads_marker = "/uploads/"
-        idx = lower.find(uploads_marker)
-        if idx != -1:
-            return normalized[idx:]
-
-        # Older records could store /resumes/... without the /uploads prefix.
-        resumes_marker = "/resumes/"
-        ridx = lower.find(resumes_marker)
-        if ridx != -1:
-            return f"/uploads{normalized[ridx:]}"
-
-        # Last fallback: if we can identify a filename, point to canonical resumes location.
-        filename = Path(normalized).name
-        if filename:
-            candidate = RESUMES_DIR / filename
-            if candidate.exists():
-                return f"/uploads/resumes/{filename}"
-
-        return normalized if normalized.startswith("/") else f"/{normalized}"
-
     def build_shortlist_item(s: User, source: str) -> dict:
         resume_sc = s.resume_score or 0
 
@@ -2932,7 +3014,7 @@ def get_shortlisted_students(
         cgpa_score = min((s.cgpa or 0) / 10.0, 1.0)
         match_score = round(((skill_match + cgpa_score + resume_sc / 100) / 3) * 100, 2)
 
-        normalized_resume_url = normalize_resume_url_for_response(s.resume_url)
+        normalized_resume_url = _normalize_resume_url_for_response(s.resume_url)
         student_payload = {
             "id": str(s.id),
             "name": s.name,
@@ -2942,6 +3024,7 @@ def get_shortlisted_students(
             "certifications": s.certifications or "",
             "preferred_job_roles": s.preferred_job_roles or "",
             "resume_text": s.resume_text or "",
+            "resume_filename": s.resume_filename or "",
             "resume_score": resume_sc,
             "resume_url": normalized_resume_url,
         }
@@ -3160,19 +3243,22 @@ def _build_resumes_zip(students: List[dict], archive_name: str) -> StreamingResp
     added_files = 0
     with ZipFile(zip_buffer, mode="w", compression=ZIP_DEFLATED) as zip_file:
         for s in students:
-            resume_url = (s.get("resume_url") or "").strip()
+            resume_url = _normalize_resume_url_for_response(s.get("resume_url"))
             if not resume_url:
                 continue
-            relative_resume_path = resume_url.lstrip("/")
-            resume_path = BASE_DIR / relative_resume_path
-            if not resume_path.exists() or not resume_path.is_file():
+            try:
+                response = requests.get(resume_url, timeout=20)
+            except requests.RequestException:
+                continue
+            if response.status_code >= 400 or not response.content:
                 continue
 
             student_name = (s.get("name") or "student").strip()
             safe_student_name = re.sub(r"[^a-zA-Z0-9_-]+", "_", student_name).strip("_") or "student"
-            extension = resume_path.suffix or ".pdf"
+            resume_filename = _sanitize_resume_filename(s.get("resume_filename") or Path(urlparse(resume_url).path).name or "resume.pdf")
+            extension = Path(resume_filename).suffix or ".pdf"
             arcname = f"{safe_student_name}_{s.get('id', '')}{extension}"
-            zip_file.write(resume_path, arcname=arcname)
+            zip_file.writestr(arcname, response.content)
             added_files = added_files + 1
 
     if added_files == 0:
@@ -3223,6 +3309,7 @@ def download_selected_shortlisted_resumes(
             {
                 "id": str(s.id),
                 "name": s.name,
+                "resume_filename": s.resume_filename or "",
                 "resume_url": s.resume_url or "",
             }
             for s in db_students
@@ -3311,19 +3398,23 @@ def get_student_resume(
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    resume_url = (student.resume_url or "").strip()
+    resume_url = _normalize_resume_url_for_response(student.resume_url)
     if not resume_url:
         raise HTTPException(status_code=404, detail="Resume not uploaded")
 
-    relative_resume_path = resume_url.lstrip("/")
-    resume_path = BASE_DIR / relative_resume_path
-    if not resume_path.exists() or not resume_path.is_file():
+    try:
+        response = requests.get(resume_url, timeout=20)
+    except requests.RequestException as exc:
+        logger.error("Failed to fetch student resume for %s: %s", student_id, exc)
+        raise HTTPException(status_code=404, detail="Resume not uploaded") from exc
+
+    if response.status_code >= 400 or not response.content:
         raise HTTPException(status_code=404, detail="Resume not uploaded")
 
     download_name = (student.resume_filename or f"{student.name}_resume.pdf").strip() or "resume.pdf"
     disposition = "attachment" if download else "inline"
     headers = {"Content-Disposition": f'{disposition}; filename="{download_name}"'}
-    return FileResponse(path=resume_path, media_type="application/pdf", headers=headers)
+    return StreamingResponse(io.BytesIO(response.content), media_type="application/pdf", headers=headers)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -21,6 +21,7 @@ import { NativeSelectField, NativeSelectRoot } from './ui/native-select';
 import { toaster } from './ui/toaster';
 
 const API_BASE = '/api';
+const MAX_RESUME_SIZE_BYTES = 2 * 1024 * 1024;
 
 export default function StudentOnboarding({ token, user, onComplete, onLogout }) {
   const [currentStep, setCurrentStep] = useState(1);
@@ -177,16 +178,58 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      let resumePublicUrl = '';
+      let resumeOriginalName = '';
+
+      if (formData.resumeFile) {
+        if (formData.resumeFile.type !== 'application/pdf') {
+          throw new Error('Only PDF resume files are allowed.');
+        }
+        if (formData.resumeFile.size > MAX_RESUME_SIZE_BYTES) {
+          throw new Error('Resume size must be 2MB or less.');
+        }
+
+        if (supabase) {
+          const safeName = formData.resumeFile.name.replace(/[^a-zA-Z0-9._-]+/g, '_');
+          const objectPath = `${user?.id || 'student'}/${Date.now()}_${safeName}`;
+          const { error: uploadError } = await supabase.storage
+            .from('resumes')
+            .upload(objectPath, formData.resumeFile, {
+              upsert: true,
+              contentType: 'application/pdf',
+              cacheControl: '3600',
+            });
+
+          if (uploadError) {
+            throw new Error(uploadError.message || 'Failed to upload resume to Supabase.');
+          }
+
+          const { data: publicData } = supabase.storage.from('resumes').getPublicUrl(objectPath);
+          resumePublicUrl = publicData?.publicUrl || '';
+          if (!resumePublicUrl) {
+            throw new Error('Failed to create resume public URL.');
+          }
+        }
+        resumeOriginalName = formData.resumeFile.name;
+      }
+
       const data = new FormData();
       Object.keys(formData).forEach(key => {
         if (key === 'internships' || key === 'projects') {
           data.append(key, JSON.stringify(formData[key]));
         } else if (key === 'resumeFile') {
-          if (formData[key]) data.append('resume', formData[key]);
+          // Resume is uploaded directly to Supabase. Backend receives URL only.
         } else if (formData[key] !== undefined && formData[key] !== null) {
           data.append(key, formData[key]);
         }
       });
+      if (resumePublicUrl) {
+        data.append('resume_url', resumePublicUrl);
+        data.append('resume_filename', resumeOriginalName);
+      } else if (formData.resumeFile) {
+        // Fallback for missing VITE Supabase envs: backend uploads to Supabase.
+        data.append('resume', formData.resumeFile);
+      }
       // include education type selection
       data.append('educationType', educationType);
 

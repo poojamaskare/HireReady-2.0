@@ -301,7 +301,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
   const viewShortlisted = async (jobId) => {
     setSelectedJobId(jobId); setLoadingShortlisted(true); setTab('shortlisted'); setSelectedStudents([]);
     try {
-      const res = await fetch(`${API_BASE}/tpo/jobs/${jobId}/shortlisted`, { headers });
+      const res = await fetch(`${API_BASE}/tpo/jobs/${jobId}/shortlisted`, { headers, cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const hasSplitLists = Array.isArray(data.auto_shortlisted_students) || Array.isArray(data.manual_shortlisted_students);
@@ -325,7 +325,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
   const refreshShortlisted = async (jobId) => {
     if (!jobId) return;
     try {
-      const res = await fetch(`${API_BASE}/tpo/jobs/${jobId}/shortlisted`, { headers });
+      const res = await fetch(`${API_BASE}/tpo/jobs/${jobId}/shortlisted`, { headers, cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
       const hasSplitLists = Array.isArray(data.auto_shortlisted_students) || Array.isArray(data.manual_shortlisted_students);
@@ -465,21 +465,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
     if (!rawUrl || !String(rawUrl).trim()) return '';
     const url = String(rawUrl).trim();
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-
-    const normalized = url.replace(/\\/g, '/');
-    const lower = normalized.toLowerCase();
-
-    const uploadsIndex = lower.indexOf('/uploads/');
-    if (uploadsIndex !== -1) {
-      return `${window.location.origin}${normalized.slice(uploadsIndex)}`;
-    }
-
-    const resumesIndex = lower.indexOf('/resumes/');
-    if (resumesIndex !== -1) {
-      return `${window.location.origin}/uploads${normalized.slice(resumesIndex)}`;
-    }
-
-    return `${window.location.origin}${normalized.startsWith('/') ? normalized : `/${normalized}`}`;
+    return '';
   };
 
   const handleViewResume = (student) => {
@@ -497,10 +483,23 @@ export default function TpoDashboard({ token, user, onLogout }) {
     }
 
     const resolvedUrl = normalizeResumeUrl(rawResumeUrl);
+    if (!resolvedUrl) {
+      toaster.create({ title: 'Resume not uploaded', type: 'error' });
+      setLoadingResumeId('');
+      return;
+    }
 
-    setResumeViewerUrl(resolvedUrl);
+    const openUrl = `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    const openedWindow = window.open(openUrl, '_blank', 'noopener,noreferrer');
+    if (!openedWindow) {
+      toaster.create({ title: 'Unable to open resume. Please allow popups and try again.', type: 'error' });
+      setLoadingResumeId('');
+      return;
+    }
+
+    setResumeViewerUrl(openUrl);
     setResumeViewerStudent(student.name || 'Student');
-    setResumeViewerOpen(true);
+    setResumeViewerOpen(false);
     setLoadingResumeId('');
   };
 

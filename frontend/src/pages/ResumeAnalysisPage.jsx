@@ -10,8 +10,10 @@ import {
   FileUp, Paperclip, File, FileText, CheckCircle2, Lightbulb, 
   Trophy, AlertTriangle, XCircle, Info, Briefcase 
 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 const API_BASE = '/api';
+const MAX_RESUME_SIZE_BYTES = 2 * 1024 * 1024;
 
 export default function ResumeAnalysisPage({ token, user, result, onProfileUpdate }) {
   const [resumeFile, setResumeFile] = useState(null);
@@ -22,16 +24,7 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
     if (!rawUrl || !String(rawUrl).trim()) return '';
     const url = String(rawUrl).trim();
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-
-    const normalized = url.replace(/\\/g, '/');
-    const lower = normalized.toLowerCase();
-    const uploadsIndex = lower.indexOf('/uploads/');
-    if (uploadsIndex !== -1) return `${window.location.origin}${normalized.slice(uploadsIndex)}`;
-
-    const resumesIndex = lower.indexOf('/resumes/');
-    if (resumesIndex !== -1) return `${window.location.origin}/uploads${normalized.slice(resumesIndex)}`;
-
-    return `${window.location.origin}${normalized.startsWith('/') ? normalized : `/${normalized}`}`;
+    return '';
   };
 
   const savedResumeName = user?.resume_filename || '';
@@ -39,9 +32,11 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
+    if (file && file.type === 'application/pdf' && file.size <= MAX_RESUME_SIZE_BYTES) {
       setResumeFile(file);
       setMessage('');
+    } else if (file && file.type === 'application/pdf' && file.size > MAX_RESUME_SIZE_BYTES) {
+      setMessage('Resume size must be 2MB or less.');
     } else if (file) {
       setMessage('Please upload a PDF file.');
     }
@@ -57,7 +52,33 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
     setMessage('');
     try {
       const formData = new FormData();
-      formData.append('resume', resumeFile);
+      if (supabase) {
+        const safeName = resumeFile.name.replace(/[^a-zA-Z0-9._-]+/g, '_');
+        const objectPath = `${user?.id || 'student'}/${Date.now()}_${safeName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('resumes')
+          .upload(objectPath, resumeFile, {
+            upsert: true,
+            contentType: 'application/pdf',
+            cacheControl: '3600',
+          });
+
+        if (uploadError) {
+          throw new Error(uploadError.message || 'Failed to upload resume to storage.');
+        }
+
+        const { data: publicData } = supabase.storage.from('resumes').getPublicUrl(objectPath);
+        const publicUrl = publicData?.publicUrl || '';
+        if (!publicUrl) {
+          throw new Error('Failed to generate public resume URL.');
+        }
+        formData.append('resume_url', publicUrl);
+        formData.append('resume_filename', resumeFile.name);
+      } else {
+        // Fallback for missing VITE Supabase envs: backend handles Supabase upload.
+        formData.append('resume', resumeFile);
+      }
 
       const resp = await fetch(`${API_BASE}/auth/profile`, {
         method: 'PUT',
@@ -231,7 +252,10 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
                           size="xs"
                           variant="outline"
                           colorPalette="green"
-                          onClick={() => window.open(savedResumeUrl, '_blank', 'noopener,noreferrer')}
+                          onClick={() => {
+                            const resolved = `${savedResumeUrl}${savedResumeUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+                            window.open(resolved, '_blank', 'noopener,noreferrer');
+                          }}
                         >
                           Open
                         </Button>
