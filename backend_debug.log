@@ -1942,3 +1942,9 @@ WHERE users.id = %(id_1)s
 2026-03-21 14:53:38,728 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
 2026-03-21 14:53:38,784 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
 2026-03-21 14:53:39,686 [INFO] main: Auto-analysis saved: 029af2ac-faed-44e5-a042-cd0d2d62e2b7
+2026-03-21 14:55:25,900 [INFO] main: Loading ML models in background thread...
+2026-03-21 14:55:25,909 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 14:55:32,299 [INFO] main: ML models loaded successfully in 6.40 seconds.
+2026-03-21 15:10:47,391 [INFO] main: Loading ML models in background thread...
+2026-03-21 15:10:47,403 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 15:10:53,810 [INFO] main: ML models loaded successfully in 6.42 seconds.
