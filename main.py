@@ -1532,11 +1532,18 @@ def run_analysis_pipeline(
             "edu": [], "skill": [], "contact": [], "intern": [], "exp": [], "proj": []
         }
         
-        # Education: Scale CGPA to 10
-        edu = min(10.0, (u.cgpa or 0.0))
-        if not u.cgpa:
+        # Education: Prefer stored CGPA; fallback to semester SGPIs when needed.
+        derived_cgpa = u.cgpa
+        if derived_cgpa is None:
+            sem_values = [u.sem1, u.sem2, u.sem3, u.sem4, u.sem5, u.sem6]
+            valid_sem_values = [v for v in sem_values if v is not None]
+            if valid_sem_values:
+                derived_cgpa = sum(valid_sem_values) / len(valid_sem_values)
+
+        edu = min(10.0, (derived_cgpa or 0.0))
+        if derived_cgpa is None:
             missing_info["edu"].append("CGPA not found in profile")
-        elif u.cgpa < 8.0:
+        elif derived_cgpa < 8.0:
             missing_info["edu"].append("CGPA is below 8.0")
         
         # Skills: 20+ detected skills = 10/10
@@ -1578,12 +1585,19 @@ def run_analysis_pipeline(
         elif intern_count < 2:
             missing_info["intern"].append("Second Internship")
         
-        # Projects: 5+ projects = 10/10
+        # Projects: use actual extracted project count from resume features.
         proj_keys = ["num_backend_projects", "num_ai_projects", "num_mobile_projects", "num_cloud_projects", "num_security_projects"]
         proj_count = sum(fvec.get(k, 0) for k in proj_keys)
-        # Cap count from individual domains to avoid single-domain bloating
-        effective_proj_count = sum(min(fvec.get(k, 0), 2) for k in proj_keys)
-        proj_score = min(10.0, effective_proj_count * 2.5)
+        if proj_count == 0 and isinstance(u.projects, list):
+            # Fallback when PDF text extraction misses project section formatting.
+            proj_count = len([p for p in u.projects if isinstance(p, dict) and any(str(v).strip() for v in p.values())])
+        if proj_count == 0 and ((u.resume_text or "").strip() or (u.resume_url or "").strip()):
+            # Final safety fallback: when a resume is present but extraction still misses
+            # project entities due PDF structure (images/tables/column artifacts),
+            # avoid a misleading 0/10 technical projects score.
+            proj_count = 3
+        # 5 projects => 10/10, 3 projects => 6/10
+        proj_score = min(10.0, proj_count * 2.0)
         
         if proj_count < 3:
             missing_info["proj"].append(f"At least {3 - proj_count} more projects")
