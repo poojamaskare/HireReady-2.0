@@ -234,11 +234,80 @@ def extract_resume_features(text: str) -> Dict[str, int]:
             end = min(len(lower_text), start + 500)
             project_context += lower_text[start:end] + " "
 
+    # Estimate total project entries from section structure/bullets first,
+    # then map totals across matched project domains.
+    project_entry_lines = re.findall(
+        r"(?:^|\n)\s*(?:[-*•]|\d+[.)])\s+[a-z0-9][^\n]{2,120}",
+        project_context,
+        flags=re.IGNORECASE,
+    )
+    explicit_project_mentions = len(re.findall(r"\bproject\b", project_context))
+    numbered_project_mentions = len(re.findall(r"\bproject\s*\d+\b", project_context))
+
+    total_projects = 0
+    if project_entry_lines:
+        total_projects = len(project_entry_lines)
+    elif numbered_project_mentions:
+        total_projects = numbered_project_mentions
+    elif explicit_project_mentions:
+        # Fallback when resumes use prose without bullets.
+        total_projects = explicit_project_mentions
+
+    # Additional fallback: infer project entries from the Projects section
+    # even when the word "project" is only present in the section header.
+    if total_projects == 0:
+        header_iter = re.finditer(r"\b(?:academic\s+)?projects?\b", lower_text)
+        inferred = 0
+        for h in header_iter:
+            section_start = h.end()
+            section = lower_text[section_start: section_start + 1200]
+            # Count bullet/numbered lines as potential individual projects.
+            bullets = re.findall(r"(?:^|\n)\s*(?:[-*•]|\d+[.)])\s+[a-z0-9][^\n]{3,140}", section, flags=re.IGNORECASE)
+            inferred = max(inferred, len(bullets))
+
+            # If bullets are not available, count title-like lines.
+            if inferred == 0:
+                title_like = re.findall(r"(?:^|\n)\s*[a-z0-9][^\n]{4,100}\s*(?:\||-|:)\s*(?:python|java|react|node|ml|ai|flutter|android|cloud|aws|gcp|docker)", section, flags=re.IGNORECASE)
+                inferred = max(inferred, len(title_like))
+
+        if inferred > 0:
+            total_projects = inferred
+
+    # Final fallback for poorly structured PDFs: infer projects from
+    # action-oriented lines that look like project achievements.
+    if total_projects == 0:
+        chunks = re.split(r"[\n\.]+", lower_text)
+        project_like = 0
+        action_pat = re.compile(r"\b(built|developed|implemented|designed|created|deployed)\b")
+        artifact_pat = re.compile(r"\b(project|application|app|system|platform|website|dashboard|model|portal)\b")
+        tech_pat = re.compile(r"\b(python|java|c\+\+|javascript|react|node|flask|django|fastapi|sql|mongodb|aws|docker|kubernetes|ml|ai|tensorflow|pytorch)\b")
+
+        for chunk in chunks:
+            line = chunk.strip()
+            if len(line) < 18:
+                continue
+            if action_pat.search(line) and artifact_pat.search(line) and tech_pat.search(line):
+                project_like += 1
+
+        if project_like > 0:
+            total_projects = min(project_like, 10)
+
+    total_projects = max(0, min(total_projects, 10))
+
+    matched_domains = []
     for feature, patterns in _PROJECT_PATTERNS.items():
-        count = 0
-        for pattern in patterns:
-            count += len(re.findall(pattern, project_context))
-        features[feature] = min(count, 10)
+        if any(re.search(pattern, project_context) for pattern in patterns):
+            matched_domains.append(feature)
+
+    if total_projects > 0:
+        if not matched_domains:
+            # Default unmatched projects to backend bucket.
+            features["num_backend_projects"] = total_projects
+        else:
+            base = total_projects // len(matched_domains)
+            remainder = total_projects % len(matched_domains)
+            for idx, feature in enumerate(matched_domains):
+                features[feature] = base + (1 if idx < remainder else 0)
 
     return features
 
