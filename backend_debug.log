@@ -1856,3 +1856,42 @@ WHERE users.id = %(id_1)s
 2026-03-21 01:17:46,349 [INFO] main: Loading ML models in background thread...
 2026-03-21 01:17:46,358 [INFO] main: Loaded 100 roles into skill cache.
 2026-03-21 01:17:52,034 [INFO] main: ML models loaded successfully in 5.68 seconds.
+2026-03-21 10:41:02,608 [INFO] main: Loading ML models in background thread...
+2026-03-21 10:41:02,646 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 10:42:42,289 [INFO] main: ML models loaded successfully in 99.68 seconds.
+2026-03-21 10:43:21,916 [INFO] main: Updated resume for user 24204002@apsit.edu.in via public URL
+2026-03-21 10:43:26,894 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-21 10:43:28,910 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-21 10:43:30,380 [INFO] main: Auto-analysis saved: 37d8041f-583f-465a-8e45-d3f75eee3e56
+2026-03-21 10:53:36,918 [INFO] main: Updated resume for user 24204002@apsit.edu.in via public URL
+2026-03-21 10:53:45,676 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-21 10:53:45,736 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-21 10:53:46,652 [INFO] main: Auto-analysis saved: 6760af48-27f2-406d-a3f6-c6db93bebf86
+2026-03-21 10:56:55,560 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-21 10:57:00,679 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/nodejs-and-expressjs-real-time-app-with-mongodb/
+2026-03-21 10:57:02,439 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.edx.org/learn/backend-development-with-python-and-flask
+2026-03-21 10:57:03,100 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.freecodecamp.org/learn/full-stack-development/
+2026-03-21 10:57:03,790 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/nodejs-and-expressjs-real-time-app-with-mongodb/
+2026-03-21 10:57:04,449 [INFO] main: is_valid_url: VALID (HEAD 200) - https://www.comptia.org/certifications/server
+2026-03-21 10:57:08,454 [INFO] main: is_valid_url: VALID (HEAD 200) - https://docs.microsoft.com/en-us/learn/certifications/azure-developer/
+2026-03-21 10:57:09,129 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.edx.org/learn/backend-development-with-python-and-flask
+2026-03-21 10:57:10,023 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.freecodecamp.org/learn/full-stack-development/
+2026-03-21 10:57:11,037 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-21 10:57:15,330 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/datastructuresandalgorithms/
+2026-03-21 10:57:15,980 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://aws.amazon.com/certification/certified-developer
+2026-03-21 10:57:18,874 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/datastructuresandalgorithms/
+2026-03-21 10:57:19,343 [INFO] main: is_valid_url: VALID (HEAD 200) - https://docs.microsoft.com/en-us/learn/certifications/azure-developer
+2026-03-21 10:57:19,909 [INFO] main: is_valid_url: INVALID (HEAD 403) - https://www.udemy.com/course/cloudcomputingwithaws/
+2026-03-21 10:57:21,031 [INFO] main: is_valid_url: VALID (HEAD 200) - https://www.coursera.org/specializations/python
+2026-03-21 10:57:21,426 [INFO] main: is_valid_url: VALID (HEAD 200) - https://cloud.google.com/certification/cloud-engineer
+2026-03-21 10:57:21,462 [INFO] main: is_valid_url: INVALID (GET 404) - https://aws.amazon.com/certification/certified-developer
+2026-03-21 10:57:24,974 [INFO] main: is_valid_url: INVALID (GET 403) - https://www.udemy.com/course/cloudcomputingwithaws/
+2026-03-21 11:29:37,881 [INFO] main: Loading ML models in background thread...
+2026-03-21 11:29:37,901 [INFO] main: Loaded 100 roles into skill cache.
+2026-03-21 11:30:18,042 [INFO] main: ML models loaded successfully in 40.16 seconds.
+2026-03-21 11:36:32,777 [INFO] main: Updated resume for user 24204002@apsit.edu.in via public URL
+2026-03-21 11:36:40,111 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-21 11:36:40,865 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-21 11:36:41,760 [INFO] main: Auto-analysis saved: 30df1ca7-35ad-47c2-bece-269ff4544c27
+2026-03-21 23:52:14,296 [INFO] main: Loading ML models in background thread...
+2026-03-21 23:52:14,383 [INFO] main: Loaded 100 roles into skill cache.

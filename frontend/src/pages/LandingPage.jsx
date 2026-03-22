@@ -1,9 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Box, Flex, Heading, Text, Button, HStack, Icon, SimpleGrid, Container, GridItem, VStack } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Briefcase, ArrowRight, GraduationCap, Building2, Zap, Shield, Globe, Sun, Moon } from 'lucide-react';
+import { Briefcase, ArrowRight, GraduationCap, Building2, Zap, Shield, Globe, Sun, Moon, LayoutDashboard, FileText, Map, ClipboardList, BadgeCheck, User } from 'lucide-react';
 import { ColorModeButton } from '../components/ui/color-mode';
 import Matter from 'matter-js';
+import IntegrationsBlock from '../components/IntegrationsBlock';
+
+const FEATURES = [
+  { label: 'Dashboard', icon: LayoutDashboard, color: 'blue.500' },
+  { label: 'Resume Analysis', icon: FileText, color: 'purple.500' },
+  { label: 'Skill Roadmap', icon: Map, color: 'teal.500' },
+  { label: 'AI Quizzes', icon: ClipboardList, color: 'orange.500' },
+  { label: 'Job Board', icon: Briefcase, color: 'pink.500' },
+  { label: 'Performance', icon: BadgeCheck, color: 'green.500' },
+  { label: 'Smart Profile', icon: User, color: 'cyan.500' },
+];
 
 const JOB_ROLES = [
   'Software Engineer', 'Data Analyst', 'Product Manager', 'UX Designer',
@@ -129,6 +140,94 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
 
     // Limit persistent chips is now handled by the opacity filter in syncLoop
   }, []);
+
+  const FeatureTiles = () => {
+    const [isAssembled, setIsAssembled] = useState(false);
+
+    useEffect(() => {
+      const timer = setTimeout(() => setIsAssembled(true), 100);
+      return () => clearTimeout(timer);
+    }, []);
+
+    return (
+      <Box w="full" maxW="800px" mx="auto" mb={12} position="relative" h="280px">
+        {FEATURES.map((feature, index) => {
+          // Random initial positions (range -300 to 300)
+          const randomX = (Math.random() - 0.5) * 600;
+          const randomY = (Math.random() - 0.5) * 400;
+          const randomRotate = (Math.random() - 0.5) * 180;
+
+          // Target grid calculation (5 up, 2 down)
+          const isTopRow = index < 5;
+          const colIndex = isTopRow ? index : index - 5;
+          const targetX = isTopRow 
+            ? (colIndex - 2) * 150  // 5 in top: -300, -150, 0, 150, 300
+            : (colIndex - 0.5) * 150; // 2 in bottom: -75, 75
+          const targetY = isTopRow ? 0 : 140;
+
+          return (
+            <motion.div
+              key={feature.label}
+              initial={{ 
+                x: randomX, 
+                y: randomY, 
+                rotate: randomRotate, 
+                opacity: 0,
+                scale: 0.5 
+              }}
+              animate={isAssembled ? { 
+                x: targetX, 
+                y: targetY, 
+                rotate: 0, 
+                opacity: 1, 
+                scale: 1 
+              } : {}}
+              transition={{ 
+                duration: 3, 
+                ease: [0.22, 1, 0.36, 1], // Classic smooth easeOutExpo
+                delay: index * 0.1 
+              }}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '20%',
+                marginLeft: '-65px', // Half of tile width
+              }}
+            >
+              <VStack
+                w="130px"
+                h="120px"
+                bg="whiteAlpha.100"
+                backdropFilter="blur(12px)"
+                border="1px solid"
+                borderColor="whiteAlpha.200"
+                borderRadius="2xl"
+                justify="center"
+                gap={3}
+                boxShadow="0 8px 32px rgba(0,0,0,0.3)"
+                _hover={{
+                  bg: "whiteAlpha.200",
+                  borderColor: feature.color,
+                  transform: "translateY(-5px)",
+                  boxShadow: `0 12px 40px rgba(0,0,0,0.5)`,
+                  transition: "all 0.3s ease"
+                }}
+                transition="all 0.3s ease"
+                cursor="pointer"
+              >
+                <Icon asChild color={feature.color} w={8} h={8}>
+                  <feature.icon />
+                </Icon>
+                <Text fontSize="xs" fontWeight="700" color="whiteAlpha.900" textAlign="center">
+                  {feature.label}
+                </Text>
+              </VStack>
+            </motion.div>
+          );
+        })}
+      </Box>
+    );
+  };
 
   // Hardcoded drifting background elements
   const FloatingBackgroundTags = () => (
@@ -295,8 +394,11 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
           </Heading>
           
           <Text color="fg.muted" fontSize={{ base: "md", md: "xl" }} maxW="600px" mb={10}>
-            Turn your passion into profit! Start preparing and earning with HireReady today. Find the perfect fit for your skills.
+            Prepare for your dream role with AI-powered insights, real-time quizzes, and personalized career roadmaps.
           </Text>
+
+          {/* 7-Tile Feature Bar */}
+          <FeatureTiles />
 
           <Box pointerEvents="auto" mt={8}>
             <motion.div
@@ -376,6 +478,8 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
           </SimpleGrid>
         </Container>
       </Box>
+
+      <IntegrationsBlock />
 
       {/* ── FOOTER ── */}
       <Flex 
