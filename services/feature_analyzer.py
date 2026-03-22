@@ -193,21 +193,25 @@ def extract_resume_features(text: str) -> Dict[str, int]:
                 break  # one match is enough for binary flag
 
     # ── Internship detection (binary) ────────────────────────────────────
-    intern_matches = re.finditer(r"\bintern\b", lower_text)
+    # Detect intern/internship/internships variants.
+    intern_matches = re.finditer(r"\bintern(?:ship)?s?\b", lower_text)
     intern_indices = [m.start() for m in intern_matches]
     
     intern_context = ""
     for idx in intern_indices:
-        start = max(0, idx - 100)
-        end = min(len(lower_text), idx + 100)
+        start = max(0, idx - 180)
+        end = min(len(lower_text), idx + 220)
         intern_context += lower_text[start:end] + " "
 
-    # Fallback: if "experience" section exists, treat it as internship context
-    if not intern_context and "experience" in lower_text:
-        exp_matches = re.finditer(r"\bexperience\b", lower_text)
-        for m in exp_matches:
+    # Fallback: if internship/experience/training sections exist, use them.
+    if not intern_context:
+        section_matches = re.finditer(
+            r"\b(internships?|experience|work\s+experience|training|industrial\s+training)\b",
+            lower_text,
+        )
+        for m in section_matches:
             start = m.end()
-            end = min(len(lower_text), start + 500)
+            end = min(len(lower_text), start + 700)
             intern_context += lower_text[start:end] + " "
 
     for feature, patterns in _INTERNSHIP_PATTERNS.items():
