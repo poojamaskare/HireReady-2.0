@@ -21,3 +21,6 @@ dist/
 
 # Runtime uploads
 uploads/
+
+# Logs
+*.log
