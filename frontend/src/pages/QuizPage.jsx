@@ -214,11 +214,13 @@ const QuizPage = () => {
                         {item.score}/{item.total_questions}
                       </Badge>
                       <HStack gap={2}>
-                        <Button size="xs" variant="solid" colorPalette="blue"
-                            onClick={() => handleViewResults(item)}
-                        >
-                            View Results
-                        </Button>
+                        {sessionDetails[item.id] && (
+                          <Button size="xs" variant="solid" colorPalette="blue"
+                              onClick={() => handleViewResults(item)}
+                          >
+                              View Results
+                          </Button>
+                        )}
                         <Button size="xs" variant="outline" borderColor="gray.700" color="gray.300"
                             _hover={{ bg: 'gray.800' }}
                             onClick={() => handleRetest(item)}

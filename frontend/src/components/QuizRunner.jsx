@@ -4,7 +4,6 @@ import {
 } from '@chakra-ui/react';
 import { ProgressBar, ProgressRoot } from '@/components/ui/progress';
 import { Code, FileQuestion, X, ArrowRight, Check, ChevronLeft } from 'lucide-react';
-
 const API_BASE_URL = '/api';
 
 const QuizRunner = ({ role, difficulty, initialResultId, onComplete, onCancel, viewOnly = false, sessionQuestions = null, sessionAnswers = null }) => {
@@ -129,6 +128,119 @@ const QuizRunner = ({ role, difficulty, initialResultId, onComplete, onCancel, v
     } catch (err) { console.error('Failed to submit', err); }
   };
 
+  const downloadPDF = async () => {
+    const { jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+    
+    const doc = new jsPDF();
+    const userDataStr = localStorage.getItem('user');
+    let userName = 'User';
+    try {
+      const u = JSON.parse(userDataStr);
+      userName = u.name || u.email || 'User';
+    } catch { }
+
+    // Application Branding
+    doc.setFontSize(26);
+    doc.setTextColor(41, 128, 185);
+    doc.setFont('helvetica', 'bold');
+    doc.text('HireReady', 14, 18);
+    
+    // Title
+    doc.setFontSize(16);
+    doc.setTextColor(60, 60, 60);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Skill Assessment Report', 14, 30);
+    
+    doc.setFontSize(9);
+    doc.setTextColor(120, 120, 120);
+    doc.setFont('helvetica', 'normal');
+    const genDate = new Date().toLocaleString();
+    doc.text(`REPORT GENERATED: ${genDate}`, 14, 36);
+    
+    // Draw a subtle line
+    doc.setDrawColor(220, 220, 220);
+    doc.line(14, 42, 196, 42);
+
+    // User & Test Details
+    doc.setFontSize(10);
+    doc.setTextColor(70, 70, 70);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CANDIDATE:', 14, 52);
+    doc.text('ASSESSMENT:', 14, 59);
+    doc.text('DIFFICULTY:', 14, 66);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(40, 40, 40);
+    doc.text(`${userName.toUpperCase()}`, 45, 52);
+    doc.text(`${role}`, 45, 59);
+    doc.text(`${difficulty.toUpperCase()}`, 45, 66);
+    
+    // Highlighted Score Box
+    doc.setFillColor(235, 245, 255); // Light Blue Background
+    doc.setSelectionArea && doc.setDrawColor(41, 128, 185); // Theme Blue Border
+    doc.roundedRect(14, 76, 182, 18, 2, 2, 'FD');
+
+    // Score Text Centered
+    doc.setFontSize(20);
+    doc.setTextColor(41, 128, 185); // Theme Blue
+    doc.setFont('helvetica', 'bold');
+    const finalScoreTxt = `FINAL SCORE: ${score} / ${questions.length} (${Math.round((score / questions.length) * 100)}%)`;
+    doc.text(finalScoreTxt, 105, 88, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+
+    // Prepare table data
+    const tableRows = [];
+    questions.forEach((q, i) => {
+      const userAnswer = answers[i] || 'Not Answered';
+      const isCorrect = userAnswer === q.correctAnswer;
+      const statusText = isCorrect ? 'Correct' : 'Incorrect';
+      
+      // Clean question text (remove code blocks if any)
+      const qText = q.question.split('```')[0].trim();
+      
+      tableRows.push([
+        i + 1,
+        qText,
+        userAnswer,
+        q.correctAnswer,
+        statusText
+      ]);
+    });
+
+    autoTable(doc, {
+      startY: 105,
+      head: [['#', 'Question', 'Your Answer', 'Correct Answer', 'Status']],
+      body: tableRows,
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 4) {
+          const status = data.cell.raw;
+          if (status === 'Correct') {
+            data.cell.styles.textColor = [39, 174, 96]; // Green
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fontSize = 10; // Slightly bigger for emphasis
+          } else {
+            data.cell.styles.textColor = [192, 57, 43]; // Red
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fontSize = 10;
+          }
+        }
+      },
+      styles: { fontSize: 9, cellPadding: 4, overflow: 'linebreak' },
+      columnStyles: {
+        0: { cellWidth: 10 },
+        1: { cellWidth: 80 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 35 },
+        4: { cellWidth: 25 }
+      }
+    });
+
+    const fileName = `${userName.replace(/\s+/g, '_')}_${role.replace(/\s+/g, '_')}_Quiz_Report.pdf`;
+    doc.save(fileName);
+  };
+
   const handleFinalComplete = () => {
     if (onComplete) {
       onComplete({
@@ -175,25 +287,41 @@ const QuizRunner = ({ role, difficulty, initialResultId, onComplete, onCancel, v
     else if (pct >= 50) { badgeColor = 'yellow'; message = 'Good Job'; }
 
     return (
-      <Box maxW="900px" mx="auto" w="full">
-        <Flex justify="space-between" align="center" mb={6}>
-          <VStack align="flex-start" gap={1}>
-            <Heading size="lg" color="gray.100">{viewOnly ? 'Quiz Review' : 'Quiz Results'}</Heading>
-            <Text color="gray.400">{role} • {difficulty}</Text>
+      <Box maxW="720px" mx="auto" w="full" px={4}>
+        <Flex justify="space-between" align="center" mb={10} bg="gray.900" p={6} borderRadius="2xl" border="1px solid" borderColor="gray.800">
+          <VStack align="flex-start" gap={0}>
+            <Heading size="md" color="gray.100" mb={1}>{viewOnly ? 'Assessment Review' : 'Assessment Results'}</Heading>
+            <Text color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="wider">
+              {role} • {difficulty}
+            </Text>
           </VStack>
-          <HStack gap={4}>
+          
+          <Flex align="center" gap={6}>
             <Box textAlign="right">
-              <Text fontSize="2xl" fontWeight="800" color={`${badgeColor}.400`} display="inline">
+              <Text fontSize="4xl" fontWeight="900" color={`${badgeColor}.400`} lineHeight="1" mb={1}>
                 {score}
               </Text>
-              <Text color="gray.400" fontSize="md" display="inline"> / {questions.length}</Text>
-              <Text fontSize="xs" color="gray.500">{message} ({pct}%)</Text>
+              <Text fontSize="xs" color="gray.500" fontWeight="bold">Out of {questions.length} • {pct}%</Text>
             </Box>
-            <Button colorPalette="blue" size="sm" onClick={handleFinalComplete}>Close Review</Button>
-          </HStack>
+            
+            <VStack gap={2} align="stretch">
+              <Button 
+                variant="outline" 
+                borderColor="blue.500/30" 
+                color="blue.300" 
+                _hover={{ bg: 'blue.500/10' }}
+                size="xs" 
+                onClick={downloadPDF}
+                px={4}
+              >
+                Save PDF
+              </Button>
+              <Button colorPalette="blue" size="xs" onClick={handleFinalComplete}>Close</Button>
+            </VStack>
+          </Flex>
         </Flex>
 
-        <VStack gap={4} align="stretch" mb={8}>
+        <VStack gap={4} align="stretch" mb={12}>
           {questions.map((q, i) => {
             const userAnswer = answers[i] || '';
             const isCorrect = userAnswer === q.correctAnswer;
@@ -202,16 +330,18 @@ const QuizRunner = ({ role, difficulty, initialResultId, onComplete, onCancel, v
             return (
               <Box 
                 key={i} 
-                bg="gray.900" 
+                bg="gray.900/50" 
                 border="1px solid" 
-                borderColor={isCorrect ? 'green.800/50' : 'red.800/50'} 
+                borderColor={isCorrect ? 'green.800/30' : 'red.800/30'} 
                 borderRadius="xl" 
                 p={5}
+                _hover={{ bg: 'gray.900/80' }}
+                transition="background 0.2s"
               >
-                <Flex justify="space-between" mb={3}>
-                  <HStack>
-                     <Badge colorPalette={statusColor.split('.')[0]} variant="solid">Q{i + 1}</Badge>
-                     <Text color="gray.300" fontSize="sm" fontWeight="bold">
+                <Flex justify="space-between" mb={4} align="center">
+                  <HStack gap={3}>
+                     <Badge colorPalette={statusColor.split('.')[0]} variant="surface" size="sm">Q{i + 1}</Badge>
+                     <Text color={isCorrect ? 'green.400' : 'red.400'} fontSize="xs" fontWeight="800" textTransform="uppercase">
                         {isCorrect ? 'Correct' : 'Incorrect'}
                      </Text>
                   </HStack>
@@ -284,6 +414,14 @@ const QuizRunner = ({ role, difficulty, initialResultId, onComplete, onCancel, v
 
   /* ── Active quiz ── */
   const question = questions[currentIndex];
+  if (!question && !submitted) {
+    return (
+      <Flex direction="column" align="center" justify="center" h="400px" gap={4}>
+        <Spinner size="xl" color="blue.400" />
+        <Text color="gray.300">Preparing question...</Text>
+      </Flex>
+    );
+  }
   const selectedOption = answers[currentIndex] || '';
 
   // Helpers for sidebar colors
