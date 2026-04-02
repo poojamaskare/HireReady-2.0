@@ -99,8 +99,8 @@ def get_current_user(
             role="tpo",
             password_hash="",
         )
-        # Deterministic UUID so it works with UUID columns (Job.posted_by etc.)
-        proxy.id = _uuid.uuid5(_uuid.NAMESPACE_DNS, tpo.email)
+        # Deterministic UUID so it works with String(36) ID columns (Job.posted_by etc.)
+        proxy.id = str(_uuid.uuid5(_uuid.NAMESPACE_DNS, tpo.email))
         return proxy
 
     # Student: standard users table lookup

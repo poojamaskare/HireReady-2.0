@@ -22,17 +22,8 @@ export default function IntegrationsBlock() {
   const [animationData, setAnimationData] = useState(null)
 
   useEffect(() => {
-    // try local bundled JSON first
-    try {
-      // eslint-disable-next-line global-require, import/no-unresolved
-      const local = require('../assets/integrations-animation.json')
-      setAnimationData(local)
-      return
-    } catch (e) {
-      // if local not present, fetch a neutral Lottie JSON from LottieFiles CDN
-    }
-
-    const defaultUrl = 'https://assets7.lottiefiles.com/packages/lf20_sftkbx0v.json'
+    // Avoid 'require' for Vite-compatibility. Rely on CDN fallback or public/ imports.
+    const defaultUrl = 'https://assets7.lottiefiles.com/packages/lf20_sftkbx0v.json';
     let cancelled = false
     fetch(defaultUrl)
       .then((r) => r.json())
@@ -156,50 +147,50 @@ export default function IntegrationsBlock() {
       </Box>
 
       <Box maxW="1200px" mx="auto" width="100%">
-      <VStack spacing={6} align="stretch" zIndex={1}>
-        <VStack spacing={2} textAlign="center">
-          <Box display="inline-block" px={3} py={1} borderRadius="full" border="1px solid rgba(255,255,255,0.06)" boxShadow="0 6px 20px rgba(124,58,237,0.06)">
-            <Text fontSize="xs" fontWeight="700" letterSpacing="wide" color="purple.300">INTEGRATIONS</Text>
+        <VStack spacing={6} align="stretch" zIndex={1}>
+          <VStack spacing={2} textAlign="center">
+            <Box display="inline-block" px={3} py={1} borderRadius="full" border="1px solid rgba(255,255,255,0.06)" boxShadow="0 6px 20px rgba(124,58,237,0.06)">
+              <Text fontSize="xs" fontWeight="700" letterSpacing="wide" color="purple.300">INTEGRATIONS</Text>
+            </Box>
+            <Text fontSize={{ base: 'lg', md: '2xl' }} fontWeight="900" color="white">Connect your workflows — hire faster, upskill smarter.</Text>
+          </VStack>
+
+          <Box display="flex" flexDirection="column" alignItems="center" gap={4}>
+            <Box w="100%" maxW="1000px" mt="1cm">
+              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={containerVariants}>
+                {/* Top row: 5 centered cards */}
+                <Box display="grid" gridTemplateColumns={{ base: 'repeat(2,1fr)', md: 'repeat(5, 1fr)' }} gap={{ base: 4, md: 6 }} mb={4} justifyContent="center" alignItems="stretch">
+                  {topTiles.map((t, i) => (
+                    <MotionBox key={t.key} variants={cardVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.25 }} animate={shouldReduce ? {} : { y: [0, -4, 0] }} transition={shouldReduce ? {} : { repeat: Infinity, duration: 8 + i, ease: 'easeInOut', delay: i * 0.02 }} whileHover={shouldReduce ? {} : { y: -10, scale: 1.02, boxShadow: '0 30px 80px rgba(20,20,30,0.6)', borderColor: 'rgba(99,102,241,0.32)' }} p={5} bg="rgba(255,255,255,0.02)" borderRadius="xl" border="1px solid rgba(255,255,255,0.04)" display="flex" flexDirection="row" alignItems="center" gap={4} style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', minHeight: 120 }}>
+                      <MotionBox whileHover={shouldReduce ? {} : { scale: 1.06 }} display="flex" alignItems="center" justifyContent="center" w={14} h={14} borderRadius="md" bg="linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))" style={{ boxShadow: 'inset 0 -6px 18px rgba(0,0,0,0.45)' }}>
+                        {t.icon ? <motion.span animate={shouldReduce ? {} : { rotate: [0, 6, -4, 0] }} transition={{ repeat: Infinity, duration: 6 + i, ease: 'easeInOut' }}><t.icon color="white" size={18} /></motion.span> : null}
+                      </MotionBox>
+                      <Box>
+                        <Text fontWeight="700" color="white">{t.title}</Text>
+                        <Text fontSize="sm" color="gray.400">{t.subtitle}</Text>
+                      </Box>
+                    </MotionBox>
+                  ))}
+                </Box>
+
+                {/* Bottom row: 2 centered cards */}
+                <Box display="grid" gridTemplateColumns={{ base: 'repeat(2,1fr)', md: 'repeat(2, 1fr)' }} gap={{ base: 4, md: 6 }} justifyContent="center">
+                  {bottomTiles.map((t) => (
+                    <MotionBox key={t.key} variants={cardVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.25 }} animate={shouldReduce ? {} : { y: [0, -4, 0] }} transition={shouldReduce ? {} : { repeat: Infinity, duration: 8, ease: 'easeInOut' }} whileHover={shouldReduce ? {} : { y: -10, scale: 1.02, boxShadow: '0 30px 80px rgba(20,20,30,0.6)', borderColor: 'rgba(99,102,241,0.32)' }} p={5} bg="rgba(255,255,255,0.02)" borderRadius="xl" border="1px solid rgba(255,255,255,0.04)" display="flex" alignItems="center" gap={4} style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', minHeight: 120 }}>
+                      <MotionBox whileHover={shouldReduce ? {} : { scale: 1.06 }} display="flex" alignItems="center" justifyContent="center" w={14} h={14} borderRadius="md" bg="linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))" style={{ boxShadow: 'inset 0 -6px 18px rgba(0,0,0,0.45)' }}>
+                        {t.icon ? <motion.span animate={shouldReduce ? {} : { rotate: [0, 6, -4, 0] }} transition={{ repeat: Infinity, duration: 7, ease: 'easeInOut' }}><t.icon color="white" size={18} /></motion.span> : null}
+                      </MotionBox>
+                      <Box>
+                        <Text fontWeight="700" color="white">{t.title}</Text>
+                        <Text fontSize="sm" color="gray.400">{t.subtitle}</Text>
+                      </Box>
+                    </MotionBox>
+                  ))}
+                </Box>
+              </motion.div>
+            </Box>
           </Box>
-          <Text fontSize={{ base: 'lg', md: '2xl' }} fontWeight="900" color="white">Connect your workflows — hire faster, upskill smarter.</Text>
         </VStack>
-
-        <Box display="flex" flexDirection="column" alignItems="center" gap={4}>
-          <Box w="100%" maxW="1000px" mt="1cm">
-            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={containerVariants}>
-              {/* Top row: 5 centered cards */}
-              <Box display="grid" gridTemplateColumns={{ base: 'repeat(2,1fr)', md: 'repeat(5, 1fr)' }} gap={{ base: 4, md: 6 }} mb={4} justifyContent="center" alignItems="stretch">
-                {topTiles.map((t, i) => (
-                  <MotionBox key={t.key} variants={cardVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.25 }} animate={shouldReduce ? {} : { y: [0, -4, 0] }} transition={shouldReduce ? {} : { repeat: Infinity, duration: 8 + i, ease: 'easeInOut', delay: i * 0.02 }} whileHover={shouldReduce ? {} : { y: -10, scale: 1.02, boxShadow: '0 30px 80px rgba(20,20,30,0.6)', borderColor: 'rgba(99,102,241,0.32)' }} p={5} bg="rgba(255,255,255,0.02)" borderRadius="xl" border="1px solid rgba(255,255,255,0.04)" display="flex" flexDirection="row" alignItems="center" gap={4} style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', minHeight: 120 }}>
-                    <MotionBox whileHover={shouldReduce ? {} : { scale: 1.06 }} display="flex" alignItems="center" justifyContent="center" w={14} h={14} borderRadius="md" bg="linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))" style={{ boxShadow: 'inset 0 -6px 18px rgba(0,0,0,0.45)' }}>
-                      {t.icon ? <motion.span animate={shouldReduce ? {} : { rotate: [0, 6, -4, 0] }} transition={{ repeat: Infinity, duration: 6 + i, ease: 'easeInOut' }}><t.icon color="white" size={18} /></motion.span> : null}
-                    </MotionBox>
-                    <Box>
-                      <Text fontWeight="700" color="white">{t.title}</Text>
-                      <Text fontSize="sm" color="gray.400">{t.subtitle}</Text>
-                    </Box>
-                  </MotionBox>
-                ))}
-              </Box>
-
-              {/* Bottom row: 2 centered cards */}
-              <Box display="grid" gridTemplateColumns={{ base: 'repeat(2,1fr)', md: 'repeat(2, 1fr)' }} gap={{ base: 4, md: 6 }} justifyContent="center">
-                {bottomTiles.map((t) => (
-                  <MotionBox key={t.key} variants={cardVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.25 }} animate={shouldReduce ? {} : { y: [0, -4, 0] }} transition={shouldReduce ? {} : { repeat: Infinity, duration: 8, ease: 'easeInOut' }} whileHover={shouldReduce ? {} : { y: -10, scale: 1.02, boxShadow: '0 30px 80px rgba(20,20,30,0.6)', borderColor: 'rgba(99,102,241,0.32)' }} p={5} bg="rgba(255,255,255,0.02)" borderRadius="xl" border="1px solid rgba(255,255,255,0.04)" display="flex" alignItems="center" gap={4} style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', minHeight: 120 }}>
-                    <MotionBox whileHover={shouldReduce ? {} : { scale: 1.06 }} display="flex" alignItems="center" justifyContent="center" w={14} h={14} borderRadius="md" bg="linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))" style={{ boxShadow: 'inset 0 -6px 18px rgba(0,0,0,0.45)' }}>
-                      {t.icon ? <motion.span animate={shouldReduce ? {} : { rotate: [0, 6, -4, 0] }} transition={{ repeat: Infinity, duration: 7, ease: 'easeInOut' }}><t.icon color="white" size={18} /></motion.span> : null}
-                    </MotionBox>
-                    <Box>
-                      <Text fontWeight="700" color="white">{t.title}</Text>
-                      <Text fontSize="sm" color="gray.400">{t.subtitle}</Text>
-                    </Box>
-                  </MotionBox>
-                ))}
-              </Box>
-            </motion.div>
-          </Box>
-        </Box>
-      </VStack>
       </Box>
     </Box>
   )

@@ -10,7 +10,13 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+BASE_DIR = Path(__file__).resolve().parent.parent
+env_local_path = BASE_DIR / ".env.local"
+env_path = BASE_DIR / ".env"
+if env_local_path.exists():
+    load_dotenv(dotenv_path=env_local_path)
+else:
+    load_dotenv(dotenv_path=env_path)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
