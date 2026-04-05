@@ -26,3 +26,5 @@ uploads/
 
 # Logs
 *.log
+backend_debug.log
+log.txt

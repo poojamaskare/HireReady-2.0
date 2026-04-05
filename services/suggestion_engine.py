@@ -43,11 +43,10 @@ def generate_suggestions(readiness_score, features, categories_scores, resume_te
     Return ONLY a JSON list of strings.
     Example: ["Add a mobile number to your contact details.", "Complete a project using React and Node.js.", "Add at least one technical internship."]
     """
-
     try:
         chat_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-specdec",
+            model="llama-3.3-70b-versatile",
             temperature=0.7,
             response_format={"type": "json_object"}
         )

@@ -10,7 +10,7 @@ import {
 import { Tooltip } from '@/components/ui/tooltip';
 import {
   LayoutDashboard, FileText, Map, ClipboardList, Briefcase,
-  User, PanelLeftClose, PanelLeftOpen, LogOut, ChevronLeft, Bell, BadgeCheck,
+  User, PanelLeftClose, PanelLeftOpen, LogOut, ChevronLeft, Bell, BadgeCheck, Menu
 } from 'lucide-react';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -62,6 +62,7 @@ export default function App() {
   /* ── Tab state ───────────────────────────────────────────────────── */
   const [activeTab, setActiveTab] = useState(() => PATH_TO_TAB[window.location.pathname] || 'dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   /* ── Role selection (landing page) ──────────────────────────────── */
   const [selectedRole, setSelectedRole] = useState(null);
@@ -254,6 +255,7 @@ export default function App() {
 
   const changeStudentTab = (tab) => {
     setActiveTab(tab);
+    setMobileMenuOpen(false);
     const targetPath = TAB_TO_PATH[tab] || '/student/dashboard';
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
@@ -318,6 +320,14 @@ export default function App() {
 
   return (
     <Flex h="100vh" bg="gray.950">
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <Box
+          position="fixed" top={0} left={0} w="100vw" h="100vh" bg="blackAlpha.700" zIndex={90}
+          display={{ md: 'none' }} onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* ═══════ SIDEBAR ═══════ */}
       <Box
         as="nav"
@@ -328,7 +338,9 @@ export default function App() {
         borderRight="1px solid"
         borderColor="gray.800"
         py={4}
-        display="flex"
+        display={{ base: mobileMenuOpen ? 'flex' : 'none', md: 'flex' }}
+        position={{ base: 'fixed', md: 'relative' }}
+        zIndex={100}
         flexDirection="column"
         transition="width 0.2s"
         overflow="hidden"
@@ -399,7 +411,7 @@ export default function App() {
         {/* ── Top Header ── */}
         <Flex
           h="60px"
-          px={6}
+          px={{ base: 4, md: 6 }}
           bg="gray.900/60"
           borderBottom="1px solid"
           borderColor="gray.800"
@@ -408,9 +420,21 @@ export default function App() {
           backdropFilter="blur(8px)"
           flexShrink={0}
         >
-          <Heading size="md" color="gray.100" fontWeight="600">
-            {NAV_ITEMS.find((n) => n.key === activeTab)?.label || 'Dashboard'}
-          </Heading>
+          <HStack gap={3}>
+            <IconButton
+              display={{ base: 'flex', md: 'none' }}
+              variant="ghost"
+              size="sm"
+              color="gray.400"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Icon asChild w={5} h={5}><Menu /></Icon>
+            </IconButton>
+            <Heading size={{ base: "sm", md: "md" }} color="gray.100" fontWeight="600">
+              {NAV_ITEMS.find((n) => n.key === activeTab)?.label || 'Dashboard'}
+            </Heading>
+          </HStack>
 
           {/* Notification bell + Profile icon (right side) */}
           <HStack gap={2}>
