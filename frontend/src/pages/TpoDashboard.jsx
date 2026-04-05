@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box, Flex, Heading, Text, Input, Button, VStack, HStack,
   SimpleGrid, Badge, Spinner, Textarea, Icon, Image, Table,
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/menu';
 import { Avatar } from '@/components/ui/avatar';
 import { toaster } from '@/components/ui/toaster';
+import { supabase } from '@/lib/supabaseClient';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import {
   LogOut, Target, BarChart3, DollarSign, CalendarClock,
@@ -50,6 +51,372 @@ const normalizeShortlistedItem = (item) => {
     student,
   };
 };
+
+const JobPostingCard = React.memo(function JobPostingCard({
+  job,
+  token,
+  inputStyles,
+  isSelected,
+  onSelect,
+  onViewShortlisted,
+  onViewInterested,
+  onDelete,
+}) {
+  if (import.meta.env.DEV) {
+    console.log('Rendering card:', job.id);
+  }
+
+  const [uploadResultsOpen, setUploadResultsOpen] = useState(false);
+  const [resultRoundName, setResultRoundName] = useState('');
+  const [resultStatus, setResultStatus] = useState('Qualified');
+  const [resultRemarks, setResultRemarks] = useState('');
+  const [resultFile, setResultFile] = useState(null);
+  const [resultFilePath, setResultFilePath] = useState('');
+  const [uploadingResultFile, setUploadingResultFile] = useState(false);
+  const [submittingResult, setSubmittingResult] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState({ type: 'idle', message: '' });
+
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
+  const isUploadBusy = uploadingResultFile || submittingResult;
+
+  const resetUploadForm = useCallback(() => {
+    setResultRoundName('');
+    setResultStatus('Qualified');
+    setResultRemarks('');
+    setResultFile(null);
+    setResultFilePath('');
+    setUploadStatus({ type: 'idle', message: '' });
+  }, []);
+
+  const openUploadResultsModal = useCallback(async () => {
+    setUploadResultsOpen(true);
+    setUploadStatus({ type: 'idle', message: '' });
+    try {
+      const check = await fetch(`${API_BASE}/results/${job.id}`, { headers: authHeaders });
+      if (!check.ok && check.status !== 403 && check.status !== 404) {
+        toaster.create({ title: 'Unable to verify job result access', type: 'warning' });
+      }
+    } catch {
+      // Non-blocking; backend will validate on submit.
+    }
+  }, [authHeaders, job.id]);
+
+  const closeUploadResultsModal = useCallback(() => {
+    if (isUploadBusy) return;
+    setUploadResultsOpen(false);
+    resetUploadForm();
+  }, [isUploadBusy, resetUploadForm]);
+
+  const handleResultFileSelect = useCallback(async (event) => {
+    if (isUploadBusy) return;
+    const file = event.target.files?.[0];
+    if (!file) {
+      setResultFile(null);
+      setResultFilePath('');
+      setUploadStatus({ type: 'idle', message: '' });
+      return;
+    }
+
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (!['pdf', 'xlsx', 'xls', 'jpg', 'jpeg', 'png'].includes(ext)) {
+      toaster.create({ title: 'Only PDF, Excel, JPG, or PNG files are allowed', type: 'error' });
+      setUploadStatus({ type: 'error', message: 'Only PDF, Excel, JPG, or PNG files are allowed.' });
+      return;
+    }
+
+    setResultFile(file);
+    setResultFilePath('');
+    setUploadStatus({ type: 'loading', message: 'Uploading to Supabase...' });
+
+    if (!supabase) {
+      toaster.create({ title: 'Supabase is not configured. Falling back to server upload.', type: 'warning' });
+      setUploadStatus({ type: 'warning', message: 'Supabase not configured. File will be uploaded via server on submit.' });
+      return;
+    }
+
+    setUploadingResultFile(true);
+    try {
+      const {
+        data: { user: supabaseUser },
+      } = await supabase.auth.getUser();
+
+      if (!supabaseUser) {
+        setUploadStatus({ type: 'error', message: 'Login required before uploading file.' });
+        return;
+      }
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, '_');
+      const filePath = `results/${Date.now()}-${safeName}`;
+
+      const { error } = await supabase.storage
+        .from('Result')
+        .upload(filePath, file);
+
+      if (error) {
+        toaster.create({ title: error.message || 'Supabase upload failed', type: 'error' });
+        setUploadStatus({ type: 'error', message: error.message || 'Supabase upload failed.' });
+        return;
+      }
+
+      setResultFilePath(filePath);
+      setUploadStatus({ type: 'success', message: `Uploaded to Result/${filePath}` });
+      toaster.create({ title: 'File uploaded to Supabase', type: 'success' });
+    } catch (error) {
+      toaster.create({ title: 'Failed to upload file to Supabase', type: 'error' });
+      setUploadStatus({ type: 'error', message: error?.message || 'Failed to upload file to Supabase.' });
+    } finally {
+      setUploadingResultFile(false);
+    }
+  }, [isUploadBusy]);
+
+  const submitUploadResults = useCallback(async () => {
+    if (isUploadBusy) return;
+
+    const normalizedRound = resultRoundName.trim();
+    if (!normalizedRound) {
+      toaster.create({ title: 'Round name is required', type: 'warning' });
+      return;
+    }
+
+    setSubmittingResult(true);
+    try {
+      const formData = new FormData();
+      formData.append('job_id', job.id);
+      formData.append('round_name', normalizedRound);
+      formData.append('status', resultStatus);
+      formData.append('remarks', resultRemarks.trim());
+
+      if (resultFilePath) {
+        formData.append('result_file_path', resultFilePath);
+      } else if (resultFile) {
+        formData.append('result_file', resultFile);
+      }
+
+      const res = await fetch(`${API_BASE}/results/upload`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setUploadStatus({ type: 'error', message: data.detail || 'Failed to upload results.' });
+        toaster.create({ title: data.detail || 'Failed to upload results', type: 'error' });
+        return;
+      }
+
+      toaster.create({ title: 'Results uploaded successfully', type: 'success' });
+      setUploadResultsOpen(false);
+      resetUploadForm();
+    } catch {
+      setUploadStatus({ type: 'error', message: 'Failed to upload results.' });
+      toaster.create({ title: 'Failed to upload results', type: 'error' });
+    } finally {
+      setSubmittingResult(false);
+    }
+  }, [authHeaders, isUploadBusy, job.id, resetUploadForm, resultFile, resultFilePath, resultRemarks, resultRoundName, resultStatus]);
+
+  return (
+    <>
+      <Box
+        bg={isSelected ? 'gray.850' : 'gray.900'}
+        border="1px solid"
+        borderColor={isSelected ? 'purple.500' : 'gray.800'}
+        borderRadius="xl"
+        p={5}
+        cursor="pointer"
+        onClick={() => onSelect(job.id)}
+      >
+        <Flex gap={3} align="flex-start" mb={2}>
+          {job.company_logo && (
+            <Box w="40px" h="40px" minW="40px" borderRadius="md" overflow="hidden" bg="gray.800">
+              <Image src={job.company_logo} alt={`${job.company} logo`} w="full" h="full" objectFit="contain" />
+            </Box>
+          )}
+          <Box flex={1}>
+            <Heading size="sm" color="gray.100" mb={1}>{job.title}</Heading>
+            <Text color="purple.400" fontSize="sm" fontWeight="500">{job.company}</Text>
+          </Box>
+        </Flex>
+
+        {job.description && <Text color="gray.400" fontSize="sm" mb={3} lineClamp={2}>{job.description}</Text>}
+
+        <Flex flexWrap="wrap" gap={2} mb={3}>
+          {job.job_role && <Badge colorPalette="purple" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><Target /></Icon>{job.job_role}</Badge>}
+          {job.min_cgpa != null && <Badge colorPalette="blue" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><BarChart3 /></Icon>Min CGPA: {job.min_cgpa}</Badge>}
+          {job.package_lpa != null && <Badge colorPalette="green" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><DollarSign /></Icon>{job.package_lpa} LPA</Badge>}
+          {job.deadline && <Badge colorPalette="orange" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><CalendarClock /></Icon>{job.deadline}</Badge>}
+        </Flex>
+
+        <VStack gap={2} align="stretch">
+          <Text fontSize="xs" color={isSelected ? 'purple.300' : 'gray.500'}>
+            {isSelected ? 'Job selected' : 'Select this job to enable actions'}
+          </Text>
+          <HStack gap={2}>
+            <Button
+              size="sm"
+              colorPalette="blue"
+              variant="outline"
+              flex={1}
+              disabled={!isSelected}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewShortlisted(job.id);
+              }}
+            >
+              View Shortlisted
+            </Button>
+            <Button
+              size="sm"
+              colorPalette="purple"
+              variant="outline"
+              flex={1}
+              disabled={!isSelected}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewInterested(job.id);
+              }}
+            >
+              <Icon asChild w={4} h={4} mr={1}><Users /></Icon>
+              View Interested
+            </Button>
+          </HStack>
+
+          <Box minH="36px" className="transition-none">
+            <Button
+              size="sm"
+              colorPalette="purple"
+              variant="outline"
+              w="full"
+              disabled={!isSelected || isUploadBusy}
+              onClick={(e) => {
+                e.stopPropagation();
+                openUploadResultsModal();
+              }}
+            >
+              {isUploadBusy ? 'Uploading...' : 'Upload Results'}
+            </Button>
+          </Box>
+
+          <Button
+            size="sm"
+            colorPalette="red"
+            variant="ghost"
+            disabled={!isSelected}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(job.id);
+            }}
+          >
+            Delete
+          </Button>
+        </VStack>
+      </Box>
+
+      <DialogRoot open={uploadResultsOpen} onOpenChange={(e) => { if (!e.open) closeUploadResultsModal(); }} size="lg">
+        <DialogContent bg="gray.900" border="1px solid" borderColor="gray.700" maxW="760px" w="92vw">
+          <DialogHeader>
+            <DialogTitle color="gray.100">Upload Results</DialogTitle>
+            <Text color="gray.400" fontSize="sm" mt={1}>{job.title} — {job.company}</Text>
+          </DialogHeader>
+          <DialogCloseTrigger />
+          <DialogBody pb={5}>
+            <VStack gap={4} align="stretch">
+              <Field label="Round Name" required>
+                <Input
+                  value={resultRoundName}
+                  onChange={(e) => setResultRoundName(e.target.value)}
+                  placeholder="e.g. Technical Interview"
+                  list={`result-round-options-${job.id}`}
+                  {...inputStyles}
+                />
+                <datalist id={`result-round-options-${job.id}`}>
+                  <option value="Aptitude Test" />
+                  <option value="Technical Interview" />
+                  <option value="HR Interview" />
+                  <option value="Final Selection" />
+                </datalist>
+              </Field>
+
+              <Field label="Result Status" required>
+                <Box
+                  as="select"
+                  value={resultStatus}
+                  onChange={(e) => setResultStatus(e.target.value)}
+                  w="full"
+                  h="40px"
+                  borderRadius="md"
+                  px={3}
+                  bg="gray.800"
+                  border="1px solid"
+                  borderColor="gray.700"
+                  color="gray.100"
+                >
+                  <option style={{ background: '#1f2937' }} value="Selected">Selected</option>
+                  <option style={{ background: '#1f2937' }} value="Rejected">Rejected</option>
+                  <option style={{ background: '#1f2937' }} value="Qualified">Qualified</option>
+                </Box>
+              </Field>
+
+              <Field label="Remarks (Optional)">
+                <Textarea
+                  rows={3}
+                  value={resultRemarks}
+                  onChange={(e) => setResultRemarks(e.target.value)}
+                  placeholder="Add any notes for selected students"
+                  {...inputStyles}
+                />
+              </Field>
+
+              <Field label="Upload File (Optional)" helperText="Accepted: PDF, XLSX, XLS, JPG, JPEG, PNG">
+                <Input
+                  type="file"
+                  accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png"
+                  onChange={handleResultFileSelect}
+                  disabled={isUploadBusy}
+                  {...inputStyles}
+                />
+                <Box minH="22px" mt={2}>
+                  {uploadStatus.message && (
+                    <Text
+                      fontSize="xs"
+                      color={uploadStatus.type === 'error' ? 'red.300' : uploadStatus.type === 'warning' ? 'orange.300' : uploadStatus.type === 'success' ? 'green.300' : 'blue.300'}
+                      className="transition-none"
+                    >
+                      {uploadStatus.message}
+                    </Text>
+                  )}
+                </Box>
+              </Field>
+
+              <Box minH="40px" className="transition-none">
+                <Button
+                  colorPalette="purple"
+                  loading={isUploadBusy}
+                  loadingText="Uploading..."
+                  disabled={isUploadBusy}
+                  onClick={submitUploadResults}
+                  w="full"
+                >
+                  Submit
+                </Button>
+              </Box>
+            </VStack>
+          </DialogBody>
+        </DialogContent>
+      </DialogRoot>
+    </>
+  );
+}, (prev, next) => (
+  prev.job === next.job
+  && prev.token === next.token
+  && prev.inputStyles === next.inputStyles
+  && prev.isSelected === next.isSelected
+  && prev.onSelect === next.onSelect
+  && prev.onViewShortlisted === next.onViewShortlisted
+  && prev.onViewInterested === next.onViewInterested
+  && prev.onDelete === next.onDelete
+));
 
 export default function TpoDashboard({ token, user, onLogout }) {
   const [tab, setTab] = useState('jobs');
@@ -104,32 +471,26 @@ export default function TpoDashboard({ token, user, onLogout }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedJobForDelete, setSelectedJobForDelete] = useState(null);
   const [deletingJob, setDeletingJob] = useState(false);
-  const [uploadResultsOpen, setUploadResultsOpen] = useState(false);
-  const [selectedUploadJob, setSelectedUploadJob] = useState(null);
-  const [resultRoundName, setResultRoundName] = useState('');
-  const [resultStatus, setResultStatus] = useState('Qualified');
-  const [resultRemarks, setResultRemarks] = useState('');
-  const [resultFile, setResultFile] = useState(null);
-  const [uploadingResults, setUploadingResults] = useState(false);
+  const [selectedActionJobId, setSelectedActionJobId] = useState(null);
 
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const authHeaders = { Authorization: `Bearer ${token}` };
+  const headers = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
+  const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
-  const inputStyles = {
+  const inputStyles = useMemo(() => ({
     bg: 'gray.800', border: '1px solid', borderColor: 'gray.700',
     _hover: { borderColor: 'gray.600' },
     _focus: { borderColor: 'purple.500', boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)' },
-  };
+  }), []);
 
   /* ── Fetch jobs ── */
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     setLoadingJobs(true);
     try {
       const res = await fetch(`${API_BASE}/tpo/jobs`, { headers });
       if (res.ok) { const data = await res.json(); setJobs(data.jobs || []); }
     } catch { /* */ } finally { setLoadingJobs(false); }
-  };
-  useEffect(() => { fetchJobs(); }, []);
+  }, [headers]);
+  useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
   /* ── Post job (multipart/form-data) ── */
   const handlePostJob = async (e) => {
@@ -184,10 +545,14 @@ export default function TpoDashboard({ token, user, onLogout }) {
   };
 
   /* ── Delete job ── */
-  const handleDelete = async (jobId) => {
+  const handleDelete = useCallback(async (jobId) => {
     setSelectedJobForDelete(jobId);
     setShowDeleteModal(true);
-  };
+  }, []);
+
+  const handleSelectActionJob = useCallback((jobId) => {
+    setSelectedActionJobId((prev) => (prev === jobId ? prev : jobId));
+  }, []);
 
   const confirmDeleteJob = async () => {
     if (!selectedJobForDelete) {
@@ -220,86 +585,8 @@ export default function TpoDashboard({ token, user, onLogout }) {
     setSelectedJobForDelete(null);
   };
 
-  const closeUploadResultsModal = () => {
-    if (uploadingResults) return;
-    setUploadResultsOpen(false);
-    setSelectedUploadJob(null);
-    setResultRoundName('');
-    setResultStatus('Qualified');
-    setResultRemarks('');
-    setResultFile(null);
-  };
-
-  const openUploadResultsModal = async (job) => {
-    setSelectedUploadJob(job);
-    setUploadResultsOpen(true);
-    try {
-      const check = await fetch(`${API_BASE}/results/${job.id}`, { headers: authHeaders });
-      if (!check.ok && check.status !== 403 && check.status !== 404) {
-        toaster.create({ title: 'Unable to verify job result access', type: 'warning' });
-      }
-    } catch {
-      // Non-blocking; backend will validate on submit.
-    }
-  };
-
-  const handleResultFileSelect = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      setResultFile(null);
-      return;
-    }
-    const ext = (file.name.split('.').pop() || '').toLowerCase();
-    if (!['pdf', 'xlsx', 'xls'].includes(ext)) {
-      toaster.create({ title: 'Only PDF or Excel files are allowed', type: 'error' });
-      return;
-    }
-    setResultFile(file);
-  };
-
-  const submitUploadResults = async () => {
-    if (!selectedUploadJob) return;
-
-    const normalizedRound = resultRoundName.trim();
-    if (!normalizedRound) {
-      toaster.create({ title: 'Round name is required', type: 'warning' });
-      return;
-    }
-
-    setUploadingResults(true);
-    try {
-      const formData = new FormData();
-      formData.append('job_id', selectedUploadJob.id);
-      formData.append('round_name', normalizedRound);
-      formData.append('status', resultStatus);
-      formData.append('remarks', resultRemarks.trim());
-      if (resultFile) {
-        formData.append('result_file', resultFile);
-      }
-
-      const res = await fetch(`${API_BASE}/results/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toaster.create({ title: data.detail || 'Failed to upload results', type: 'error' });
-        return;
-      }
-
-      toaster.create({ title: 'Results uploaded successfully', type: 'success' });
-      closeUploadResultsModal();
-    } catch {
-      toaster.create({ title: 'Failed to upload results', type: 'error' });
-    } finally {
-      setUploadingResults(false);
-    }
-  };
-
   /* ── View shortlisted ── */
-  const viewShortlisted = async (jobId) => {
+  const viewShortlisted = useCallback(async (jobId) => {
     setSelectedJobId(jobId); setLoadingShortlisted(true); setTab('shortlisted'); setSelectedStudents([]);
     try {
       const res = await fetch(`${API_BASE}/tpo/jobs/${jobId}/shortlisted`, { headers, cache: 'no-store' });
@@ -321,7 +608,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
         setShortlistedTotal(data.total ?? normalized.length);
       }
     } catch { /* */ } finally { setLoadingShortlisted(false); }
-  };
+  }, [headers]);
 
   const refreshShortlisted = async (jobId) => {
     if (!jobId) return;
@@ -516,7 +803,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
   };
 
   /* ── View interested students ── */
-  const viewInterested = async (jobId) => {
+  const viewInterested = useCallback(async (jobId) => {
     setSelectedJobId(jobId); setLoadingInterested(true); setTab('interested');
     try {
       const res = await fetch(`${API_BASE}/tpo/jobs/${jobId}/interested-students`, { headers });
@@ -527,7 +814,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
         setInterestedTotal(data.total || 0);
       }
     } catch { /* */ } finally { setLoadingInterested(false); }
-  };
+  }, [headers]);
 
   /* ── Export interested students as Excel ── */
   const exportExcel = async () => {
@@ -803,7 +1090,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
       ? 'Preparing resumes...'
       : 'Download';
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const filteredJobs = jobs.filter((job) => {
+  const filteredJobs = useMemo(() => jobs.filter((job) => {
     if (!normalizedSearchQuery) return true;
 
     const searchableFields = [
@@ -836,7 +1123,23 @@ export default function TpoDashboard({ token, user, onLogout }) {
     }
 
     return false;
-  });
+  }), [jobs, normalizedSearchQuery]);
+
+  const renderedJobs = useMemo(() => (
+    filteredJobs.map((j) => (
+      <JobPostingCard
+        key={j.id}
+        job={j}
+        token={token}
+        inputStyles={inputStyles}
+        isSelected={selectedActionJobId === j.id}
+        onSelect={handleSelectActionJob}
+        onViewShortlisted={viewShortlisted}
+        onViewInterested={viewInterested}
+        onDelete={handleDelete}
+      />
+    ))
+  ), [filteredJobs, handleDelete, handleSelectActionJob, inputStyles, selectedActionJobId, token, viewInterested, viewShortlisted]);
 
   return (
     <Flex h="100vh" bg="gray.950">
@@ -1059,49 +1362,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
                 <Text color="gray.500" mt={6}>No jobs found.</Text>
               ) : (
                 <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-                  {filteredJobs.map(j => (
-                    <Box key={j.id} bg="gray.900" border="1px solid" borderColor="gray.800"
-                      borderRadius="xl" p={5}>
-                      <Flex gap={3} align="flex-start" mb={2}>
-                        {j.company_logo && (
-                          <Box w="40px" h="40px" minW="40px" borderRadius="md" overflow="hidden" bg="gray.800">
-                            <Image src={j.company_logo} alt={`${j.company} logo`} w="full" h="full" objectFit="contain" />
-                          </Box>
-                        )}
-                        <Box flex={1}>
-                          <Heading size="sm" color="gray.100" mb={1}>{j.title}</Heading>
-                          <Text color="purple.400" fontSize="sm" fontWeight="500">{j.company}</Text>
-                        </Box>
-                      </Flex>
-                      {j.description && <Text color="gray.400" fontSize="sm" mb={3} lineClamp={2}>{j.description}</Text>}
-                      <Flex flexWrap="wrap" gap={2} mb={3}>
-                        {j.job_role && <Badge colorPalette="purple" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><Target /></Icon>{j.job_role}</Badge>}
-                        {j.min_cgpa != null && <Badge colorPalette="blue" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><BarChart3 /></Icon>Min CGPA: {j.min_cgpa}</Badge>}
-                        {j.package_lpa != null && <Badge colorPalette="green" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><DollarSign /></Icon>{j.package_lpa} LPA</Badge>}
-                        {j.deadline && <Badge colorPalette="orange" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><CalendarClock /></Icon>{j.deadline}</Badge>}
-                      </Flex>
-                      <VStack gap={2} align="stretch">
-                        <HStack gap={2}>
-                          <Button size="sm" colorPalette="blue" variant="outline" flex={1}
-                            onClick={() => viewShortlisted(j.id)}>View Shortlisted</Button>
-                          <Button size="sm" colorPalette="purple" variant="outline" flex={1}
-                            onClick={() => viewInterested(j.id)}>
-                            <Icon asChild w={4} h={4} mr={1}><Users /></Icon>View Interested
-                          </Button>
-                        </HStack>
-                        <Button
-                          size="sm"
-                          colorPalette="purple"
-                          variant="outline"
-                          onClick={() => openUploadResultsModal(j)}
-                        >
-                          Upload Results
-                        </Button>
-                        <Button size="sm" colorPalette="red" variant="ghost"
-                          onClick={() => handleDelete(j.id)}>Delete</Button>
-                      </VStack>
-                    </Box>
-                  ))}
+                  {renderedJobs}
                 </SimpleGrid>
               )}
             </Box>
@@ -1319,80 +1580,6 @@ export default function TpoDashboard({ token, user, onLogout }) {
                 ) : (
                   <Text color="gray.400">Resume not uploaded</Text>
                 )}
-              </DialogBody>
-            </DialogContent>
-          </DialogRoot>
-
-          <DialogRoot open={uploadResultsOpen} onOpenChange={(e) => { if (!e.open) closeUploadResultsModal(); }} size="lg">
-            <DialogContent bg="gray.900" border="1px solid" borderColor="gray.700" maxW="760px" w="92vw">
-              <DialogHeader>
-                <DialogTitle color="gray.100">Upload Results</DialogTitle>
-                <Text color="gray.400" fontSize="sm" mt={1}>
-                  {selectedUploadJob ? `${selectedUploadJob.title} — ${selectedUploadJob.company}` : 'Select a job'}
-                </Text>
-              </DialogHeader>
-              <DialogCloseTrigger />
-              <DialogBody pb={5}>
-                <VStack gap={4} align="stretch">
-                  <Field label="Round Name" required>
-                    <Input
-                      value={resultRoundName}
-                      onChange={(e) => setResultRoundName(e.target.value)}
-                      placeholder="e.g. Technical Interview"
-                      list="result-round-options"
-                      {...inputStyles}
-                    />
-                    <datalist id="result-round-options">
-                      <option value="Aptitude Test" />
-                      <option value="Technical Interview" />
-                      <option value="HR Interview" />
-                      <option value="Final Selection" />
-                    </datalist>
-                  </Field>
-
-                  <Field label="Result Status" required>
-                    <Box
-                      as="select"
-                      value={resultStatus}
-                      onChange={(e) => setResultStatus(e.target.value)}
-                      w="full"
-                      h="40px"
-                      borderRadius="md"
-                      px={3}
-                      bg="gray.800"
-                      border="1px solid"
-                      borderColor="gray.700"
-                      color="gray.100"
-                    >
-                      <option style={{ background: '#1f2937' }} value="Selected">Selected</option>
-                      <option style={{ background: '#1f2937' }} value="Rejected">Rejected</option>
-                      <option style={{ background: '#1f2937' }} value="Qualified">Qualified</option>
-                    </Box>
-                  </Field>
-
-                  <Field label="Remarks (Optional)">
-                    <Textarea
-                      rows={3}
-                      value={resultRemarks}
-                      onChange={(e) => setResultRemarks(e.target.value)}
-                      placeholder="Add any notes for selected students"
-                      {...inputStyles}
-                    />
-                  </Field>
-
-                  <Field label="Upload File (Optional)" helperText="Accepted: PDF, XLSX, XLS">
-                    <Input type="file" accept=".pdf,.xlsx,.xls" onChange={handleResultFileSelect} {...inputStyles} />
-                  </Field>
-
-                  <Button
-                    colorPalette="purple"
-                    loading={uploadingResults}
-                    loadingText="Uploading..."
-                    onClick={submitUploadResults}
-                  >
-                    Submit
-                  </Button>
-                </VStack>
               </DialogBody>
             </DialogContent>
           </DialogRoot>

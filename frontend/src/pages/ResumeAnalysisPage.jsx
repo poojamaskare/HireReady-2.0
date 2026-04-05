@@ -11,7 +11,7 @@ import {
   Trophy, AlertTriangle, XCircle, Info, Briefcase, BookOpen,
   ArrowLeft, Loader2
 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, ensureSupabaseUser, getAccessibleStorageUrl } from '@/lib/supabaseClient';
 import axios from 'axios';
 import { toaster } from '@/components/ui/toaster';
 import RoadmapViewport from '../components/RoadmapViewport';
@@ -137,25 +137,26 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
     try {
       const formData = new FormData();
       if (supabase) {
+        const sbUser = await ensureSupabaseUser();
         const safeName = resumeFile.name.replace(/[^a-zA-Z0-9._-]+/g, '_');
-        const objectPath = `${user?.id || 'student'}/${Date.now()}_${safeName}`;
+        const objectPath = `${sbUser.id}/${Date.now()}-${safeName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('resumes')
+          .from('Result')
           .upload(objectPath, resumeFile, {
-            upsert: true,
+            upsert: false,
             contentType: 'application/pdf',
             cacheControl: '3600',
           });
 
         if (uploadError) {
+          console.error(uploadError.message);
           throw new Error(uploadError.message || 'Failed to upload resume to storage.');
         }
 
-        const { data: publicData } = supabase.storage.from('resumes').getPublicUrl(objectPath);
-        const publicUrl = publicData?.publicUrl || '';
+        const publicUrl = await getAccessibleStorageUrl('Result', objectPath);
         if (!publicUrl) {
-          throw new Error('Failed to generate public resume URL.');
+          throw new Error('Failed to generate resume URL. Check bucket visibility/policies.');
         }
         formData.append('resume_url', publicUrl);
         formData.append('resume_filename', resumeFile.name);
