@@ -4215,3 +4215,24 @@ sqlalchemy.exc.ProgrammingError: (sqlite3.ProgrammingError) Error binding parame
 2026-04-02 23:38:32,801 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
 2026-04-02 23:43:04,846 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
 2026-04-02 23:43:05,120 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-05 13:08:03,932 [INFO] main: Loading ML models in background thread...
+2026-04-05 13:08:03,942 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-05 13:08:03,942 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-05 13:08:46,641 [INFO] main: Loading ML models in background thread...
+2026-04-05 13:08:46,655 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-05 13:08:46,655 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-05 16:17:34,967 [INFO] main: Loading ML models in background thread...
+2026-04-05 16:17:34,971 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-05 16:17:35,030 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-05 16:19:03,650 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-05 16:19:04,824 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-04-05 16:19:05,882 [INFO] main: Auto-analysis saved: 2deff746-4eaa-49b8-9083-52fde439a290
+2026-04-05 16:19:41,326 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-05 16:19:44,502 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.coursera.org/specializations/nlp-with-deep-learning
+2026-04-05 16:19:44,620 [INFO] main: is_valid_url: VALID (HEAD 200) - https://www.coursera.org/specializations/deep-learning
+2026-04-05 16:19:45,114 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://www.edx.org/professional-certificate/ai-for-business-leaders
+2026-04-05 16:19:45,171 [INFO] main: is_valid_url: INVALID (HEAD 404) - https://online.stanford.edu/courses/CS229/
+2026-04-05 16:19:46,556 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.coursera.org/specializations/nlp-with-deep-learning
+2026-04-05 16:19:47,109 [INFO] main: is_valid_url: INVALID (GET 404) - https://www.edx.org/professional-certificate/ai-for-business-leaders
+2026-04-05 16:19:47,481 [INFO] main: is_valid_url: INVALID (GET 404) - https://online.stanford.edu/courses/CS229/
+2026-04-05 16:19:48,588 [INFO] main: is_valid_url: VALID (HEAD 200) - https://www.ibm.com/developerworks/community/events/certificate-in-nlp
