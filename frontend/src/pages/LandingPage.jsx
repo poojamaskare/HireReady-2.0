@@ -1,9 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Box, Flex, Heading, Text, Button, HStack, Icon, SimpleGrid, Container, GridItem, VStack } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Briefcase, ArrowRight, GraduationCap, Building2, Zap, Shield, Globe, Sun, Moon } from 'lucide-react';
+import { Briefcase, ArrowRight, GraduationCap, Building2, Zap, Shield, Globe, Sun, Moon, LayoutDashboard, FileText, Map, ClipboardList, BadgeCheck, User } from 'lucide-react';
 import { ColorModeButton } from '../components/ui/color-mode';
 import Matter from 'matter-js';
+import IntegrationsBlock from '../components/IntegrationsBlock';
+
+const FEATURES = [
+  { label: 'Dashboard', icon: LayoutDashboard, color: 'blue.500' },
+  { label: 'Resume Analysis', icon: FileText, color: 'purple.500' },
+  { label: 'Skill Roadmap', icon: Map, color: 'teal.500' },
+  { label: 'AI Quizzes', icon: ClipboardList, color: 'orange.500' },
+  { label: 'Job Board', icon: Briefcase, color: 'pink.500' },
+  { label: 'Performance', icon: BadgeCheck, color: 'green.500' },
+  { label: 'Smart Profile', icon: User, color: 'cyan.500' },
+];
 
 const JOB_ROLES = [
   'Software Engineer', 'Data Analyst', 'Product Manager', 'UX Designer',
@@ -30,18 +41,18 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
     const { Engine, World, Bodies, Runner, Events } = Matter;
     const engine = Engine.create();
     engineRef.current = engine;
-    
+
     // Set up world boundaries (invisible floor and walls)
     const updateBoundaries = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
-      
+
       World.clear(engine.world, false);
-      
+
       const floor = Bodies.rectangle(width / 2, height + 10, width, 50, { isStatic: true });
       const leftWall = Bodies.rectangle(-10, height / 2, 50, height, { isStatic: true });
       const rightWall = Bodies.rectangle(width + 10, height / 2, 50, height, { isStatic: true });
-      
+
       World.add(engine.world, [floor, leftWall, rightWall]);
     };
 
@@ -98,7 +109,7 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
 
     const text = JOB_ROLES[Math.floor(Math.random() * JOB_ROLES.length)];
     const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-    
+
     // Reduced chip dimensions
     const chipWidth = text.length * 8 + 30;
     const chipHeight = 35;
@@ -113,22 +124,110 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
 
     setChips((prev) => [
       ...prev,
-      { 
-        id: chipIdRef.current++, 
-        text, 
-        color, 
-        body, 
-        width: chipWidth, 
-        height: chipHeight, 
-        x, 
-        y, 
-        angle: 0, 
-        spawnTime: Date.now() 
+      {
+        id: chipIdRef.current++,
+        text,
+        color,
+        body,
+        width: chipWidth,
+        height: chipHeight,
+        x,
+        y,
+        angle: 0,
+        spawnTime: Date.now()
       }
     ]);
 
     // Limit persistent chips is now handled by the opacity filter in syncLoop
   }, []);
+
+  const FeatureTiles = () => {
+    const [isAssembled, setIsAssembled] = useState(false);
+
+    useEffect(() => {
+      const timer = setTimeout(() => setIsAssembled(true), 100);
+      return () => clearTimeout(timer);
+    }, []);
+
+    return (
+      <Box w="full" maxW="800px" mx="auto" mb={12} position="relative" h="280px">
+        {FEATURES.map((feature, index) => {
+          // Random initial positions (range -300 to 300)
+          const randomX = (Math.random() - 0.5) * 600;
+          const randomY = (Math.random() - 0.5) * 400;
+          const randomRotate = (Math.random() - 0.5) * 180;
+
+          // Target grid calculation (5 up, 2 down)
+          const isTopRow = index < 5;
+          const colIndex = isTopRow ? index : index - 5;
+          const targetX = isTopRow
+            ? (colIndex - 2) * 150  // 5 in top: -300, -150, 0, 150, 300
+            : (colIndex - 0.5) * 150; // 2 in bottom: -75, 75
+          const targetY = isTopRow ? 0 : 140;
+
+          return (
+            <motion.div
+              key={feature.label}
+              initial={{
+                x: randomX,
+                y: randomY,
+                rotate: randomRotate,
+                opacity: 0,
+                scale: 0.5
+              }}
+              animate={isAssembled ? {
+                x: targetX,
+                y: targetY,
+                rotate: 0,
+                opacity: 1,
+                scale: 1
+              } : {}}
+              transition={{
+                duration: 3,
+                ease: [0.22, 1, 0.36, 1], // Classic smooth easeOutExpo
+                delay: index * 0.1
+              }}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '20%',
+                marginLeft: '-65px', // Half of tile width
+              }}
+            >
+              <VStack
+                w="130px"
+                h="120px"
+                bg="whiteAlpha.100"
+                backdropFilter="blur(12px)"
+                border="1px solid"
+                borderColor="whiteAlpha.200"
+                borderRadius="2xl"
+                justify="center"
+                gap={3}
+                boxShadow="0 8px 32px rgba(0,0,0,0.3)"
+                _hover={{
+                  bg: "whiteAlpha.200",
+                  borderColor: feature.color,
+                  transform: "translateY(-5px)",
+                  boxShadow: `0 12px 40px rgba(0,0,0,0.5)`,
+                  transition: "all 0.3s ease"
+                }}
+                transition="all 0.3s ease"
+                cursor="pointer"
+              >
+                <Icon asChild color={feature.color} w={8} h={8}>
+                  <feature.icon />
+                </Icon>
+                <Text fontSize="xs" fontWeight="700" color="whiteAlpha.900" textAlign="center">
+                  {feature.label}
+                </Text>
+              </VStack>
+            </motion.div>
+          );
+        })}
+      </Box>
+    );
+  };
 
   // Hardcoded drifting background elements
   const FloatingBackgroundTags = () => (
@@ -200,7 +299,7 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
           {chips.map((chip) => {
             const age = Date.now() - chip.spawnTime;
             const opacity = Math.max(0, 1 - age / 1500);
-            
+
             return (
               <Box
                 key={chip.id}
@@ -228,52 +327,55 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
         </Box>
 
         {/* Header */}
-        <Flex 
-          as="header" 
-          w="full" 
-          px={{ base: 6, md: 12 }} 
-          py={6} 
-          align="center" 
-          justify="space-between" 
-          position="relative" 
-          zIndex={10}
+        <Flex
+          as="header"
+          w="full"
+          px={{ base: 6, md: 12 }}
+          py={6}
+          align="center"
+          justify="space-between"
+          position="relative"
+          zIndex={40}
           borderBottom="1px solid"
           borderColor="border.subtle"
         >
-        <HStack gap={2}>
-          <Icon asChild color="blue.500" w={6} h={6}>
-            <Briefcase />
-          </Icon>
-          <Heading size="md" fontWeight="800" color="fg" letterSpacing="tight">
-            HireReady
-          </Heading>
-        </HStack>
-        {/* removed nav links: Overview / Features / Pricing per request */}
-        <HStack gap={4}>
-          <ColorModeButton variant="ghost" />
-          <Button 
-            size="sm" 
-            variant="outline" 
-            borderColor="border" 
-            _hover={{ bg: 'bg.subtle' }}
-            onClick={onLoginClick || (() => {})}
-          >
-            Login
-          </Button>
-        </HStack>
-      </Flex>
+          <HStack gap={2}>
+            <Icon asChild color="blue.500" w={6} h={6}>
+              <Briefcase />
+            </Icon>
+            <Heading size="md" fontWeight="800" color="fg" letterSpacing="tight">
+              HireReady
+            </Heading>
+          </HStack>
+          {/* removed nav links: Overview / Features / Pricing per request */}
+          <HStack gap={4}>
+            <ColorModeButton variant="ghost" />
+            <Button
+              size="sm"
+              variant="outline"
+              borderColor="border"
+              _hover={{ bg: 'bg.subtle' }}
+              onClick={() => {
+                console.log('Login clicked');
+                if (onLoginClick) onLoginClick();
+              }}
+            >
+              Login
+            </Button>
+          </HStack>
+        </Flex>
 
         {/* Hero Content */}
-        <Flex 
-          flex={1} 
-          direction="column" 
-          align="center" 
-          justify="center" 
-          px={4} 
-          position="relative" 
-          zIndex={10}
+        <Flex
+          flex={1}
+          direction="column"
+          align="center"
+          justify="center"
+          px={4}
+          position="relative"
+          zIndex={30}
           textAlign="center"
-          pointerEvents="none" 
+          pointerEvents="auto"
         >
           <Heading
             size="4xl"
@@ -282,23 +384,26 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
             lineHeight="1.1"
             letterSpacing="tight"
           >
-            <Text as="span" color="fg">Find your </Text>
-            <Text 
-              as="span" 
-              bgGradient="to-r" 
-              gradientFrom="purple.500" 
-              gradientTo="blue.500" 
+            <Text as="span" color="fg">Get Ready To </Text>
+            <Text
+              as="span"
+              bgGradient="to-r"
+              gradientFrom="purple.500"
+              gradientTo="blue.500"
               bgClip="text"
             >
-              ROLE
+              GET HIRED
             </Text>
           </Heading>
-          
+
           <Text color="fg.muted" fontSize={{ base: "md", md: "xl" }} maxW="600px" mb={10}>
-            Turn your passion into profit! Start preparing and earning with HireReady today. Find the perfect fit for your skills.
+            Prepare for your dream role with AI-powered insights, real-time quizzes, and personalized career roadmaps.
           </Text>
 
-          <Box pointerEvents="auto" mt={8}>
+          {/* 7-Tile Feature Bar */}
+          <FeatureTiles />
+
+          <Box pointerEvents="auto" mt={8} position="relative" zIndex={50}>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -315,7 +420,10 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
                 _hover={{ bg: 'purple.600', transform: 'translateY(-2px)' }}
                 transition="all 0.2s"
                 shadow="0 10px 25px rgba(168,85,247,0.3)"
-                onClick={onGetStarted}
+                onClick={() => {
+                  console.log('Get Started clicked');
+                  if (onGetStarted) onGetStarted();
+                }}
               >
                 Get Started <Icon asChild ml={2}><ArrowRight /></Icon>
               </Button>
@@ -348,7 +456,7 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
               A complete ecosystem designed to bridge the gap between academic learning and industry requirements.
             </Text>
           </VStack>
- 
+
           <SimpleGrid columns={{ base: 1, md: 3 }} gap={8}>
             <Box bg="bg" p={8} borderRadius="2xl" border="1px solid" borderColor="border">
               <Icon asChild color="blue.500" w={10} h={10} mb={6}><Zap /></Icon>
@@ -357,7 +465,7 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
                 Get immediate, AI-powered feedback on your resumes and GitHub profiles to instantly know where you stand in the competitive market.
               </Text>
             </Box>
-            
+
             <Box bg="bg" p={8} borderRadius="2xl" border="1px solid" borderColor="border">
               <Icon asChild color="purple.500" w={10} h={10} mb={6}><Shield /></Icon>
               <Heading size="lg" color="fg" mb={3}>Targeted Preparation</Heading>
@@ -365,7 +473,7 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
                 Our tailored recommendation engine suggests the exact skills and quizzes you need to pass top-tier technical interviews.
               </Text>
             </Box>
-            
+
             <Box bg="bg" p={8} borderRadius="2xl" border="1px solid" borderColor="border">
               <Icon asChild color="pink.500" w={10} h={10} mb={6}><Globe /></Icon>
               <Heading size="lg" color="fg" mb={3}>Global Opportunities</Heading>
@@ -377,14 +485,16 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
         </Container>
       </Box>
 
+      <IntegrationsBlock />
+
       {/* ── FOOTER ── */}
-      <Flex 
+      <Flex
         as="footer"
-        w="full" 
-        p={8} 
-        justify="center" 
-        align="center" 
-        borderTop="1px solid" 
+        w="full"
+        p={8}
+        justify="center"
+        align="center"
+        borderTop="1px solid"
         borderColor="border.subtle"
         bg="bg"
         position="relative"

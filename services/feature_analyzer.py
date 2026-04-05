@@ -62,109 +62,122 @@ def initialize_feature_vector() -> Dict[str, int]:
 # Mapping: feature name → list of regex-safe aliases (case-insensitive).
 _SKILL_PATTERNS: Dict[str, list] = {
     # ── Programming languages ────────────────────────────────────────────
-    "Python":            [r"\bpython\b", r"\bpy\b"],
+    "Python":            [r"\bpython\b", r"\bpy\b", r"\bpython3?\b"],
     "Java":              [r"\bjava\b(?!\s*script)"],
-    "C++":               [r"\bc\+\+\b", r"\bcpp\b"],
+    "C++":               [r"\bc\+\+\b", r"\bcpp\b", r"\bc\+\+11\b", r"\bc\+\+14\b", r"\bc\+\+17\b", r"\bc\+\+20\b"],
     "C":                 [r"\bc\b(?!\+\+|#|sharp)"],
-    "JavaScript":        [r"\bjavascript\b", r"\bjs\b", r"\becmascript\b"],
+    "JavaScript":        [r"\bjavascript\b", r"\bjs\b", r"\becmascript\b", r"node"],
     "Go":                [r"\bgolang\b", r"\bgo\b(?:\s+lang)?\b"],
     "Rust":              [r"\brust\b"],
     "TypeScript":        [r"\btypescript\b", r"\bts\b"],
-    "SQL":               [r"\bsql\b", r"\bmysql\b", r"\bpostgresql\b", r"\bpostgres\b", r"\boracle\b", r"\bmongodb\b", r"\bnosql\b"],
+    "SQL":               [r"\bsql\b", r"\bmysql\b", r"\bpostgresql\b", r"\bpostgres\b", r"\boracle\b", r"\bmongodb\b", r"\bnosql\b", r"\bsqlite\b", r"\bmssql\b", r"\bsql\s*server\b"],
 
     # ── Frameworks / runtimes ────────────────────────────────────────────
-    "Node":              [r"\bnode\.?js\b", r"\bnode\b"],
-    "Spring":            [r"\bspring\b(?:\s*boot)?", r"\bhibernate\b"],
-    "Django":            [r"\bdjango\b"],
+    "Node":              [r"\bnode\.?js\b", r"\bnode\b", r"\bruntime\b"],
+    "Spring":            [r"\bspring\b(?:\s*boot)?", r"\bhibernate\b", r"\bjpa\b"],
+    "Django":            [r"\bdjango\b", r"\bdjango-rest\b"],
     "Flask":             [r"\bflask\b"],
     "FastAPI":           [r"\bfastapi\b", r"\bfast\s*api\b"],
     "Express":           [r"\bexpress\.?js\b", r"\bexpress\b"],
     "React":             [r"\breact\.?js\b", r"\breact\b(?!\s*native)"],
-    "Angular":           [r"\bangular\b"],
-    "Vue":               [r"\bvue\.?js\b", r"\bvue\b"],
+    "Angular":           [r"\bangular\b", r"\bangularjs\b", r"\bangular\.?io\b"],
+    "Vue":               [r"\bvue\.?js\b", r"\bvue\b", r"\bvuejs\b"],
     "NextJS":            [r"\bnext\.?js\b", r"\bnextjs\b"],
-    "HTML":              [r"\bhtml5?\b"],
-    "CSS":               [r"\bcss3?\b", r"\bsass\b", r"\bscss\b", r"\btailwind\b", r"\bbootstrap\b"],
+    "HTML":              [r"\bhtml5?\b", r"\bhtml/css\b"],
+    "CSS":               [r"\bcss3?\b", r"\bsass\b", r"\bscss\b", r"\btailwind\b", r"\bbootstrap\b", r"\bstyled\s*components\b"],
 
     # ── ML / AI ──────────────────────────────────────────────────────────
     "TensorFlow":        [r"\btensorflow\b", r"\btf\b", r"\bkeras\b"],
     "PyTorch":           [r"\bpytorch\b", r"\btorch\b", r"\bdeep\s+learning\b"],
-    "Scikit":            [r"\bscikit[\s\-]?learn\b", r"\bsklearn\b", r"\bscikit\b", r"\bxboost\b", r"\blgbm\b", r"\bcatboost\b"],
-    "Pandas":            [r"\bpandas\b", r"\bnumpy\b", r"\bmatplotlib\b", r"\bseaborn\b", r"\bplotly\b"],
-    "NLP":               [r"\bnlp\b", r"\bnatural\s+language\s+processing\b", r"\bspacy\b", r"\bnltk\b", r"\btransformers\b", r"\bhugging\s*face\b", r"\bbert\b", r"\blstm\b"],
-    "ComputerVision":    [r"\bcomputer\s*vision\b", r"\bcv\b", r"\bopencv\b", r"\byolo\b", r"\bcnn\b", r"\bimage\s+processing\b"],
-    "LLM":               [r"\bllm\b", r"\blarge\s+language\s+model\b", r"\bgpt\b", r"\bert\b", r"\bllama\b", r"\bgenerative\s+ai\b", r"\bgenai\b", r"\blangchain\b", r"\bopenai\b"],
-    "PromptEngineering": [r"\bprompt\s*engineering\b", r"\bprompt\s*design\b"],
+    "Scikit":            [r"\bscikit[\s\-]?learn\b", r"\bsklearn\b", r"\bscikit\b", r"\bxboost\b", r"\blgbm\b", r"\bcatboost\b", r"\brandom\s*forest\b", r"\bsvm\b"],
+    "Pandas":            [r"\bpandas\b", r"\bnumpy\b", r"\bmatplotlib\b", r"\bseaborn\b", r"\bplotly\b", r"\bjupyter\b", r"\bscipy\b"],
+    "NLP":               [r"\bnlp\b", r"\bnatural\s+language\s+processing\b", r"\bspacy\b", r"\bnltk\b", r"\btransformers\b", r"\bhugging\s*face\b", r"\bbert\b", r"\blstm\b", r"\brnn\b"],
+    "ComputerVision":    [r"\bcomputer\s*vision\b", r"\bcv\b", r"\bopencv\b", r"\byolo\b", r"\bcnn\b", r"\bimage\s+processing\b", r"\bimage\s+recognition\b"],
+    "LLM":               [r"\bllm\b", r"\blarge\s+language\s+model\b", r"\bgpt\b", r"\bgpt-?\d+\b", r"\bbert\b", r"\bllama\b", r"\bgenerative\s+ai\b", r"\bgenai\b", r"\blangchain\b", r"\bopenai\b", r"\bclaude\b"],
+    "PromptEngineering": [r"\bprompt\s*engineering\b", r"\bprompt\s*design\b", r"\bprompting\b"],
 
     # ── General / Core ───────────────────────────────────────────────────
-    "OOPS":             [r"\boops\b", r"\bobject[\s\-]oriented\b", r"\boop\b", r"\bdesign\s*patterns\b"],
+    "OOPS":             [r"\boops\b", r"\bobject[\s\-]oriented\b", r"\boop\b", r"\bdesign\s*patterns\b", r"\bpolymorphism\b", r"\binheritance\b", r"\bencapsulation\b", r"\babstraction\b"],
 
     # ── Cloud / DevOps ───────────────────────────────────────────────────
-    "AWS":               [r"\baws\b", r"\bamazon\s+web\s+services\b", r"\bec2\b", r"\bs3\b", r"\blambda\b"],
-    "Azure":             [r"\bazure\b"],
-    "GCP":               [r"\bgcp\b", r"\bgoogle\s+cloud\b"],
-    "Docker":            [r"\bdocker\b", r"\bcontainer\b"],
-    "Kubernetes":        [r"\bkubernetes\b", r"\bk8s\b", r"\bhelm\b"],
+    "AWS":               [r"\baws\b", r"\bamazon\s+web\s+services\b", r"\bec2\b", r"\bs3\b", r"\blambda\b", r"\brds\b", r"\belastic\s*beanstalk\b", r"\biam\b", r"\bdynamodb\b"],
+    "Azure":             [r"\bazure\b", r"\bazure\s+devops\b", r"\bms\s*azure\b"],
+    "GCP":               [r"\bgcp\b", r"\bgoogle\s+cloud\b", r"\bgce\b", r"\bgcs\b", r"\bgoogle\s+cloud\s+platform\b"],
+    "Docker":            [r"\bdocker\b", r"\bcontainer\b", r"\bdockerfile\b"],
+    "Kubernetes":        [r"\bkubernetes\b", r"\bk8s\b", r"\bhelm\b", r"\bkustomize\b"],
     "CI/CD":             [r"\bci\s*/\s*cd\b", r"\bcicd\b", r"\bcontinuous\s+integration\b",
                           r"\bcontinuous\s+deployment\b", r"\bcontinuous\s+delivery\b",
-                          r"\bgithub\s+actions\b", r"\bjenkins\b", r"\bcircleci\b", r"\btravis\b"],
+                          r"\bgithub\s+actions\b", r"\bjenkins\b", r"\bcircleci\b", r"\btravis\b", r"\bgitlab\s*ci\b", r"\bazure\s*pipelines\b"],
 
     # ── Security ─────────────────────────────────────────────────────────
     "EthicalHacking":    [r"\bethical\s*hacking\b", r"\bpenetration\s*testing\b",
-                          r"\bpen\s*test\b", r"\bkali\b", r"\bmetasploit\b"],
-    "Cryptography":      [r"\bcryptography\b", r"\bcrypto\b", r"\baes\b", r"\brsa\b"],
+                          r"\bpen\s*test\b", r"\bkali\b", r"\bmetasploit\b", r"\bburp\b", r"\bwireshark\b"],
+    "Cryptography":      [r"\bcryptography\b", r"\bcrypto\b", r"\baes\b", r"\brsa\b", r"\bsha\b", r"\bhashing\b", r"\bencryption\b"],
     "NetworkSecurity":   [r"\bnetwork\s*security\b", r"\bfirewall\b",
-                          r"\bintrusion\s+detection\b", r"\bwireshaak\b", r"\bnmap\b"],
+                          r"\bintrusion\s+detection\b", r"\bwireshark\b", r"\bnmap\b", r"\bsnort\b"],
 
     # ── Mobile ───────────────────────────────────────────────────────────
-    "Android":           [r"\bandroid\b", r"\bkotlin\b"],
+    "Android":           [r"\bandroid\b", r"\bkotlin\b", r"\bandroid\s*studio\b"],
     "Flutter":           [r"\bflutter\b", r"\bdart\b"],
-    "ReactNative":       [r"\breact\s*native\b"],
+    "ReactNative":       [r"\breact\s*native\b", r"\breact-native\b"],
 
     # ── CS fundamentals ──────────────────────────────────────────────────
-    "SystemDesign":      [r"\bsystem\s*design\b", r"\bhld\b", r"\blld\b", r"\bscalability\b", r"\bload\s+balancer\b"],
-    "DBMS":              [r"\bdbms\b", r"\bdatabase\s+management\b", r"\brdbms\b", r"\bmysql\b", r"\bmongodb\b"],
-    "OS":                [r"\boperating\s*system\b", r"\blinux\b", r"\bunix\b", r"\bwindows\b"],
+    "SystemDesign":      [r"\bsystem\s*design\b", r"\bhld\b", r"\blld\b", r"\bscalability\b", r"\bload\s+balancer\b", r"\bdistributed\s*systems\b", r"\bmicroservices\b"],
+    "DBMS":              [r"\bdbms\b", r"\bdatabase\s+management\b", r"\brdbms\b", r"\bmysql\b", r"\bmongodb\b", r"\bredis\b", r"\bpostgresql\b"],
+    "OS":                [r"\boperating\s*system\b", r"\blinux\b", r"\bunix\b", r"\bwindows\b", r"\bubuntu\b", r"\bcentos\b", r"\bthreading\b", r"\bprocess\b"],
 }
 
 # Internship domain keywords → feature column
 _INTERNSHIP_PATTERNS: Dict[str, list] = {
-    "internship_backend":  [r"\bbackend\b", r"\bback[\s\-]end\b", r"\bserver[\s\-]side\b",
-                            r"\bfull[\s\-]?stack\b", r"\bweb\s+develop\b",
-                            r"\bfrontend\b", r"\bfront[\s\-]end\b", r"\bui\s*/\s*ux\b",
-                            r"\bsoftware\s+developer\s+intern\b", r"\bsoftware\s+engineer\s+intern\b"],
+    "internship_backend":  [r"\bbackend\b", r"\brest\s*api\b", r"\bweb\s+app\b",
+                             r"\bserver\b", r"\bmicroservice\b", r"\bcrud\b",
+                             r"\bfrontend\b", r"\bfront[\s\-]end\b", r"\bui\s*/\s*ux\b",
+                             r"\bfull[\s\-]stack\b", r"\bsoftware\s+developer\s+intern\b", r"\bsoftware\s+engineer\s+intern\b",
+                             r"\bbackend\s+developer\b", r"\bweb\s+developer\b", r"\bapplication\s+developer\b"],
     "internship_ai":       [r"\bai\b", r"\bartificial\s+intelligence\b",
-                            r"\bmachine\s+learning\b", r"\bml\b", r"\bdata\s+science\b",
-                            r"\bdeep\s+learning\b", r"\bai\s+intern\b", r"\bml\s+intern\b"],
+                             r"\bmachine\s+learning\b", r"\bml\b", r"\bdata\s+science\b",
+                             r"\bdeep\s+learning\b", r"\bai\s+intern\b", r"\bml\s+intern\b",
+                             r"\bcomputer\s*vision\b", r"\bnlp\b", r"\bneural\s*network\b"],
     "internship_cloud":    [r"\bcloud\b", r"\bdevops\b", r"\binfrastructure\b",
-                            r"\bsre\b", r"\bcloud\s+intern\b", r"\bdevops\s+intern\b"],
-    "internship_security": [r"\bsecurity\b", r"\bcyber\b", r"\bsoc\b", r"\bsecurity\s+intern\b"],
+                             r"\bsre\b", r"\bcloud\s+intern\b", r"\bdevops\s+intern\b",
+                             r"\baws\b", r"\bazure\b", r"\bgcp\b", r"\bdocker\b", r"\bkubernetes\b"],
+    "internship_security": [r"\bsecurity\b", r"\bcyber\b", r"\bsoc\b", r"\bsecurity\s+intern\b",
+                             r"\bethical\s*hacking\b", r"\bpenetration\s*testing\b", r"\bnetwork\s*security\b"],
     "internship_mobile":   [r"\bmobile\b", r"\bandroid\b", r"\bios\b",
-                            r"\bflutter\b", r"\breact\s*native\b", r"\bmobile\s+intern\b"],
+                             r"\bflutter\b", r"\breact\s*native\b", r"\bmobile\s+intern\b",
+                             r"\bapp\s+development\b", r"\bmobile\s+app\b"],
     "internship_data":     [r"\bdata\s+engineer\b", r"\bdata\s+analy\b",
-                            r"\betl\b", r"\bdata\s+pipeline\b",
-                            r"\bbig\s*data\b", r"\bdata\s+intern\b"],
+                             r"\betl\b", r"\bdata\s+pipeline\b",
+                             r"\bbig\s*data\b", r"\bdata\s+intern\b", r"\bbusiness\s+intelligence\b",
+                             r"\bdata\s+warehouse\b", r"\bhadoop\b", r"\bspark\b"],
 }
 
 # Project domain keywords → feature column
 _PROJECT_PATTERNS: Dict[str, list] = {
     "num_backend_projects":  [r"\bbackend\b", r"\brest\s*api\b", r"\bweb\s+app\b",
-                              r"\bserver\b", r"\bmicroservice\b", r"\bcrud\b",
-                              r"\bfrontend\b", r"\bfront[\s\-]end\b", r"\bwebsite\b",
-                              r"\breact\b", r"\bvue\b", r"\bangular\b", r"\bfull\s*stack\b"],
+                               r"\bserver\b", r"\bmicroservice\b", r"\bcrud\b",
+                               r"\bfrontend\b", r"\bfront[\s\-]end\b", r"\bwebsite\b",
+                               r"\breact\b", r"\bvue\b", r"\bangular\b", r"\bfull\s*stack\b",
+                               r"\becommerce\b", r"\bblog\b", r"\bportfolio\b", r"\bdashboard\b",
+                               r"\badmin\s*panel\b", r"\bcontent\s*management\b"],
     "num_ai_projects":       [r"\bmachine\s+learning\b", r"\bml\b", r"\bai\b",
-                              r"\bdeep\s+learning\b", r"\bneural\s+net\b",
-                              r"\bnlp\b", r"\bcomputer\s*vision\b",
-                              r"\bclassifi\b", r"\bpredict\b", r"\brecommendation\b", r"\bchatbot\b"],
+                               r"\bdeep\s+learning\b", r"\bneural\s+net\b",
+                               r"\bnlp\b", r"\bcomputer\s*vision\b",
+                               r"\bclassifi\b", r"\bpredict\b", r"\brecommendation\b", r"\bchatbot\b",
+                               r"\bsentiment\s*analysis\b", r"\bimage\s*recognition\b", r"\bobject\s*detection\b",
+                               r"\bregression\b", r"\bclustering\b", r"\bdata\s*visualization\b"],
     "num_mobile_projects":   [r"\bmobile\s+app\b", r"\bandroid\s+app\b",
-                              r"\bios\s+app\b", r"\bflutter\b",
-                              r"\breact\s*native\b", r"\bhybrid\s+app\b"],
+                               r"\bios\s+app\b", r"\bflutter\b",
+                               r"\breact\s*native\b", r"\bhybrid\s+app\b",
+                               r"\bexpo\b", r"\bxamarin\b", r"\bionic\b"],
     "num_cloud_projects":    [r"\bcloud\b", r"\baws\b", r"\bazure\b", r"\bgcp\b",
-                              r"\bdeployed\s+on\b", r"\bterraform\b",
-                              r"\bdocker\b", r"\bkubernetes\b", r"\bserverless\b"],
+                               r"\bdeployed\s+on\b", r"\bterraform\b",
+                               r"\bdocker\b", r"\bkubernetes\b", r"\bserverless\b",
+                               r"\blambda\b", r"\bec2\b", r"\bs3\b", r"\bcloudformation\b"],
     "num_security_projects": [r"\bsecurity\b", r"\bethical\s*hack\b",
-                              r"\bvulnerability\b", r"\bpenetration\b",
-                              r"\bcryptograph\b", r"\bencryption\b", r"\bscanner\b"],
+                               r"\bvulnerability\b", r"\bpenetration\b",
+                               r"\bcryptograph\b", r"\bencryption\b", r"\bscanner\b",
+                               r"\bfirewall\b", r"\bintrusion\b", r"\bpassword\s*cracker\b"],
 }
 
 
@@ -193,28 +206,45 @@ def extract_resume_features(text: str) -> Dict[str, int]:
                 break  # one match is enough for binary flag
 
     # ── Internship detection (binary) ────────────────────────────────────
-    intern_matches = re.finditer(r"\bintern\b", lower_text)
-    intern_indices = [m.start() for m in intern_matches]
+    intern_keywords = [
+        r"\bintern(?:ship)?s?\b", r"\btrainee\b", r"\bapprentice\b", 
+        r"\bindustrial\s+training\b", r"\bvocational\s+training\b"
+    ]
+    intern_pattern = "|".join(intern_keywords)
+    intern_matches = list(re.finditer(intern_pattern, lower_text, re.IGNORECASE))
     
     intern_context = ""
-    for idx in intern_indices:
-        start = max(0, idx - 100)
-        end = min(len(lower_text), idx + 100)
+    for m in intern_matches:
+        start = max(0, m.start() - 250)
+        end = min(len(lower_text), m.end() + 250)
         intern_context += lower_text[start:end] + " "
 
-    # Fallback: if "experience" section exists, treat it as internship context
-    if not intern_context and "experience" in lower_text:
-        exp_matches = re.finditer(r"\bexperience\b", lower_text)
-        for m in exp_matches:
+
+    # Fallback: if internship/experience/training sections exist, use them.
+    if not intern_context:
+        section_matches = re.finditer(
+            r"\b(internships?|experience|work\s+experience|training|industrial\s+training)\b",
+            lower_text,
+        )
+        for m in section_matches:
             start = m.end()
-            end = min(len(lower_text), start + 500)
+            end = min(len(lower_text), start + 700)
             intern_context += lower_text[start:end] + " "
 
+    # Capture domain flags
+    domain_matched = False
     for feature, patterns in _INTERNSHIP_PATTERNS.items():
         for pattern in patterns:
             if re.search(pattern, intern_context):
                 features[feature] = 1
+                domain_matched = True
                 break
+    
+    # Fallback: If we found any internship keywords but didn't match a domain, 
+    # default to backend to ensure the user gets credit.
+    if len(intern_matches) > 0 and not domain_matched:
+         features["internship_backend"] = 1
+
 
     # ── Project counting (integer) ───────────────────────────────────────
     project_matches = re.finditer(r"\bproject\b", lower_text)
@@ -234,11 +264,80 @@ def extract_resume_features(text: str) -> Dict[str, int]:
             end = min(len(lower_text), start + 500)
             project_context += lower_text[start:end] + " "
 
+    # Estimate total project entries from section structure/bullets first,
+    # then map totals across matched project domains.
+    project_entry_lines = re.findall(
+        r"(?:^|\n)\s*(?:[-*•]|\d+[.)])\s+[a-z0-9][^\n]{2,120}",
+        project_context,
+        flags=re.IGNORECASE,
+    )
+    explicit_project_mentions = len(re.findall(r"\bproject\b", project_context))
+    numbered_project_mentions = len(re.findall(r"\bproject\s*\d+\b", project_context))
+
+    total_projects = 0
+    if project_entry_lines:
+        total_projects = len(project_entry_lines)
+    elif numbered_project_mentions:
+        total_projects = numbered_project_mentions
+    elif explicit_project_mentions:
+        # Fallback when resumes use prose without bullets.
+        total_projects = explicit_project_mentions
+
+    # Additional fallback: infer project entries from the Projects section
+    # even when the word "project" is only present in the section header.
+    if total_projects == 0:
+        header_iter = re.finditer(r"\b(?:academic\s+)?projects?\b", lower_text)
+        inferred = 0
+        for h in header_iter:
+            section_start = h.end()
+            section = lower_text[section_start: section_start + 1200]
+            # Count bullet/numbered lines as potential individual projects.
+            bullets = re.findall(r"(?:^|\n)\s*(?:[-*•]|\d+[.)])\s+[a-z0-9][^\n]{3,140}", section, flags=re.IGNORECASE)
+            inferred = max(inferred, len(bullets))
+
+            # If bullets are not available, count title-like lines.
+            if inferred == 0:
+                title_like = re.findall(r"(?:^|\n)\s*[a-z0-9][^\n]{4,100}\s*(?:\||-|:)\s*(?:python|java|react|node|ml|ai|flutter|android|cloud|aws|gcp|docker)", section, flags=re.IGNORECASE)
+                inferred = max(inferred, len(title_like))
+
+        if inferred > 0:
+            total_projects = inferred
+
+    # Final fallback for poorly structured PDFs: infer projects from
+    # action-oriented lines that look like project achievements.
+    if total_projects == 0:
+        chunks = re.split(r"[\n\.]+", lower_text)
+        project_like = 0
+        action_pat = re.compile(r"\b(built|developed|implemented|designed|created|deployed)\b")
+        artifact_pat = re.compile(r"\b(project|application|app|system|platform|website|dashboard|model|portal)\b")
+        tech_pat = re.compile(r"\b(python|java|c\+\+|javascript|react|node|flask|django|fastapi|sql|mongodb|aws|docker|kubernetes|ml|ai|tensorflow|pytorch)\b")
+
+        for chunk in chunks:
+            line = chunk.strip()
+            if len(line) < 18:
+                continue
+            if action_pat.search(line) and artifact_pat.search(line) and tech_pat.search(line):
+                project_like += 1
+
+        if project_like > 0:
+            total_projects = min(project_like, 10)
+
+    total_projects = max(0, min(total_projects, 10))
+
+    matched_domains = []
     for feature, patterns in _PROJECT_PATTERNS.items():
-        count = 0
-        for pattern in patterns:
-            count += len(re.findall(pattern, project_context))
-        features[feature] = min(count, 10)
+        if any(re.search(pattern, project_context) for pattern in patterns):
+            matched_domains.append(feature)
+
+    if total_projects > 0:
+        if not matched_domains:
+            # Default unmatched projects to backend bucket.
+            features["num_backend_projects"] = total_projects
+        else:
+            base = total_projects // len(matched_domains)
+            remainder = total_projects % len(matched_domains)
+            for idx, feature in enumerate(matched_domains):
+                features[feature] = base + (1 if idx < remainder else 0)
 
     return features
 
@@ -298,3 +397,59 @@ def _validate_feature_vector(feature_vector: Dict[str, int]) -> None:
                 f"Feature '{key}' has non-integer value: {value!r} "
                 f"(type={type(value).__name__})"
             )
+
+# ---------------------------------------------------------------------------
+# 5. evaluate_resume_structure — Scoring the "format" based on text patterns.
+# ---------------------------------------------------------------------------
+
+def evaluate_resume_structure(text: str) -> float:
+    """
+    Returns a score from 0.0 to 10.0 based on how well organized the text is.
+    Heuristics:
+    1. Clear section headers (Education, Skills, Projects, Experience).
+    2. Use of listing patterns (bullet points, numbered lists).
+    3. Lack of large unorganized text blocks (prose dumping).
+    """
+    if not text or len(text.strip()) < 100:
+        return 0.0
+
+    score = 0.0
+    lower_text = text.lower()
+
+    # 1. Section Headers Detected (up to 5 pts)
+    headers = ["education", "skills", "projects", "experience", "internship", "contact", "achievements", "summary"]
+    detected_headers = 0
+    for h in headers:
+        # Check if header appears on its own line (or near start of line)
+        if re.search(rf"(?:^|\n)\s*{h}\s*(?:\n|:|-|\b)", lower_text):
+            detected_headers += 1
+    
+    score += min(5.0, detected_headers * 0.75)
+
+    # 2. Structure Indicators (up to 3 pts)
+    # Check for common bullet point characters or numbered lists
+    has_bullets = len(re.findall(r"(?:^|\n)\s*[-*•◘◙◦‣▷▶·]\s+", text))
+    has_numbered = len(re.findall(r"(?:^|\n)\s*\d+[.)]\s+", text))
+    
+    if has_bullets > 10: score += 2.5
+    elif has_bullets > 5: score += 1.5
+    
+    if has_numbered > 3: score += 0.5
+
+    # 3. Penalty for Bunching (negative up to -2 pts)
+    # Large chunks of text (>500 chars) without a newline or significant punctuation
+    large_blocks = re.findall(r"[^\n]{500,}", text)
+    if len(large_blocks) > 2:
+        score -= 2.0
+    elif len(large_blocks) > 0:
+        score -= 1.0
+
+    # 4. Professional Content (up to 2 pts)
+    # Check for name/email/github etc in first few lines
+    header_block = lower_text[:400]
+    if re.search(r"\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b", header_block):
+        score += 1.0
+    if "github.com" in header_block or "linkedin.com" in header_block:
+        score += 1.0
+
+    return max(0.0, min(10.0, score))

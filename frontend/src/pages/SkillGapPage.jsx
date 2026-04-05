@@ -23,8 +23,107 @@ import { Search, Sparkles, Plus, BookOpen, Briefcase, ArrowRight, MessageCircle,
 import axios from 'axios';
 import { toaster } from '@/components/ui/toaster';
 import RoadmapViewport from '../components/RoadmapViewport';
+import RoadmapShViewer from '../components/RoadmapShViewer';
+
+const ROADMAP_SH_MAPPING = {
+  'Frontend Developer': 'frontend',
+  'Backend Developer': 'backend',
+  'Full Stack Developer': 'full-stack',
+  'DevOps Engineer': 'devops',
+  'Data Analyst': 'data-analyst',
+  'AI Engineer': 'ai-engineer',
+  'Data Scientist': 'ai-data-scientist',
+  'Data Engineer': 'dataops',
+  'Android Developer': 'android',
+  'iOS Developer': 'ios',
+  'Blockchain Developer': 'blockchain',
+  'QA Engineer': 'qa',
+  'Solutions Architect': 'software-architect',
+  'Cybersecurity Analyst': 'cyber-security',
+  'UI/UX Designer': 'ux-design',
+  'Technical Writer': 'technical-writer',
+  'Game Developer': 'game-developer',
+  'Product Manager': 'product-manager',
+  'Engineering Manager': 'engineering-manager',
+  'PostgreSQL': 'postgresql-dba',
+  'MLOps Engineer': 'mlops',
+  'AI Red Teaming': 'ccdc',
+  'BI Analyst': 'data-analyst',
+  'DevSecOps': 'devops',
+  'Machine Learning': 'mlops',
+  'Server-side Game Developer': 'game-developer',
+  'Developer Relations': 'engineering-manager',
+};
+
+const POPULAR_ROADMAPS = [
+  { title: 'Frontend', slug: 'frontend' },
+  { title: 'Backend', slug: 'backend' },
+  { title: 'Full Stack', slug: 'full-stack' },
+  { title: 'DevOps', slug: 'devops' },
+  { title: 'Data Analyst', slug: 'data-analyst' },
+  { title: 'AI Engineer', slug: 'ai-engineer' },
+  { title: 'Data Scientist', slug: 'ai-data-scientist' },
+  { title: 'Data Engineer', slug: 'dataops' },
+  { title: 'Android', slug: 'android' },
+  { title: 'Machine Learning', slug: 'mlops' },
+  { title: 'iOS', slug: 'ios' },
+  { title: 'Blockchain', slug: 'blockchain' },
+  { title: 'QA', slug: 'qa' },
+  { title: 'Software Architect', slug: 'software-architect' },
+  { title: 'Cyber Security', slug: 'cyber-security' },
+  { title: 'UX Design', slug: 'ux-design' },
+  { title: 'Technical Writer', slug: 'technical-writer' },
+  { title: 'Game Developer', slug: 'game-developer' },
+  { title: 'Product Manager', slug: 'product-manager' },
+];
+
+const RoadmapCard = ({ title, onClick, isAction = false }) => (
+  <Box
+    bg="whiteAlpha.50"
+    border="1px solid"
+    borderColor="whiteAlpha.100"
+    borderRadius="xl"
+    p={4}
+    cursor="pointer"
+    transition="all 0.2s"
+    _hover={{
+      bg: isAction ? 'blue.500/20' : 'whiteAlpha.100',
+      borderColor: isAction ? 'blue.500/50' : 'whiteAlpha.300',
+      transform: 'translateY(-2px)'
+    }}
+    onClick={onClick}
+    position="relative"
+  >
+    <Flex justify="space-between" align="center">
+      <Text fontWeight="600" fontSize="sm" color="gray.200">
+        {isAction ? <Text as="span" color="blue.400">+ </Text> : null}
+        {title}
+      </Text>
+      {!isAction && (
+        <Icon 
+          asChild 
+          w={3.5} h={3.5} 
+          color="gray.600" 
+          _groupHover={{ color: 'blue.400' }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+          </svg>
+        </Icon>
+      )}
+    </Flex>
+  </Box>
+);
 
 const MotionBox = motion(Box);
+
+const getRoadmapSlug = (title) => {
+  if (!title) return '';
+  return title.toLowerCase()
+    .replace(/ developer$/i, '')
+    .replace(/ engineer$/i, '')
+    .replace(/\s+/g, '-');
+};
 
 const ROLE_SUGGESTIONS = [
   'AI Engineer', 'AI Prompt Engineer', 'API Developer', 'AR/VR Developer',
@@ -55,6 +154,7 @@ export default function SkillGapPage() {
 
   // Roadmap state
   const [roadmapData, setRoadmapData] = useState(null);
+  const [roadmapSource, setRoadmapSource] = useState('llm'); // 'llm' or 'roadmapsh'
   const [activeSkillForRoadmap, setActiveSkillForRoadmap] = useState(null);
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
   const [newSkill, setNewSkill] = useState('');
@@ -94,6 +194,7 @@ export default function SkillGapPage() {
       setSkills(predictedSkills);
       setHasSearched(true);
       setRoadmapData(null);
+      setRoadmapSource('llm');
       // Fetch role-level resources (courses/certificates/youtube) using role roadmap endpoint
       try {
         // Use the cached, validated resources endpoint which returns per-role results
@@ -147,6 +248,7 @@ export default function SkillGapPage() {
 
     try {
       const response = await axios.post('/api/generate-learning-path', { skill: skillName });
+      setRoadmapSource('llm');
       setRoadmapData(response.data);
     } catch (error) {
       toaster.create({
@@ -161,19 +263,42 @@ export default function SkillGapPage() {
     }
   };
 
-  const generateRoleRoadmap = async () => {
-    if (!role.trim()) return;
+  const generateRoleRoadmap = async (roleOverride) => {
+    const selectedRole = typeof roleOverride === 'string' ? roleOverride : role;
+    if (!selectedRole.trim()) return;
+
+    // Use current search if no override, or the clicked slug from our map
+    const slug = ROADMAP_SH_MAPPING[selectedRole] || getRoadmapSlug(selectedRole);
+    if (!slug) return; 
 
     setIsGeneratingRoadmap(true);
-    setActiveSkillForRoadmap(role);
+    setActiveSkillForRoadmap(selectedRole);
 
     try {
-      const response = await axios.post('/api/generate-role-learning-path', { role });
+      // 1. Check Session Storage Cache
+      const cacheKey = `roadmap_sh_${slug}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      
+      if (cached) {
+        console.log(`Using cached roadmap for ${slug}`);
+        setRoadmapSource('roadmapsh');
+        setRoadmapData(JSON.parse(cached));
+        setIsGeneratingRoadmap(false);
+        return;
+      }
+
+      // 2. Fetch from roadmap.sh via backend proxy (to avoid CORS)
+      const response = await axios.get(`/api/roadmap-proxy/${slug}`);
+      
+      // 3. Cache the successful result
+      sessionStorage.setItem(cacheKey, JSON.stringify(response.data));
+      
+      setRoadmapSource('roadmapsh');
       setRoadmapData(response.data);
     } catch (error) {
       toaster.create({
-        title: 'Roadmap Generation Failed',
-        description: error.response?.data?.detail || 'Groq API error',
+        title: 'Roadmap Fetch Failed',
+        description: 'Failed to load data from roadmap.sh. Please try again.',
         type: 'error',
         duration: 3000,
       });
@@ -303,12 +428,20 @@ export default function SkillGapPage() {
   return (
     <Box color="white" fontFamily="'Inter', sans-serif">
       {roadmapData && activeSkillForRoadmap ? (
-        <RoadmapViewport
-          data={roadmapData}
-          skillName={activeSkillForRoadmap}
-          onBack={() => setRoadmapData(null)}
-          showResources={false}
-        />
+        roadmapSource === 'roadmapsh' ? (
+          <RoadmapShViewer
+            data={roadmapData}
+            roleName={activeSkillForRoadmap}
+            onBack={() => setRoadmapData(null)}
+          />
+        ) : (
+          <RoadmapViewport
+            data={roadmapData}
+            skillName={activeSkillForRoadmap}
+            onBack={() => setRoadmapData(null)}
+            showResources={false}
+          />
+        )
       ) : (
         <Container maxW="5xl">
           <VStack gap={6} align="stretch">
@@ -415,22 +548,46 @@ export default function SkillGapPage() {
           </VStack>
 
           {!hasSearched && (
-            <Box py={24}>
-              <Text
-                color="gray.400"
-                fontSize="lg"
-                maxW="3xl"
-                mx="auto"
-                textAlign="center"
+            <VStack spacing={8} mt={12} width="100%">
+              <Box
+                bg="whiteAlpha.100"
+                px={4} py={1.5}
+                borderRadius="full"
+                border="1px solid"
+                borderColor="whiteAlpha.200"
               >
-                Tell us your dream tech role and we&apos;ll map every core skill from beginner to advanced, then build an AI-powered learning roadmap with real courses, certifications, and practice projects.
-              </Text>
-            </Box>
+                <Text fontSize="xs" fontWeight="700" color="blue.400" textTransform="uppercase" letterSpacing="wider">
+                  Role-based Roadmaps
+                </Text>
+              </Box>
+
+              <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} gap={4} width="100%" px={4}>
+                {POPULAR_ROADMAPS.map((item) => (
+                  <RoadmapCard 
+                    key={item.title} 
+                    title={item.title} 
+                    onClick={() => generateRoleRoadmap(item.title)} 
+                  />
+                ))}
+                <RoadmapCard 
+                  title="Search for your desired roadmap" 
+                  isAction 
+                  onClick={() => document.querySelector('input').focus()} 
+                />
+              </SimpleGrid>
+            </VStack>
+          )}
+
+          {!hasSearched && (
+            <Text color="gray.500" fontSize="sm" mt={8} textAlign="center">
+              Tell us your dream tech role and we'll map every core skill from beginner to advanced,<br />
+              then build an AI-powered learning roadmap with real courses, certifications, and practice projects.
+            </Text>
           )}
 
           {/* Role-level resources moved above so they appear under the Roadmap header */}
 
-          {/* role-level roadmap button (styled like skill buttons) placed under the search bar */}
+          {/* role-level roadmap button shown only if roadmap.sh slug exists or likely exists */}
           {hasSearched && role.trim() && (
             <Flex justify="center" mt={2}>
               <Button

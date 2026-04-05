@@ -1,5 +1,7 @@
 # Environment variables
 .env
+.env.local
+*.env*
 
 # Python
 __pycache__/
@@ -21,3 +23,8 @@ dist/
 
 # Runtime uploads
 uploads/
+
+# Logs
+*.log
+backend_debug.log
+log.txt

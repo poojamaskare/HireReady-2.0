@@ -486,12 +486,30 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
                   Academic Record
                 </Heading>
               </HStack>
+              <Box>
+                <Text fontSize="sm" color="gray.400" mb={3}>
+                  Select your education type and enter SGPI semester-wise for your current academics.
+                </Text>
+                <HStack gap={4}>
+                  <Button
+                    variant={educationType === '12th' ? 'solid' : 'outline'}
+                    onClick={() => handleEducationTypeChange('12th')}
+                    colorPalette="purple"
+                    size="sm"
+                  >
+                    12th (Higher Secondary)
+                  </Button>
+                  <Button
+                    variant={educationType === 'diploma' ? 'solid' : 'outline'}
+                    onClick={() => handleEducationTypeChange('diploma')}
+                    colorPalette="purple"
+                    size="sm"
+                  >
+                    Diploma
+                  </Button>
+                </HStack>
+              </Box>
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={6}>
-                <Box gridColumn={{ md: 'span 2' }}>
-                  <Text fontSize="sm" color="gray.400">
-                    Enter SGPI semester-wise for your current academics.
-                  </Text>
-                </Box>
 
                 {getVisibleSemesters().map((sem) => {
                   const key = `sem${sem}`;

@@ -17,7 +17,7 @@ import { toaster } from '@/components/ui/toaster';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import {
   LogOut, Target, BarChart3, DollarSign, CalendarClock,
-  Award, Lightbulb, Phone, FileText, ChevronLeft, ChevronDown, Download, Bell, Users, Upload,
+  Award, Lightbulb, Phone, FileText, ChevronLeft, ChevronDown, Download, Bell, Users, Upload, Menu as MenuIcon,
 } from 'lucide-react';
 
 const API_BASE = '/api';
@@ -56,6 +56,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
   const [jobs, setJobs] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   /* New-job form */
   const [title, setTitle] = useState('');
@@ -839,11 +840,22 @@ export default function TpoDashboard({ token, user, onLogout }) {
 
   return (
     <Flex h="100vh" bg="gray.950">
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <Box
+          position="fixed" top={0} left={0} w="100vw" h="100vh" bg="blackAlpha.700" zIndex={90}
+          display={{ md: 'none' }} onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <Box
         as="nav" w="240px" minW="240px" h="100vh" bg="gray.900"
         borderRight="1px solid" borderColor="gray.800" py={4}
-        display="flex" flexDirection="column"
+        display={{ base: mobileMenuOpen ? 'flex' : 'none', md: 'flex' }}
+        position={{ base: 'fixed', md: 'relative' }}
+        zIndex={100}
+        flexDirection="column"
       >
         <HStack px={4} mb={6} gap={2}>
           <Text fontSize="xl" fontWeight="800" color="purple.400" letterSpacing="-0.5px">
@@ -864,7 +876,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
                 color={isActive ? 'purple.300' : 'gray.400'}
                 _hover={{ bg: 'gray.800', color: 'gray.100' }}
                 borderRadius="lg" fontSize="sm" fontWeight={isActive ? '600' : '400'}
-                onClick={() => { if (needsJob) return; setTab(item.key); }}
+                onClick={() => { if (needsJob) return; setTab(item.key); setMobileMenuOpen(false); }}
                 opacity={needsJob ? 0.4 : 1}
                 cursor={needsJob ? 'not-allowed' : 'pointer'}
               >
@@ -878,10 +890,23 @@ export default function TpoDashboard({ token, user, onLogout }) {
       {/* Main */}
       <Flex direction="column" flex={1} overflow="hidden">
         {/* Header */}
-        <Flex h="60px" px={6} bg="gray.900/60" borderBottom="1px solid" borderColor="gray.800"
+        <Flex h="60px" px={{ base: 4, md: 6 }} bg="gray.900/60" borderBottom="1px solid" borderColor="gray.800"
           align="center" justify="space-between" backdropFilter="blur(8px)" flexShrink={0}
         >
-          <Heading size="md" color="gray.100">{NAV.find(n => n.key === tab)?.label || 'Dashboard'}</Heading>
+          <HStack gap={3}>
+            <Button
+              display={{ base: 'flex', md: 'none' }}
+              variant="ghost"
+              size="sm"
+              color="gray.400"
+              p={1}
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Icon asChild w={5} h={5}><MenuIcon /></Icon>
+            </Button>
+            <Heading size={{ base: "sm", md: "md" }} color="gray.100">{NAV.find(n => n.key === tab)?.label || 'Dashboard'}</Heading>
+          </HStack>
           <MenuRoot>
             <MenuTrigger asChild>
               <Button variant="ghost" p={0} borderRadius="full" _hover={{ bg: 'gray.800' }}>

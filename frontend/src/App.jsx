@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import {
   Box, Flex, VStack, HStack, Text, Heading, Button, Spinner,
-  Badge, Icon, IconButton,
+  Badge, Icon, IconButton, SimpleGrid,
 } from '@chakra-ui/react';
 import { Avatar } from '@/components/ui/avatar';
 import {
@@ -10,7 +10,7 @@ import {
 import { Tooltip } from '@/components/ui/tooltip';
 import {
   LayoutDashboard, FileText, Map, ClipboardList, Briefcase,
-  User, PanelLeftClose, PanelLeftOpen, LogOut, ChevronLeft, Bell, BadgeCheck,
+  User, PanelLeftClose, PanelLeftOpen, LogOut, ChevronLeft, Bell, BadgeCheck, Menu
 } from 'lucide-react';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -62,6 +62,7 @@ export default function App() {
   /* ── Tab state ───────────────────────────────────────────────────── */
   const [activeTab, setActiveTab] = useState(() => PATH_TO_TAB[window.location.pathname] || 'dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   /* ── Role selection (landing page) ──────────────────────────────── */
   const [selectedRole, setSelectedRole] = useState(null);
@@ -80,15 +81,18 @@ export default function App() {
   const isLoggedIn = !!token;
   const isResetPasswordRoute = window.location.pathname === '/reset-password';
 
-  if (isResetPasswordRoute) {
-    return <ResetPasswordPage />;
-  }
-
   /* ── Notification state ────────────────────────────────────────── */
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [notifsLoading, setNotifsLoading] = useState(false);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState({
+    interested: 0,
+    shortlisted: 0,
+    totalApplications: 0,
+    withUpdates: 0,
+  });
 
   /* ── Fetch profile & latest analysis on login ───────────────────── */
   useEffect(() => {
@@ -157,6 +161,51 @@ export default function App() {
     finally { setNotifsLoading(false); }
   };
 
+  const fetchDashboardStats = async () => {
+    if (!token) return;
+    setDashboardLoading(true);
+    try {
+      const appsResp = await fetch(`${API_BASE}/jobs/my-applications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!appsResp.ok) {
+        setDashboardStats({ interested: 0, shortlisted: 0, totalApplications: 0, withUpdates: 0 });
+        return;
+      }
+
+      const appsData = await appsResp.json();
+      const jobs = appsData.jobs || [];
+      const interested = jobs.filter((j) => j.is_interested).length;
+      const shortlisted = jobs.filter((j) => j.is_shortlisted).length;
+
+      const updates = await Promise.all(
+        jobs.map(async (job) => {
+          try {
+            const res = await fetch(`${API_BASE}/results/${job.id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return 0;
+            const data = await res.json();
+            return (data.results || []).length > 0 ? 1 : 0;
+          } catch {
+            return 0;
+          }
+        }),
+      );
+
+      setDashboardStats({
+        interested,
+        shortlisted,
+        totalApplications: jobs.length,
+        withUpdates: updates.reduce((sum, v) => sum + v, 0),
+      });
+    } catch {
+      setDashboardStats({ interested: 0, shortlisted: 0, totalApplications: 0, withUpdates: 0 });
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
+
   const markNotifRead = async (id) => {
     try {
       await fetch(`${API_BASE}/notifications/${id}/read`, {
@@ -176,6 +225,12 @@ export default function App() {
     return () => clearInterval(interval);
   }, [token, user?.role]);
 
+  useEffect(() => {
+    if (!token || user?.role === 'tpo' || activeTab !== 'dashboard') return;
+    fetchDashboardStats();
+    fetchNotifications();
+  }, [token, user?.role, activeTab]);
+
   const handleLogin = (newToken, newUser) => {
     setToken(newToken);
     setUser(newUser);
@@ -187,6 +242,7 @@ export default function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setResult(null);
+    setDashboardStats({ interested: 0, shortlisted: 0, totalApplications: 0, withUpdates: 0 });
     setActiveTab('dashboard');
     setSelectedRole(null);
   };
@@ -199,6 +255,7 @@ export default function App() {
 
   const changeStudentTab = (tab) => {
     setActiveTab(tab);
+    setMobileMenuOpen(false);
     const targetPath = TAB_TO_PATH[tab] || '/student/dashboard';
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
@@ -225,6 +282,10 @@ export default function App() {
     if (lower.includes('almost')) return 'orange';
     return 'red';
   };
+
+  if (isResetPasswordRoute) {
+    return <ResetPasswordPage />;
+  }
 
   /* ── If not logged in, show landing → selection → login flow ──────── */
   if (!isLoggedIn) {
@@ -259,6 +320,14 @@ export default function App() {
 
   return (
     <Flex h="100vh" bg="gray.950">
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <Box
+          position="fixed" top={0} left={0} w="100vw" h="100vh" bg="blackAlpha.700" zIndex={90}
+          display={{ md: 'none' }} onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* ═══════ SIDEBAR ═══════ */}
       <Box
         as="nav"
@@ -269,7 +338,9 @@ export default function App() {
         borderRight="1px solid"
         borderColor="gray.800"
         py={4}
-        display="flex"
+        display={{ base: mobileMenuOpen ? 'flex' : 'none', md: 'flex' }}
+        position={{ base: 'fixed', md: 'relative' }}
+        zIndex={100}
         flexDirection="column"
         transition="width 0.2s"
         overflow="hidden"
@@ -340,7 +411,7 @@ export default function App() {
         {/* ── Top Header ── */}
         <Flex
           h="60px"
-          px={6}
+          px={{ base: 4, md: 6 }}
           bg="gray.900/60"
           borderBottom="1px solid"
           borderColor="gray.800"
@@ -349,9 +420,21 @@ export default function App() {
           backdropFilter="blur(8px)"
           flexShrink={0}
         >
-          <Heading size="md" color="gray.100" fontWeight="600">
-            {NAV_ITEMS.find((n) => n.key === activeTab)?.label || 'Dashboard'}
-          </Heading>
+          <HStack gap={3}>
+            <IconButton
+              display={{ base: 'flex', md: 'none' }}
+              variant="ghost"
+              size="sm"
+              color="gray.400"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Icon asChild w={5} h={5}><Menu /></Icon>
+            </IconButton>
+            <Heading size={{ base: "sm", md: "md" }} color="gray.100" fontWeight="600">
+              {NAV_ITEMS.find((n) => n.key === activeTab)?.label || 'Dashboard'}
+            </Heading>
+          </HStack>
 
           {/* Notification bell + Profile icon (right side) */}
           <HStack gap={2}>
@@ -504,51 +587,121 @@ export default function App() {
                 </Flex>
               ) : result ? (
                 <VStack gap={6} align="stretch">
-                  {/* Score hero */}
-                  <Box
-                    bg="gray.900"
-                    border="1px solid"
-                    borderColor="gray.800"
-                    borderRadius="xl"
-                    p={8}
-                    textAlign="center"
-                  >
-                    <Text color="gray.400" fontSize="sm" mb={1}>Readiness Score</Text>
-                    <Text
-                      fontSize="5xl"
-                      fontWeight="800"
-                      color={`${categoryColor(result.readiness_category)}.400`}
-                    >
-                      {result.readiness_score}
-                    </Text>
-                    <Badge
-                      colorPalette={categoryColor(result.readiness_category)}
-                      px={3}
-                      py={1}
-                      borderRadius="full"
-                      fontSize="sm"
-                      mt={2}
-                    >
-                      {result.readiness_category}
-                    </Badge>
-                    <Text color="gray.500" fontSize="xs" mt={3}>
-                      Analysis based on your latest profile data
-                      <br />
-                      Updated: {new Date(result.created_at).toLocaleString()}
-                    </Text>
-                  </Box>
-
-                  {/* Recommended roles */}
-                  {result.recommended_roles?.length > 0 && (
-                    <Box>
-                      <Heading size="sm" color="gray.200" mb={3}>Top Recommended Roles</Heading>
-                      <Flex gap={4} flexWrap="wrap">
-                        {result.recommended_roles.map((r, i) => (
-                          <ResultCard key={r.role} role={r.role} score={r.score} rank={i + 1} />
-                        ))}
-                      </Flex>
+                  <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} gap={4}>
+                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                      <Text color="gray.400" fontSize="xs" mb={1}>Readiness Score</Text>
+                      <Text fontSize="2xl" fontWeight="800" color={`${categoryColor(result.readiness_category)}.400`}>
+                        {result.readiness_score}/100
+                      </Text>
                     </Box>
-                  )}
+                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                      <Text color="gray.400" fontSize="xs" mb={1}>Interested Jobs</Text>
+                      <Text fontSize="2xl" fontWeight="800" color="blue.300">
+                        {dashboardLoading ? '...' : dashboardStats.interested}
+                      </Text>
+                    </Box>
+                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                      <Text color="gray.400" fontSize="xs" mb={1}>Shortlisted Jobs</Text>
+                      <Text fontSize="2xl" fontWeight="800" color="purple.300">
+                        {dashboardLoading ? '...' : dashboardStats.shortlisted}
+                      </Text>
+                    </Box>
+                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                      <Text color="gray.400" fontSize="xs" mb={1}>Jobs With Updates</Text>
+                      <Text fontSize="2xl" fontWeight="800" color="green.300">
+                        {dashboardLoading ? '...' : dashboardStats.withUpdates}
+                      </Text>
+                    </Box>
+                  </SimpleGrid>
+
+                  <SimpleGrid columns={{ base: 1, xl: 3 }} gap={4}>
+                    {/* Left column: Readiness Score */}
+                    <Box
+                      bg="gray.900"
+                      border="1px solid"
+                      borderColor="gray.800"
+                      borderRadius="xl"
+                      p={8}
+                      textAlign="center"
+                      gridColumn={{ xl: 'span 1' }}
+                    >
+                      <Text color="gray.400" fontSize="sm" mb={1}>Readiness Score</Text>
+                      <Text
+                        fontSize="5xl"
+                        fontWeight="800"
+                        color={`${categoryColor(result.readiness_category)}.400`}
+                      >
+                        {result.readiness_score}
+                      </Text>
+                      <Badge
+                        colorPalette={categoryColor(result.readiness_category)}
+                        px={3}
+                        py={1}
+                        borderRadius="full"
+                        fontSize="sm"
+                        mt={2}
+                      >
+                        {result.readiness_category}
+                      </Badge>
+                      <Text color="gray.500" fontSize="xs" mt={3}>
+                        Analysis based on your latest profile data
+                        <br />
+                        Updated: {new Date(result.created_at).toLocaleString()}
+                      </Text>
+                    </Box>
+
+                    {/* Right column: Predicted Jobs in row */}
+                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={5} gridColumn={{ xl: 'span 2' }}>
+                      <Heading size="sm" color="gray.200" mb={3}>Top Recommended Roles</Heading>
+                      {result.recommended_roles?.length > 0 ? (
+                        <Flex gap={4} flexWrap="wrap">
+                          {result.recommended_roles.map((r, i) => (
+                            <ResultCard key={r.role} role={r.role} score={r.score} rank={i + 1} />
+                          ))}
+                        </Flex>
+                      ) : (
+                        <Text color="gray.500" fontSize="sm">No predicted roles yet.</Text>
+                      )}
+                    </Box>
+                  </SimpleGrid>
+
+                  <SimpleGrid columns={{ base: 1, lg: 2 }} gap={4}>
+                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={5}>
+                      <Heading size="sm" color="gray.100" mb={2}>Placement Pipeline</Heading>
+                      <Text color="gray.400" fontSize="sm" mb={3}>
+                        Track your job journey from interest to shortlist and result updates.
+                      </Text>
+                      <VStack align="stretch" gap={2}>
+                        <HStack justify="space-between"><Text color="gray.400" fontSize="sm">Total Applications</Text><Text color="gray.100" fontWeight="700">{dashboardLoading ? '...' : dashboardStats.totalApplications}</Text></HStack>
+                        <HStack justify="space-between"><Text color="gray.400" fontSize="sm">Interested</Text><Text color="blue.300" fontWeight="700">{dashboardLoading ? '...' : dashboardStats.interested}</Text></HStack>
+                        <HStack justify="space-between"><Text color="gray.400" fontSize="sm">Shortlisted</Text><Text color="purple.300" fontWeight="700">{dashboardLoading ? '...' : dashboardStats.shortlisted}</Text></HStack>
+                        <HStack justify="space-between"><Text color="gray.400" fontSize="sm">Result Updates</Text><Text color="green.300" fontWeight="700">{dashboardLoading ? '...' : dashboardStats.withUpdates}</Text></HStack>
+                      </VStack>
+                      <HStack mt={4} gap={2}>
+                        <Button size="sm" colorPalette="blue" variant="outline" onClick={() => changeStudentTab('jobs')}>View Jobs</Button>
+                        <Button size="sm" colorPalette="purple" variant="outline" onClick={() => changeStudentTab('results')}>View Results</Button>
+                      </HStack>
+                    </Box>
+
+                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={5}>
+                      <HStack justify="space-between" mb={3}>
+                        <Heading size="sm" color="gray.100">Latest Notifications</Heading>
+                        {unreadCount > 0 && <Badge colorPalette="red">{unreadCount} new</Badge>}
+                      </HStack>
+                      {notifications.length === 0 ? (
+                        <Text color="gray.500" fontSize="sm">No notifications yet.</Text>
+                      ) : (
+                        <VStack align="stretch" gap={2}>
+                          {notifications.slice(0, 4).map((n) => (
+                            <Box key={n.id} p={3} bg={n.status === 'unread' ? 'gray.800' : 'gray.850'} borderRadius="md" border="1px solid" borderColor="gray.700">
+                              <Text color={n.status === 'unread' ? 'gray.100' : 'gray.400'} fontSize="sm" lineClamp={2}>{n.message}</Text>
+                              <Text color="gray.500" fontSize="xs" mt={1}>{new Date(n.created_at).toLocaleString()}</Text>
+                            </Box>
+                          ))}
+                        </VStack>
+                      )}
+                    </Box>
+                  </SimpleGrid>
                 </VStack>
               ) : (
                 <Flex direction="column" align="center" justify="center" h="300px" gap={4}>

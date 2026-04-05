@@ -4,7 +4,7 @@ joblib
 pandas
 xgboost
 requests
-PyPDF2
+PyMuPDF
 python-multipart
 sqlalchemy
 psycopg2-binary

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box, Flex, Heading, Text, Button, VStack,
   Icon, SimpleGrid, Card, HStack, Badge,
@@ -8,17 +8,48 @@ import { Alert } from '@/components/ui/alert';
 import { ProgressBar, ProgressRoot, ProgressValueText, ProgressLabel } from '@/components/ui/progress';
 import { 
   FileUp, Paperclip, File, FileText, CheckCircle2, Lightbulb, 
-  Trophy, AlertTriangle, XCircle, Info, Briefcase 
+  Trophy, AlertTriangle, XCircle, Info, Briefcase, BookOpen,
+  ArrowLeft, Loader2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import axios from 'axios';
+import { toaster } from '@/components/ui/toaster';
+import RoadmapViewport from '../components/RoadmapViewport';
+import RoadmapShViewer from '../components/RoadmapShViewer';
 
 const API_BASE = '/api';
 const MAX_RESUME_SIZE_BYTES = 2 * 1024 * 1024;
+
+const ROADMAP_SH_MAPPING = {
+  'Frontend Developer': 'frontend',
+  'Backend Developer': 'backend',
+  'Full Stack Developer': 'full-stack',
+  'DevOps Engineer': 'devops',
+  'Data Analyst': 'data-analyst',
+  'AI Engineer': 'ai-engineer',
+  'Data Scientist': 'ai-data-scientist',
+  'Data Engineer': 'dataops',
+  'Android Developer': 'android',
+};
+
+const getRoadmapSlug = (title) => {
+  if (!title) return '';
+  return title.toLowerCase()
+    .replace(/ developer$/i, '')
+    .replace(/ engineer$/i, '')
+    .replace(/\s+/g, '-');
+};
 
 export default function ResumeAnalysisPage({ token, user, result, onProfileUpdate }) {
   const [resumeFile, setResumeFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
+
+  // Roadmap integration state
+  const [roadmapData, setRoadmapData] = useState(null);
+  const [roadmapSource, setRoadmapSource] = useState('llm'); // 'llm' or 'roadmapsh'
+  const [activeSkillForRoadmap, setActiveSkillForRoadmap] = useState(null);
+  const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
 
   const normalizeResumeUrl = (rawUrl) => {
     if (!rawUrl || !String(rawUrl).trim()) return '';
@@ -30,7 +61,60 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
   const savedResumeName = user?.resume_filename || '';
   const savedResumeUrl = normalizeResumeUrl(user?.resume_url || '');
 
+  const generateRoadmap = async (skillName) => {
+    if (!skillName) return;
+    setIsGeneratingRoadmap(true);
+    setActiveSkillForRoadmap(skillName);
+    try {
+      const response = await axios.post('/api/generate-learning-path', { skill: skillName });
+      setRoadmapSource('llm');
+      setRoadmapData(response.data);
+    } catch (error) {
+      toaster.create({
+        title: 'Roadmap Generation Failed',
+        description: error.response?.data?.detail || 'Groq API error',
+        type: 'error',
+      });
+      setActiveSkillForRoadmap(null);
+    } finally {
+      setIsGeneratingRoadmap(false);
+    }
+  };
+
+  const generateRoleRoadmap = async (roleName) => {
+    if (!roleName) return;
+    const slug = ROADMAP_SH_MAPPING[roleName] || getRoadmapSlug(roleName);
+    if (!slug) return; 
+
+    setIsGeneratingRoadmap(true);
+    setActiveSkillForRoadmap(roleName);
+    try {
+      const cacheKey = `roadmap_sh_${slug}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        setRoadmapSource('roadmapsh');
+        setRoadmapData(JSON.parse(cached));
+        setIsGeneratingRoadmap(false);
+        return;
+      }
+      const response = await axios.get(`${API_BASE}/roadmap-proxy/${slug}`);
+      sessionStorage.setItem(cacheKey, JSON.stringify(response.data));
+      setRoadmapSource('roadmapsh');
+      setRoadmapData(response.data);
+    } catch (error) {
+      toaster.create({
+        title: 'Roadmap Fetch Failed',
+        description: 'Failed to load industry standard roadmap.',
+        type: 'error',
+      });
+      setActiveSkillForRoadmap(null);
+    } finally {
+      setIsGeneratingRoadmap(false);
+    }
+  };
+
   const handleFileChange = (e) => {
+
     const file = e.target.files?.[0];
     if (file && file.type === 'application/pdf' && file.size <= MAX_RESUME_SIZE_BYTES) {
       setResumeFile(file);
@@ -128,25 +212,13 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
            <Box h="full" bg={`${color}.500`} w={`${value * 10}%`} transition="width 1s ease-out" />
         </Box>
 
-        {missing && missing.length > 0 ? (
-          <VStack align="start" gap={1.5} mt={1}>
-            <HStack gap={1.5}>
-              <Icon asChild color="orange.400" w={3} h={3}><AlertTriangle /></Icon>
-              <Text fontSize="2xs" color="orange.300" fontWeight="700">MISSING:</Text>
-            </HStack>
-            {missing.map((item, i) => (
-              <HStack key={i} gap={2}>
-                <Icon asChild w={2} h={2} color="gray.500"><XCircle /></Icon>
-                <Text fontSize="xs" color="gray.300" lineHeight="1">{item}</Text>
-              </HStack>
-            ))}
-          </VStack>
-        ) : (
-          <HStack gap={1.5} mt={1}>
-            <Icon asChild color="green.400" w={3} h={3}><CheckCircle2 /></Icon>
-            <Text fontSize="xs" color="green.300" fontWeight="600">Perfectly Optmized</Text>
-          </HStack>
-        )}
+        {/* Missing items are now handled exclusively in the AI Suggestions box */}
+        <HStack gap={1.5} mt={1}>
+          <Icon asChild color="green.400" w={3} h={3}><CheckCircle2 /></Icon>
+          <Text fontSize="xs" color="green.300" fontWeight="600">
+            {value >= 9 ? 'Perfectly Optimized' : 'Optimized'}
+          </Text>
+        </HStack>
       </VStack>
     </Box>
   );
@@ -158,6 +230,26 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
     if (lower.includes('almost')) return 'orange';
     return 'red';
   };
+
+  if (roadmapData && activeSkillForRoadmap) {
+    if (roadmapSource === 'roadmapsh') {
+      return (
+        <RoadmapShViewer
+          data={roadmapData}
+          roleName={activeSkillForRoadmap}
+          onBack={() => { setRoadmapData(null); setActiveSkillForRoadmap(null); }}
+        />
+      );
+    }
+    return (
+      <RoadmapViewport
+        data={roadmapData}
+        skillName={activeSkillForRoadmap}
+        onBack={() => { setRoadmapData(null); setActiveSkillForRoadmap(null); }}
+        showResources={false}
+      />
+    );
+  }
 
   return (
     <VStack gap={8} align="stretch" maxW="1200px" mx="auto" pb={20}>
@@ -282,21 +374,26 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
             </Card.Body>
           </Card.Root>
 
-          {/* AI Success Guide */}
-          <Box bg="orange.600/5" p={6} borderRadius="3xl" border="1px solid" borderColor="orange.500/20">
+          {/* AI Suggestions Section */}
+          <Box bg="purple.600/5" p={6} borderRadius="3xl" border="1px solid" borderColor="purple.500/20">
              <HStack mb={4} gap={3}>
-               <Icon asChild color="orange.400" w={6} h={6}><Lightbulb /></Icon>
-               <Heading size="sm" color="white">Road to 100/100</Heading>
+               <Icon asChild color="purple.400" w={6} h={6}><Lightbulb /></Icon>
+               <Heading size="sm" color="white">AI Suggestions</Heading>
              </HStack>
              <VStack gap={4} align="stretch">
-               {result?.ai_suggestions?.length > 0 ? result.ai_suggestions.map((s, idx) => (
-                 <HStack key={idx} align="start" gap={3}>
-                   <Icon asChild w={4} h={4} mt={1} color="orange.400"><CheckCircle2 /></Icon>
-                   <Text fontSize="sm" color="gray.300" lineHeight="1.5">{s}</Text>
-                 </HStack>
-               )) : (
-                 <Text color="gray.500" fontSize="sm">Perform an analysis to see your personalized growth list.</Text>
-               )}
+               {(() => {
+                 const suggestions = result?.ai_suggestions?.llm?.suggestions || 
+                                    (Array.isArray(result?.ai_suggestions) ? result.ai_suggestions : []);
+                 
+                 return suggestions.length > 0 ? suggestions.map((s, idx) => (
+                   <HStack key={idx} align="start" gap={3}>
+                     <Icon asChild w={4} h={4} mt={1} color="purple.400"><CheckCircle2 /></Icon>
+                     <Text fontSize="sm" color="gray.300" lineHeight="1.5">{s}</Text>
+                   </HStack>
+                 )) : (
+                   <Text color="gray.500" fontSize="sm">No specific suggestions found. Try refreshing your analysis.</Text>
+                 );
+               })()}
              </VStack>
           </Box>
         </VStack>
@@ -316,10 +413,10 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
 
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
                 <ScoreCard 
-                  label="Education" 
+                  label="Resume Formatting" 
                   value={result.education_score || 0} 
                   color={result.education_score > 7 ? 'green' : result.education_score > 4 ? 'orange' : 'red'}
-                  missing={result.missing_details?.edu}
+                  missing={result.missing_details?.format}
                 />
                 <ScoreCard 
                   label="Core Technical Skills" 
@@ -359,8 +456,10 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
                         border="1px solid"
                         borderColor={idx === 0 ? 'purple.500/30' : 'gray.700'}
                         textAlign="center"
+                        cursor="pointer"
                         _hover={{ borderColor: 'purple.500/50', bg: idx === 0 ? 'purple.600/15' : 'gray.800/60' }}
                         transition="all 0.3s"
+                        onClick={() => generateRoleRoadmap(r.role)}
                       >
                         <Badge
                           colorPalette={idx === 0 ? 'purple' : 'gray'}
@@ -370,9 +469,17 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
                         >
                           #{idx + 1} Match
                         </Badge>
-                        <Text fontSize="md" fontWeight="700" color="white" mb={1}>
-                          {r.role}
-                        </Text>
+                        <HStack justify="center" gap={1}>
+                          {isGeneratingRoadmap && activeSkillForRoadmap === r.role ? (
+                             <Icon asChild animation="spin 1s linear infinite" color="purple.400">
+                               <Loader2 />
+                             </Icon>
+                          ) : (
+                             <Text fontSize="md" fontWeight="700" color="white">
+                                {r.role}
+                             </Text>
+                          )}
+                        </HStack>
                         <Text fontSize="2xl" fontWeight="800" color={idx === 0 ? 'purple.400' : 'gray.400'}>
                           {r.score}<Text as="span" fontSize="xs" color="gray.500" fontWeight="400">/100</Text>
                         </Text>
@@ -382,7 +489,7 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
                 </Box>
               )}
 
-              {/* Skills Cloud */}
+              {/* Detected Skill Stack */}
               <Box bg="gray.900/40" p={6} borderRadius="3xl" border="1px solid" borderColor="gray.800">
                 <HStack mb={4} gap={3}>
                   <Icon asChild color="blue.400" w={5} h={5}><Info /></Icon>
@@ -390,15 +497,104 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
                 </HStack>
                 <Flex wrap="wrap" gap={2}>
                   {result.skills_list?.length > 0 ? result.skills_list.map((skill, idx) => (
-                    <Badge key={idx} variant="surface" colorPalette="blue" px={3} py={1} borderRadius="lg" fontSize="xs">
+                    <Badge 
+                      key={idx} 
+                      variant="surface" 
+                      colorPalette="blue" 
+                      px={3} py={1} 
+                      borderRadius="lg" 
+                      fontSize="xs"
+                      cursor={isGeneratingRoadmap ? "not-allowed" : "pointer"}
+                      _hover={{ bg: 'blue.500/20' }}
+                      onClick={() => !isGeneratingRoadmap && generateRoadmap(skill)}
+                      transition="transform 0.2s, border-color 0.2s, background-color 0.2s"
+                      display="flex"
+                      alignItems="center"
+                      gap={1}
+                    >
                       {skill}
+                      {isGeneratingRoadmap && activeSkillForRoadmap === skill && (
+                        <Icon asChild animation="spin 1s linear infinite" w={3} h={3}>
+                          <Loader2 />
+                        </Icon>
+                      )}
                     </Badge>
                   )) : (
                     <Text color="gray.600" fontSize="sm italic">No specific technical skills identified yet.</Text>
                   )}
                 </Flex>
               </Box>
+
+              {/* Skills to Build (Gaps) */}
+              {result.ai_suggestions?.llm?.missing_skills?.length > 0 && (
+                <VStack align="stretch" gap={4}>
+                  <HStack px={2}>
+                    <Icon asChild color="orange.400" w={5} h={5}><BookOpen /></Icon>
+                    <Heading size="xs" color="gray.400" textTransform="uppercase" letterSpacing="widest">
+                      Skills to Build (Targeting Jobs)
+                    </Heading>
+                  </HStack>
+                  
+                  {result.ai_suggestions.llm.missing_skills.map((roleGap, idx) => {
+                    // Robust handling: old data might be strings, new is dict
+                    const isObject = typeof roleGap === 'object' && roleGap !== null;
+                    const roleName = isObject ? (roleGap.role || 'Career Path') : 'Target Role';
+                    const skillSet = isObject ? (roleGap.skills || []) : [roleGap];
+
+                    return (
+                      <Box 
+                        key={idx} 
+                        bg="orange.600/5" 
+                        p={5} 
+                        borderRadius="2xl" 
+                        border="1px solid" 
+                        borderColor="orange.500/15"
+                      >
+                        <Text fontSize="xs" fontWeight="800" color="orange.300" mb={3} textTransform="uppercase">
+                          For {roleName}
+                        </Text>
+                        <Flex wrap="wrap" gap={2}>
+                          {skillSet.map((skill, i) => (
+                            <Badge 
+                              key={i} 
+                              variant="subtle" 
+                              colorPalette="orange" 
+                              px={3} 
+                              py={1.5} 
+                              borderRadius="lg" 
+                              fontSize="xs"
+                              fontWeight="700"
+                              cursor={isGeneratingRoadmap ? "not-allowed" : "pointer"}
+                              transition="all 0.2s"
+                              _hover={{ 
+                                transform: 'scale(1.05)', 
+                                bg: 'orange.500', 
+                                color: 'white',
+                                boxShadow: '0 0 15px rgba(246, 173, 85, 0.4)' 
+                              }}
+                              onClick={() => !isGeneratingRoadmap && generateRoadmap(skill)}
+                              display="flex"
+                              alignItems="center"
+                              gap={2}
+                              opacity={isGeneratingRoadmap && activeSkillForRoadmap !== skill ? 0.6 : 1}
+                            >
+                              {skill}
+                              {isGeneratingRoadmap && activeSkillForRoadmap === skill && (
+                                <Icon asChild animation="spin 1s linear infinite" w={3} h={3}>
+                                  <Loader2 />
+                                </Icon>
+                              )}
+                            </Badge>
+                          ))}
+                        </Flex>
+                      </Box>
+                    );
+                  })}
+
+                </VStack>
+              )}
             </VStack>
+
           ) : (
             <Flex direction="column" align="center" justify="center" h="full" minH="500px" bg="gray.900/20" borderRadius="3xl" border="2px dashed" borderColor="gray.800">
               <Icon asChild w={16} h={16} color="gray.700" mb={4}><FileText /></Icon>
@@ -410,4 +606,5 @@ export default function ResumeAnalysisPage({ token, user, result, onProfileUpdat
       </SimpleGrid>
     </VStack>
   );
+
 }

@@ -27,12 +27,12 @@ import joblib
 import pandas as pd
 import requests
 from groq import Groq
-from PyPDF2 import PdfReader
+import fitz
 from sqlalchemy.orm.session import Session
-from sqlalchemy import text, or_
+from sqlalchemy import text, or_, inspect
 from openpyxl import Workbook
 
-from services.feature_analyzer import build_complete_feature_vector, FEATURE_COLUMNS as DEFAULT_FEATURE_COLUMNS
+from services.feature_analyzer import build_complete_feature_vector, FEATURE_COLUMNS as DEFAULT_FEATURE_COLUMNS, evaluate_resume_structure
 from services.database import engine, get_db, Base
 from services.models import User, AnalysisResult, QuizResult, Job, TpoLogin, InterestedJob, ShortlistedJob, Notification, JobResult
 from services.quiz_generator import generate_quiz_questions
@@ -66,7 +66,13 @@ if not (MODEL_DIR / "roadmap_model.pkl").exists():
         MODEL_DIR = parent
 
 # Ensure EMAIL_* / SMTP_* vars from .env are available in this module.
-load_dotenv(dotenv_path=BASE_DIR / ".env")
+# Load .env.local first (for local development), then .env as fallback
+env_local_path = BASE_DIR / ".env.local"
+env_path = BASE_DIR / ".env"
+if env_local_path.exists():
+    load_dotenv(dotenv_path=env_local_path)
+elif env_path.exists():
+    load_dotenv(dotenv_path=env_path)
 
 # ── Create database tables on startup ─────────────────────────────────────────
 Base.metadata.create_all(bind=engine)
@@ -74,81 +80,83 @@ Base.metadata.create_all(bind=engine)
 
 def ensure_db_schema_compatibility() -> None:
     """Backfill columns required by current ORM models on older databases."""
+    def column_exists(conn, table_name: str, column_name: str) -> bool:
+        try:
+            inspector = inspect(conn)
+            columns = inspector.get_columns(table_name)
+            return any(col["name"].lower() == column_name.lower() for col in columns)
+        except Exception:
+            return False
+
+    def add_column_if_missing(conn, table_identifier: str, table_name: str, column_name: str, ddl: str) -> None:
+        if engine.dialect.name == "postgresql":
+            conn.execute(text(f"ALTER TABLE {table_identifier} ADD COLUMN IF NOT EXISTS {ddl}"))
+            return
+        if not column_exists(conn, table_name, column_name):
+            conn.execute(text(f"ALTER TABLE {table_identifier} ADD COLUMN {ddl}"))
+    
     with engine.begin() as conn:
         # TPO login table columns introduced after initial schema.
-        conn.execute(
-            text(
-                'ALTER TABLE "TPO_login" ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(100)'
-            )
-        )
-        conn.execute(
-            text(
-                'ALTER TABLE "TPO_login" ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP WITH TIME ZONE'
-            )
-        )
-        conn.execute(
-            text("ALTER TABLE \"TPO_login\" ADD COLUMN IF NOT EXISTS first_name VARCHAR(100) DEFAULT ''")
-        )
-        conn.execute(
-            text("ALTER TABLE \"TPO_login\" ADD COLUMN IF NOT EXISTS last_name VARCHAR(100) DEFAULT ''")
-        )
+        add_column_if_missing(conn, '"TPO_login"', "TPO_login", "password_reset_token", "password_reset_token VARCHAR(100)")
+        add_column_if_missing(conn, '"TPO_login"', "TPO_login", "password_reset_expires", "password_reset_expires TIMESTAMP WITH TIME ZONE")
+        add_column_if_missing(conn, '"TPO_login"', "TPO_login", "first_name", "first_name VARCHAR(100) DEFAULT ''")
+        add_column_if_missing(conn, '"TPO_login"', "TPO_login", "last_name", "last_name VARCHAR(100) DEFAULT ''")
 
         # Users table profile and password-reset columns added over time.
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS moodle_id VARCHAR(8)'))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100) DEFAULT ''"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100) DEFAULT ''"))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS year VARCHAR(4)'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS division VARCHAR(1)'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS semester INTEGER'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sgpa DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS marks_10th DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS marks_12th DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS diploma_avg DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem1 DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem2 DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem3 DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem4 DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem5 DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS sem6 DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS atkt_count INTEGER DEFAULT 0'))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS atkt_subjects TEXT DEFAULT ''"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS drop_year VARCHAR(3) DEFAULT 'No'"))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS internships JSON'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS projects JSON'))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS core_interests TEXT DEFAULT ''"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS core_skills TEXT DEFAULT ''"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS github_profile TEXT DEFAULT ''"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linkedin_profile TEXT DEFAULT ''"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS achievements TEXT DEFAULT ''"))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_score DOUBLE PRECISION'))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_filename VARCHAR(255) DEFAULT ''"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_url TEXT DEFAULT ''"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_text TEXT DEFAULT ''"))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(100)'))
-        conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP WITH TIME ZONE'))
-        # Profile photo URL storage
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_url TEXT DEFAULT ''"))
+        add_column_if_missing(conn, "users", "users", "moodle_id", "moodle_id VARCHAR(8)")
+        add_column_if_missing(conn, "users", "users", "first_name", "first_name VARCHAR(100) DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "last_name", "last_name VARCHAR(100) DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "year", "year VARCHAR(4)")
+        add_column_if_missing(conn, "users", "users", "division", "division VARCHAR(1)")
+        add_column_if_missing(conn, "users", "users", "semester", "semester INTEGER")
+        add_column_if_missing(conn, "users", "users", "sgpa", "sgpa DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "marks_10th", "marks_10th DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "marks_12th", "marks_12th DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "diploma_avg", "diploma_avg DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "sem1", "sem1 DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "sem2", "sem2 DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "sem3", "sem3 DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "sem4", "sem4 DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "sem5", "sem5 DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "sem6", "sem6 DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "atkt_count", "atkt_count INTEGER DEFAULT 0")
+        add_column_if_missing(conn, "users", "users", "atkt_subjects", "atkt_subjects TEXT DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "drop_year", "drop_year VARCHAR(3) DEFAULT 'No'")
+        add_column_if_missing(conn, "users", "users", "internships", "internships JSON")
+        add_column_if_missing(conn, "users", "users", "projects", "projects JSON")
+        add_column_if_missing(conn, "users", "users", "core_interests", "core_interests TEXT DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "core_skills", "core_skills TEXT DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "github_profile", "github_profile TEXT DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "linkedin_profile", "linkedin_profile TEXT DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "achievements", "achievements TEXT DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "resume_score", "resume_score DOUBLE PRECISION")
+        add_column_if_missing(conn, "users", "users", "resume_filename", "resume_filename VARCHAR(255) DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "resume_url", "resume_url TEXT DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "resume_text", "resume_text TEXT DEFAULT ''")
+        add_column_if_missing(conn, "users", "users", "password_reset_token", "password_reset_token VARCHAR(100)")
+        add_column_if_missing(conn, "users", "users", "password_reset_expires", "password_reset_expires TIMESTAMP WITH TIME ZONE")
+        add_column_if_missing(conn, "users", "users", "photo_url", "photo_url TEXT DEFAULT ''")
 
         # Jobs table columns introduced for richer posting details.
-        conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_role VARCHAR(255) DEFAULT ''"))
-        conn.execute(text('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS min_cgpa DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS min_resume_score DOUBLE PRECISION'))
-        conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS required_certifications TEXT DEFAULT ''"))
-        conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS preferred_skills TEXT DEFAULT ''"))
-        conn.execute(text('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS package_lpa DOUBLE PRECISION'))
-        conn.execute(text('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS salary DOUBLE PRECISION'))
-        conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deadline VARCHAR(100) DEFAULT ''"))
-        conn.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_logo TEXT DEFAULT ''"))
+        add_column_if_missing(conn, "jobs", "jobs", "job_role", "job_role VARCHAR(255) DEFAULT ''")
+        add_column_if_missing(conn, "jobs", "jobs", "min_cgpa", "min_cgpa DOUBLE PRECISION")
+        add_column_if_missing(conn, "jobs", "jobs", "min_resume_score", "min_resume_score DOUBLE PRECISION")
+        add_column_if_missing(conn, "jobs", "jobs", "required_certifications", "required_certifications TEXT DEFAULT ''")
+        add_column_if_missing(conn, "jobs", "jobs", "preferred_skills", "preferred_skills TEXT DEFAULT ''")
+        add_column_if_missing(conn, "jobs", "jobs", "package_lpa", "package_lpa DOUBLE PRECISION")
+        add_column_if_missing(conn, "jobs", "jobs", "salary", "salary DOUBLE PRECISION")
+        add_column_if_missing(conn, "jobs", "jobs", "deadline", "deadline VARCHAR(100) DEFAULT ''")
+        add_column_if_missing(conn, "jobs", "jobs", "company_logo", "company_logo TEXT DEFAULT ''")
         conn.execute(text('UPDATE jobs SET package_lpa = salary WHERE package_lpa IS NULL AND salary IS NOT NULL'))
         conn.execute(text('UPDATE jobs SET salary = package_lpa WHERE salary IS NULL AND package_lpa IS NOT NULL'))
 
         # Shortlisted mapping table metadata.
-        conn.execute(text("ALTER TABLE shortlisted_jobs ADD COLUMN IF NOT EXISTS source VARCHAR(20) DEFAULT 'manual'"))
+        add_column_if_missing(conn, "shortlisted_jobs", "shortlisted_jobs", "source", "source VARCHAR(20) DEFAULT 'manual'")
         conn.execute(text("UPDATE shortlisted_jobs SET source = 'manual' WHERE source IS NULL"))
 
         # Job results table fields for auto-broadcasted round updates.
-        conn.execute(text("ALTER TABLE job_results ADD COLUMN IF NOT EXISTS result_status VARCHAR(20) DEFAULT 'Qualified'"))
-        conn.execute(text("ALTER TABLE job_results ADD COLUMN IF NOT EXISTS remarks TEXT DEFAULT ''"))
+        add_column_if_missing(conn, "job_results", "job_results", "result_status", "result_status VARCHAR(20) DEFAULT 'Qualified'")
+        add_column_if_missing(conn, "job_results", "job_results", "remarks", "remarks TEXT DEFAULT ''")
 
 
 ensure_db_schema_compatibility()
@@ -622,12 +630,13 @@ def _upload_resume_to_supabase(pdf_bytes: bytes, original_filename: str, user_id
 
 
 def _extract_pdf_text(pdf_bytes: bytes) -> str:
-    reader = PdfReader(io.BytesIO(pdf_bytes))
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     text = ""
-    for page in reader.pages:
-        extracted = page.extract_text()
+    for page in doc:
+        extracted = page.get_text()
         if extracted:
             text += extracted + "\n"
+    doc.close()
     return text
 
 
@@ -1389,12 +1398,18 @@ def _fallback_prediction(extracted_data: Dict[str, Any], feature_vector: Dict[st
 
     return {
         "score": score,
-        "role": recommended_roles[0]["role"] if recommended_roles else "Software Engineer",
+        "role": suggested_role,
         "recommended_roles": recommended_roles,
         "weakness": weaknesses,
         "suggestions": suggestions,
+        "missing_skills": [
+            {"role": suggested_role, "skills": ["Advanced System Design", "Cloud Architecture"]},
+            {"role": "Software Engineer", "skills": ["Data Structures & Algorithms", "Unit Testing"]},
+            {"role": "Full Stack Developer", "skills": ["React/Next.js", "State Management (Redux/Zustand)"]}
+        ],
         "source": "fallback",
     }
+
 
 
 def get_ai_prediction(extracted_data: Dict[str, Any], feature_vector: Dict[str, Any]) -> Dict[str, Any]:
@@ -1408,24 +1423,39 @@ def get_ai_prediction(extracted_data: Dict[str, Any], feature_vector: Dict[str, 
     client = Groq(api_key=api_key)
 
     prompt = (
-        "You are an expert placement evaluator. "
-        "Evaluate the candidate based solely on their resume skills, projects, and internship experience. "
+        "You are an expert technical interviewer and placement evaluator for software engineering roles. "
+        "Evaluate the candidate's placement readiness based on their technical skills, projects, and internship experience. "
+        "Consider industry standards and current market requirements for fresh graduates and early-career developers.\n\n"
+        "Scoring Guidelines:\n"
+        "- 85-100: Excellent - Multiple strong projects, relevant internships, diverse tech stack, leadership potential\n"
+        "- 70-84: Very Good - Solid projects, good internship experience, competent in multiple technologies\n"
+        "- 55-69: Good - Decent projects and skills, some internship experience, needs more depth\n"
+        "- 40-54: Average - Basic skills and projects, limited practical experience\n"
+        "- 0-39: Needs Improvement - Limited technical exposure, insufficient projects or skills\n\n"
+        "Role Recommendation Priority:\n"
+        "1. Based on strongest project domains and skills\n"
+        "2. Consider internship experience as validation\n"
+        "3. Look for full-stack vs specialized roles\n\n"
+        f"Candidate Profile:\n{json.dumps(extracted_data, ensure_ascii=True)}\n\n"
         "Return ONLY valid JSON with this exact schema: "
         "{\"score\": number, \"role\": string, \"recommended_roles\": [{\"role\": string, \"score\": number}], "
-        "\"weakness\": [string], \"suggestions\": [string]}. "
-        "Rules: score must be between 0 and 100, recommended_roles max 3 entries, weakness/suggestions max 5 each.\n\n"
-        f"Candidate Data:\n{json.dumps(extracted_data, ensure_ascii=True)}"
+        "\"weakness\": [string], \"suggestions\": [string], \"missing_skills\": [{\"role\": string, \"skills\": [string]}]}. "
+        "Rules:\n"
+        "1. score: 0-100\n"
+        "2. recommended_roles: EXACTLY 3 unique roles\n"
+        "3. missing_skills: Provide skill gaps for ALL 3 recommended roles\n"
+        "4. max 5 items for weakness, suggestions, and skills list per role."
     )
 
     try:
         completion = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": "Return strict JSON only."},
+                {"role": "system", "content": "Return strict JSON only. Ensure exactly 3 roles and missing_skills entries."},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            max_tokens=500,
+            max_tokens=800, # Increased for more detailed response
         )
 
         raw = (completion.choices[0].message.content or "").strip()
@@ -1452,30 +1482,56 @@ def get_ai_prediction(extracted_data: Dict[str, Any], feature_vector: Dict[str, 
                 s = 0.0
             normalized_roles.append({"role": r, "score": max(0.0, min(100.0, s))})
 
-        if not normalized_roles:
-            normalized_roles = _fallback_prediction(extracted_data, feature_vector)["recommended_roles"]
+        if len(normalized_roles) < 3:
+            # Pad with fallback if LLM missed some
+            fb = _fallback_prediction(extracted_data, feature_vector)["recommended_roles"]
+            for f in fb:
+                if f["role"] not in [x["role"] for x in normalized_roles]:
+                    normalized_roles.append(f)
+                    if len(normalized_roles) >= 3: break
 
         if not role:
             role = normalized_roles[0]["role"] if normalized_roles else "Software Engineer"
 
         weakness = parsed.get("weakness") if isinstance(parsed.get("weakness"), list) else []
         suggestions = parsed.get("suggestions") if isinstance(parsed.get("suggestions"), list) else []
+        missing_skills_raw = parsed.get("missing_skills") or []
+        
+        # Normalize missing_skills to list of dicts
+        target_missing_skills = []
+        if isinstance(missing_skills_raw, list):
+            for entry in missing_skills_raw:
+                if not isinstance(entry, dict): continue
+                role_name = entry.get("role", "Generic Role")
+                skills_list = entry.get("skills", [])
+                if not isinstance(skills_list, list): skills_list = []
+                target_missing_skills.append({
+                    "role": role_name,
+                    "skills": [str(s).strip() for s in skills_list][:5]
+                })
+
+        # Fill if empty or missing roles
+        if not target_missing_skills:
+            for r_obj in normalized_roles:
+                target_missing_skills.append({
+                    "role": r_obj["role"],
+                    "skills": ["System Design", "Unit Testing", "Cloud Basics"]
+                })
+
         weakness = [str(x).strip() for x in weakness if str(x).strip()][:5]
         suggestions = [str(x).strip() for x in suggestions if str(x).strip()][:5]
-
-        if not weakness:
-            weakness = ["Unable to infer weaknesses confidently from provided data"]
-        if not suggestions:
-            suggestions = ["Improve weak areas with consistent weekly practice"]
 
         return {
             "score": score,
             "role": role,
-            "recommended_roles": normalized_roles,
+            "recommended_roles": normalized_roles[:3],
             "weakness": weakness,
             "suggestions": suggestions,
+            "missing_skills": target_missing_skills[:3],
             "source": "groq",
         }
+
+
     except Exception as exc:
         logger.error("Groq readiness prediction failed: %s", exc)
         return _fallback_prediction(extracted_data, feature_vector)
@@ -1494,9 +1550,6 @@ def run_analysis_pipeline(
     """
     Core logic to extract features, run model, and save result.
     Call this whenever profile details change.
-
-    Extra keyword arguments (e.g. legacy github_username, leetcode_username)
-    are silently ignored for backward compatibility.
     """
     # If no resume text provided, try to use saved
     if not resume_text:
@@ -1507,104 +1560,108 @@ def run_analysis_pipeline(
         resume_text=resume_text,
     )
 
-    # 2. AI readiness + role prediction using structured extracted data.
+    # 2. AI readiness + role prediction
     extracted_data = build_structured_candidate_data(
         feature_vector=feature_vector,
         resume_text=resume_text,
     )
     ai_prediction = get_ai_prediction(extracted_data, feature_vector)
-    readiness = float(ai_prediction.get("score", 0))
+    
+    # 3. Role recommendation from AI
+    role_list = ai_prediction.get("recommended_roles", [])
 
-    # 4. Categorise
+    # 4. Calculate category-specific scores (scale 0-10)
+    def calculate_category_scores(fvec, u, r_text=""):
+        missing_info = {
+            "format": [], "skill": [], "contact": [], "intern": [], "exp": [], "proj": []
+        }
+        
+        # A. Resume Formatting & Structure (Weight 15%)
+        # Check if info is systematically added or bunched.
+        res_text = r_text or u.resume_text or ""
+        format_val = evaluate_resume_structure(res_text)
+        
+        if format_val < 5:
+            missing_info["format"].append("Resume lacks clear structure (use bullet points and headers)")
+        elif format_val < 8:
+            missing_info["format"].append("Improve organization of project/experience segments")
+
+        # B. Skills: 12+ detected skills = 10/10 (Weight 30%)
+        # Using the full set of 45 detected skill categories
+        detected = [k for k, v in fvec.items() if k in SKILL_FEATURE_KEYS and isinstance(v, (int, float)) and v > 0]
+        skill_val = min(10.0, len(detected) / 1.2) # 12 skills for 10/10
+        
+        if len(detected) < 8:
+            missing_info["skill"].append("Broaden your tech stack with more diverse skills")
+        elif len(detected) < 12:
+            missing_info["skill"].append("Add more specialized technical skills to reach a perfect score")
+        
+        # C. Contact / Profile Presence (Weight 5%)
+        contact_val = 5.0 # baseline
+        if u.mobile_number: 
+            contact_val += 2.5
+        else:
+            missing_info["contact"].append("Add Mobile Number")
+            
+        if u.linkedin_profile: 
+            contact_val += 2.5
+        else:
+            missing_info["contact"].append("Add LinkedIn Profile")
+        
+        # D. Internships (Weight 20%): Full marks for at least one internship
+        intern_keys = ["internship_backend", "internship_ai", "internship_cloud", "internship_security", "internship_mobile", "internship_data"]
+        intern_cnt = sum(1 for k in intern_keys if fvec.get(k, 0) > 0)
+        # Awarding full marks (10/10) if at least one single internship is detected.
+        intern_val = 10.0 if intern_cnt >= 1 else 0.0
+        
+        if intern_cnt == 0:
+            missing_info["intern"].append("Relevant Internship experience")
+        
+        # E. Projects (Weight 30%): 1+ for 10/10 (Quality over Quantity as requested)
+        proj_keys = ["num_backend_projects", "num_ai_projects", "num_mobile_projects", "num_cloud_projects", "num_security_projects"]
+        proj_cnt = sum(fvec.get(k, 0) for k in proj_keys)
+        # Safety fallback
+        if proj_cnt == 0 and ((u.resume_text or "").strip()):
+            # Fallback for resumes that have text but regex missed project headers
+            proj_cnt = 1
+        
+        # Give 10.0 if they have at least 1 project
+        proj_val = 10.0 if proj_cnt >= 1 else 0.0
+        
+        if proj_cnt == 0:
+            missing_info["proj"].append("Technical Projects")
+            
+        return {
+            "format": round(format_val, 1),
+            "skill": round(skill_val, 1),
+            "contact": round(contact_val, 1),
+            "intern": round(intern_val, 1),
+            "exp": round(intern_val, 1),
+            "proj": round(proj_val, 1),
+            "skills_list": sorted(detected),
+            "missing": missing_info
+        }
+
+    cat_scores = calculate_category_scores(feature_vector, user, resume_text)
+
+    # 5. Deterministic Readiness Score Calculation (0-100)
+    # Weights: Skills(30), Projects(30), Internships(20), Format(15), Contact(5)
+    readiness = (
+        (cat_scores["skill"] * 3.0) + 
+        (cat_scores["proj"] * 3.0) + 
+        (cat_scores["intern"] * 2.0) + 
+        (cat_scores["format"] * 1.5) + 
+        (cat_scores["contact"] * 0.5)
+    )
+    readiness = round(max(0.0, min(100.0, readiness)), 2)
+
+    # 6. Categorise
     if readiness >= 75:
         category = "Placement Ready"
     elif readiness >= 50:
         category = "Almost Ready"
     else:
         category = "Needs Improvement"
-
-    # 5. Role recommendation from AI
-    role_list = ai_prediction.get("recommended_roles", [])
-
-    # 6. Calculate category-specific scores (scale 0-10)
-    def calculate_category_scores(fvec, u):
-        missing_info = {
-            "edu": [], "skill": [], "contact": [], "intern": [], "exp": [], "proj": []
-        }
-        
-        # Education: Scale CGPA to 10
-        edu = min(10.0, (u.cgpa or 0.0))
-        if not u.cgpa:
-            missing_info["edu"].append("CGPA not found in profile")
-        elif u.cgpa < 8.0:
-            missing_info["edu"].append("CGPA is below 8.0")
-        
-        # Skills: 20+ detected skills = 10/10
-        skill_keys = [
-            "Python", "Java", "C++", "JavaScript", "SQL", "Node", "React", "NextJS",
-            "Docker", "Kubernetes", "CI/CD", "AWS", "NLP", "LLM", "SystemDesign", "DBMS"
-        ]
-        
-        # Calculate score based on core skills
-        core_detected_skills = [k for k in skill_keys if fvec.get(k, 0) > 0]
-        skill_score = min(10.0, len(core_detected_skills) / 1.5) # Roughly 15 skills for 10/10
-        
-        # Display ALL extracted skills, not just core scoring skills
-        all_detected_skills = [k for k, v in fvec.items() if k in SKILL_FEATURE_KEYS and isinstance(v, (int, float)) and v > 0]
-        
-        missing_skills = [k for k in skill_keys if k not in core_detected_skills]
-        if len(core_detected_skills) < 10:
-            missing_info["skill"].extend(missing_skills[:3])
-        
-        # Contact: Name, Email (always present), Mobile, LinkedIn
-        contact = 5.0 # baseline for registered user
-        if u.mobile_number: 
-            contact += 2.5
-        else:
-            missing_info["contact"].append("Mobile Number")
-            
-        if u.linkedin_profile: 
-            contact += 2.5
-        else:
-            missing_info["contact"].append("LinkedIn Profile")
-        
-        # Internships: 1=5, 2=8, 3+=10
-        intern_keys = ["internship_backend", "internship_ai", "internship_cloud", "internship_security", "internship_mobile", "internship_data"]
-        intern_count = sum(1 for k in intern_keys if fvec.get(k, 0) > 0)
-        intern_score = 10.0 if intern_count >= 3 else (8.0 if intern_count == 2 else (5.0 if intern_count == 1 else 0.0))
-        
-        if intern_count == 0:
-            missing_info["intern"].append("Relevant Internship")
-        elif intern_count < 2:
-            missing_info["intern"].append("Second Internship")
-        
-        # Projects: 5+ projects = 10/10
-        proj_keys = ["num_backend_projects", "num_ai_projects", "num_mobile_projects", "num_cloud_projects", "num_security_projects"]
-        proj_count = sum(fvec.get(k, 0) for k in proj_keys)
-        # Cap count from individual domains to avoid single-domain bloating
-        effective_proj_count = sum(min(fvec.get(k, 0), 2) for k in proj_keys)
-        proj_score = min(10.0, effective_proj_count * 2.5)
-        
-        if proj_count < 3:
-            missing_info["proj"].append(f"At least {3 - proj_count} more projects")
-        
-        # Experience: Weighted average of projects and internships for now
-        exp_score = (intern_score * 0.6) + (proj_score * 0.4)
-        if exp_score < 7:
-            missing_info["exp"].append("More hands-on industry experience")
-        
-        return {
-            "edu": round(edu, 1),
-            "skill": round(skill_score, 1),
-            "contact": round(contact, 1),
-            "intern": round(intern_score, 1),
-            "exp": round(exp_score, 1),
-            "proj": round(proj_score, 1),
-            "skills_list": sorted(all_detected_skills),
-            "missing": missing_info
-        }
-
-    cat_scores = calculate_category_scores(feature_vector, user)
 
     # 7. Generate AI Suggestions
     from services.suggestion_engine import generate_suggestions
@@ -1614,15 +1671,34 @@ def run_analysis_pipeline(
         categories_scores=cat_scores,
         resume_text=resume_text
     )
+    
+    # Merge LLM suggestions with rule-based ones AND formatting/contact gaps
+    combined_suggestions = ai_prediction.get("suggestions", [])
+    
+    # Add category-specific missing info as actionable suggestions
+    for cat, items in cat_scores.get("missing", {}).items():
+        for item in items:
+            # Format nicely for the suggestions box
+            if item not in combined_suggestions:
+                combined_suggestions.append(item)
+
+    for rule_sugg in engine_suggestions:
+        if rule_sugg not in combined_suggestions:
+            combined_suggestions.append(rule_sugg)
+            
     ai_suggestions = {
         "llm": {
             "weakness": ai_prediction.get("weakness", []),
-            "suggestions": ai_prediction.get("suggestions", []),
+            "suggestions": combined_suggestions[:5], # Limited to exactly 5 items
             "role": ai_prediction.get("role", ""),
             "source": ai_prediction.get("source", "fallback"),
+            "missing_skills": ai_prediction.get("missing_skills", []),
         },
         "rules": engine_suggestions,
     }
+
+
+
 
     # 8. Save result
     try:
@@ -1636,7 +1712,7 @@ def run_analysis_pipeline(
             readiness_category=category,
             recommended_roles=role_list,
             # Re-assigned scores
-            education_score=cat_scores["edu"],
+            education_score=cat_scores["format"], # Repurposed academics column for formatting
             skills_score=cat_scores["skill"],
             contact_score=cat_scores["contact"],
             internship_score=cat_scores["intern"],
@@ -2022,6 +2098,23 @@ def predict_skills(data: SkillPredictionRequest):
     except Exception as e:
         logger.error(f"ML Prediction error: {e}")
         raise HTTPException(status_code=500, detail="Failed to predict skills")
+
+
+@app.get("/api/roadmap-proxy/{slug}")
+def proxy_roadmap(slug: str):
+    """Proxy request to roadmap.sh to avoid CORS issues on localhost."""
+    url = f"https://roadmap.sh/{slug}.json"
+    try:
+        # roadmap.sh is a public CDN, no auth needed.
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        logger.error(f"Error proxying roadmap for {slug}: {e}")
+        raise HTTPException(
+            status_code=502, 
+            detail=f"Error fetching roadmap data for '{slug}' from roadmap.sh"
+        )
 
 
 class LearningPathRequest(BaseModel):
