@@ -263,62 +263,28 @@ def sanitize_roadmap_resources(roadmap_data: dict, topic_name: str) -> dict:
     }
     TARGETS = {"courses": 3, "certificates": 2, "youtube": 3}
 
-    def process_course(c: Any) -> Optional[Dict[str, Any]]:
-        if not isinstance(c, dict): return None
-        url = c.get("url")
-        if url and is_valid_url(url): return c
-        # Try to resolve direct link if missing or invalid
-        title = c.get("title", "")
-        platform = c.get("platform", "")
-        if not title: return None
-        query = f"{topic_name} {title} {platform} course".strip()
-        resolved = resolve_direct_link(query)
-        if resolved:
-            c_copy = dict(c)
-            c_copy["url"] = resolved
-            return c_copy
-        return None
+    # Skip heavy external searches in production for speed.
+    # We trust the LLM or provide fallbacks if links are missing.
+    for c in (roadmap_data.get("courses") or []):
+        if isinstance(c, dict) and c.get("title"):
+            if not c.get("url") or not is_valid_url(c["url"]):
+                 q = quote_plus(f"{topic_name} {c['title']} course")
+                 c["url"] = f"https://www.google.com/search?q={q}"
+            sanitized["courses"].append(c)
 
-    def process_cert(cert: Any) -> Optional[Dict[str, Any]]:
-        if not isinstance(cert, dict): return None
-        url = cert.get("url")
-        if url and is_valid_url(url): return cert
-        title = cert.get("title", "")
-        provider = cert.get("provider", "")
-        if not title: return None
-        query = f"{topic_name} {title} {provider} certification".strip()
-        resolved = resolve_direct_link(query)
-        if resolved:
-            cert_copy = dict(cert)
-            cert_copy["url"] = resolved
-            return cert_copy
-        return None
+    for cert in (roadmap_data.get("certificates") or []):
+        if isinstance(cert, dict) and cert.get("title"):
+             if not cert.get("url") or not is_valid_url(cert["url"]):
+                 q = quote_plus(f"{topic_name} {cert['title']} certification")
+                 cert["url"] = f"https://www.google.com/search?q={q}"
+             sanitized["certificates"].append(cert)
 
-    def process_youtube(v: Any) -> Optional[Dict[str, Any]]:
-        if not isinstance(v, dict): return None
-        vid = v.get("videoId")
-        if vid and is_valid_youtube_id(vid): return v
-        title = v.get("title", "")
-        if not title: return None
-        query = f"{topic_name} {title} tutorial".strip()
-        resolved_vid = resolve_youtube_video_id(query)
-        if resolved_vid:
-            v_copy = dict(v)
-            v_copy["videoId"] = resolved_vid
-            return v_copy
-        return None
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        fut_c = [executor.submit(process_course, c) for c in (roadmap_data.get("courses") or [])]
-        fut_cert = [executor.submit(process_cert, c) for c in (roadmap_data.get("certificates") or [])]
-        fut_yt = [executor.submit(process_youtube, v) for v in (roadmap_data.get("youtube") or [])]
-
-        for f in concurrent.futures.as_completed(fut_c):
-            if res := f.result(): sanitized["courses"].append(res)
-        for f in concurrent.futures.as_completed(fut_cert):
-            if res := f.result(): sanitized["certificates"].append(res)
-        for f in concurrent.futures.as_completed(fut_yt):
-            if res := f.result(): sanitized["youtube"].append(res)
+    for v in (roadmap_data.get("youtube") or []):
+        if isinstance(v, dict) and v.get("title"):
+            if not v.get("videoId") or not is_valid_youtube_id(v["videoId"]):
+                q = quote_plus(f"{topic_name} {v['title']} tutorial")
+                v["searchUrl"] = f"https://www.youtube.com/results?search_query={q}"
+            sanitized["youtube"].append(v)
 
     # Fallback logic: if still below targets, generate generic items and resolve them
     def add_fallbacks(key, count, query_suffix, item_factory):
@@ -2170,12 +2136,13 @@ def generate_learning_path(data: LearningPathRequest):
 
     try:
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Generate a roadmap for: {skill}"}
             ],
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
+            timeout=40
         )
         
         roadmap_data = json.loads(completion.choices[0].message.content)
@@ -2246,12 +2213,13 @@ def generate_role_learning_path(data: RoleLearningPathRequest):
 
     try:
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Generate a roadmap for role: {role}"}
             ],
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
+            timeout=40
         )
 
         roadmap_data = json.loads(completion.choices[0].message.content)
@@ -2314,13 +2282,13 @@ def generate_resources_for_roles(data: ResourcesForRolesRequest):
 
         try:
             completion = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Provide resources for role: {role}"},
                 ],
                 response_format={"type": "json_object"},
-                timeout=60,
+                timeout=40,
             )
 
             payload = json.loads(completion.choices[0].message.content)
