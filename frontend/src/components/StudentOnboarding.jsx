@@ -7,7 +7,7 @@ import {
 // Using simple toggle buttons for Education Type to avoid Radio export issues
 import { Icon } from '@chakra-ui/react';
 import { Avatar } from './ui/avatar';
-import { createClient } from '@supabase/supabase-js';
+import { supabase, ensureSupabaseUser, getAccessibleStorageUrl } from '@/lib/supabaseClient';
 import { 
   ChevronRight, ChevronLeft, Plus, Trash2, 
   User, GraduationCap, Briefcase, Rocket, Award, FileText 
@@ -62,11 +62,6 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
   const [photoPreview, setPhotoPreview] = useState(user?.photo_url || null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [educationType, setEducationType] = useState(user?.educationType || '12th');
-
-  // Supabase client (reads Vite env vars)
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-  const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY) ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
   const [errors, setErrors] = useState({});
   const totalSteps = 6;
@@ -190,24 +185,25 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
         }
 
         if (supabase) {
+          const sbUser = await ensureSupabaseUser();
           const safeName = formData.resumeFile.name.replace(/[^a-zA-Z0-9._-]+/g, '_');
-          const objectPath = `${user?.id || 'student'}/${Date.now()}_${safeName}`;
+          const objectPath = `${sbUser.id}/${Date.now()}-${safeName}`;
           const { error: uploadError } = await supabase.storage
-            .from('resumes')
+            .from('Result')
             .upload(objectPath, formData.resumeFile, {
-              upsert: true,
+              upsert: false,
               contentType: 'application/pdf',
               cacheControl: '3600',
             });
 
           if (uploadError) {
+            console.error(uploadError.message);
             throw new Error(uploadError.message || 'Failed to upload resume to Supabase.');
           }
 
-          const { data: publicData } = supabase.storage.from('resumes').getPublicUrl(objectPath);
-          resumePublicUrl = publicData?.publicUrl || '';
+          resumePublicUrl = await getAccessibleStorageUrl('Result', objectPath);
           if (!resumePublicUrl) {
-            throw new Error('Failed to create resume public URL.');
+            throw new Error('Failed to create resume URL. Check bucket visibility/policies.');
           }
         }
         resumeOriginalName = formData.resumeFile.name;
@@ -289,14 +285,14 @@ export default function StudentOnboarding({ token, user, onComplete, onLogout })
 
     setUploadingPhoto(true);
     try {
-      const ext = file.name.split('.').pop();
-      const filePath = `${user.id}/${Date.now()}.${ext}`;
+      const sbUser = await ensureSupabaseUser();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, '_');
+      const filePath = `${sbUser.id}/${Date.now()}-${safeName}`;
       const { error: uploadErr } = await supabase.storage.from('profile_photos').upload(filePath, file, { upsert: true });
       if (uploadErr) throw uploadErr;
 
       // Get public URL (if bucket public) — fallback to signed URL generation may be needed for private buckets
-      const { data: publicData } = supabase.storage.from('profile_photos').getPublicUrl(filePath);
-      const publicUrl = publicData?.publicUrl || '';
+      const publicUrl = await getAccessibleStorageUrl('profile_photos', filePath);
 
       // Persist to backend so server can verify ownership and store in DB
       const resp = await fetch('/api/profile/photo', {

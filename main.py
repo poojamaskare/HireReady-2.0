@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, Form, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from pydantic import BaseModel, EmailStr
@@ -515,6 +515,7 @@ RESULTS_DIR = UPLOADS_DIR / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 SUPABASE_STORAGE_BUCKET_RESUMES = "resumes"
+SUPABASE_STORAGE_BUCKET_RESULTS = "Result"
 MAX_RESUME_UPLOAD_BYTES = 2 * 1024 * 1024
 
 # Allow CORS for the React dev server
@@ -548,12 +549,27 @@ def _sanitize_resume_filename(filename: str) -> str:
     return clean
 
 
+def _sanitize_storage_filename(filename: str, fallback: str = "file") -> str:
+    raw = (filename or fallback).strip() or fallback
+    base = Path(raw).name.replace(" ", "_")
+    stem = re.sub(r"[^a-zA-Z0-9._-]+", "_", base).strip("._")
+    return stem or fallback
+
+
 def _build_supabase_public_resume_url(object_path: str) -> str:
     supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/")
     if not supabase_url:
         raise HTTPException(status_code=500, detail="SUPABASE_URL is not configured")
     encoded_path = requests.utils.requote_uri((object_path or "").lstrip("/"))
     return f"{supabase_url}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET_RESUMES}/{encoded_path}"
+
+
+def _build_supabase_public_result_url(object_path: str) -> str:
+    supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/")
+    if not supabase_url:
+        raise HTTPException(status_code=500, detail="SUPABASE_URL is not configured")
+    encoded_path = requests.utils.requote_uri((object_path or "").lstrip("/"))
+    return f"{supabase_url}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET_RESULTS}/{encoded_path}"
 
 
 def _upload_resume_to_supabase(pdf_bytes: bytes, original_filename: str, user_id: str) -> tuple[str, str]:
@@ -593,6 +609,47 @@ def _upload_resume_to_supabase(pdf_bytes: bytes, original_filename: str, user_id
         raise HTTPException(status_code=400, detail=f"Supabase upload failed: {error_text}")
 
     return _build_supabase_public_resume_url(object_path), object_path
+
+
+def _upload_result_file_to_supabase(file_bytes: bytes, original_filename: str, job_id: str, round_name: str, content_type: str = "application/octet-stream") -> str:
+    supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/")
+    supabase_service_key = (os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+    supabase_anon_key = (
+        os.getenv("SUPABASE_ANON_KEY")
+        or os.getenv("SUPABASE_KEY")
+        or os.getenv("VITE_SUPABASE_ANON_KEY")
+        or ""
+    ).strip()
+    auth_key = supabase_service_key or supabase_anon_key
+    if not supabase_url or not auth_key:
+        raise HTTPException(status_code=500, detail="Supabase credentials are not configured")
+
+    safe_round = re.sub(r"[^a-zA-Z0-9_-]+", "_", (round_name or "round")).strip("_") or "round"
+    safe_filename = _sanitize_storage_filename(original_filename, fallback="result_file")
+    object_path = f"results/{job_id}/{int(datetime.now(timezone.utc).timestamp())}-{safe_round}-{safe_filename}"
+    upload_url = f"{supabase_url}/storage/v1/object/{SUPABASE_STORAGE_BUCKET_RESULTS}/{requests.utils.requote_uri(object_path)}"
+
+    headers = {
+        "apikey": auth_key,
+        "Authorization": f"Bearer {auth_key}",
+        "Content-Type": content_type or "application/octet-stream",
+        "x-upsert": "false",
+    }
+
+    response = requests.post(upload_url, headers=headers, data=file_bytes, timeout=30)
+    if response.status_code == 404:
+        response = requests.put(upload_url, headers=headers, data=file_bytes, timeout=30)
+    if response.status_code >= 400:
+        error_text = response.text
+        try:
+            payload = response.json()
+            error_text = payload.get("message") or payload.get("error") or str(payload)
+        except Exception:
+            pass
+        logger.error("Supabase result upload failed (%s): %s", response.status_code, error_text)
+        raise HTTPException(status_code=400, detail=f"Supabase result upload failed: {error_text}")
+
+    return object_path
 
 
 def _extract_pdf_text(pdf_bytes: bytes) -> str:
@@ -672,6 +729,23 @@ async def serve_reset_password_page(request: Request):
             detail="Frontend build not found. Run 'npm install' then 'npm run build' inside frontend/.",
         )
     return FileResponse(index_path)
+
+
+@app.get("/results/{object_path:path}")
+def serve_result_file_from_supabase(object_path: str):
+    """Backward-compatible route for legacy clients that navigate to /results/... URLs."""
+    normalized = (object_path or "").strip().lstrip("/")
+    if not normalized:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    try:
+        public_url = _build_supabase_public_result_url(f"results/{normalized}")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    return RedirectResponse(url=public_url)
     
 @app.get("/vite.svg")
 async def serve_vite_svg():
@@ -2830,6 +2904,7 @@ async def upload_job_results(
     round_name: str = Form(...),
     status_value: str = Form(..., alias="status"),
     remarks: str = Form(""),
+    result_file_path: str = Form(""),
     result_file: UploadFile = File(None),
     tpo: User = Depends(get_current_tpo),
     db: Session = Depends(get_db),
@@ -2867,17 +2942,29 @@ async def upload_job_results(
     student_rows = [sid for sid in valid_ids]
 
     file_url = ""
-    if result_file and result_file.filename:
+    normalized_result_file_path = (result_file_path or "").strip()
+    if normalized_result_file_path:
+        ext = Path(normalized_result_file_path).suffix.lower()
+        if not normalized_result_file_path.startswith("results/"):
+            raise HTTPException(status_code=400, detail="result_file_path must start with results/")
+        if ext not in {".pdf", ".xlsx", ".xls", ".jpg", ".jpeg", ".png"}:
+            raise HTTPException(status_code=400, detail="result_file_path extension is not allowed")
+        file_url = normalized_result_file_path
+        logger.info("Using pre-uploaded Supabase result file path for job %s: %s", job_id, file_url)
+    elif result_file and result_file.filename:
         ext = Path(result_file.filename).suffix.lower()
-        if ext not in {".pdf", ".xlsx", ".xls"}:
-            raise HTTPException(status_code=400, detail="Result file must be PDF or Excel (.xlsx/.xls)")
+        if ext not in {".pdf", ".xlsx", ".xls", ".jpg", ".jpeg", ".png"}:
+            raise HTTPException(status_code=400, detail="Result file must be PDF, Excel (.xlsx/.xls), or image (.jpg/.jpeg/.png)")
 
-        safe_round = re.sub(r"[^a-zA-Z0-9_-]+", "_", normalized_round_name).strip("_") or "round"
-        storage_name = f"{job_id}_{int(time.time())}_{safe_round}{ext}"
-        destination = RESULTS_DIR / storage_name
         content = await result_file.read()
-        destination.write_bytes(content)
-        file_url = f"/uploads/results/{storage_name}"
+        file_url = _upload_result_file_to_supabase(
+            file_bytes=content,
+            original_filename=result_file.filename,
+            job_id=job_id,
+            round_name=normalized_round_name,
+            content_type=result_file.content_type or "application/octet-stream",
+        )
+        logger.info("Uploaded result file to Supabase for job %s: %s", job_id, file_url)
 
     result = JobResult(
         job_id=job_id,
@@ -3511,6 +3598,37 @@ def list_all_jobs(
             for j in jobs
         ]
     }
+
+
+@app.get("/api/result-files/download")
+def download_result_file(
+    file_url: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Serve uploaded job result files via /api for production environments where /uploads is not directly routed."""
+    normalized = (file_url or "").strip()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="file_url is required")
+
+    if normalized.startswith("http://") or normalized.startswith("https://"):
+        return RedirectResponse(url=normalized)
+
+    parsed = urlparse(normalized)
+    relative_path = parsed.path
+
+    if not relative_path.startswith("/uploads/results/"):
+        raise HTTPException(status_code=403, detail="Only result files are allowed")
+
+    file_name = Path(relative_path).name
+    target = (RESULTS_DIR / file_name).resolve()
+    base = RESULTS_DIR.resolve()
+
+    if target.parent != base:
+        raise HTTPException(status_code=403, detail="Invalid file path")
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="Result file not found")
+
+    return FileResponse(path=target, filename=file_name)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import {
   Box, Flex, VStack, HStack, Text, Heading, Button, Spinner,
   Badge, Icon, IconButton, SimpleGrid,
@@ -86,6 +86,7 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [notifsLoading, setNotifsLoading] = useState(false);
+  const notifDropdownRef = useRef(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardStats, setDashboardStats] = useState({
     interested: 0,
@@ -230,6 +231,32 @@ export default function App() {
     fetchDashboardStats();
     fetchNotifications();
   }, [token, user?.role, activeTab]);
+
+  // Close notification dropdown when user clicks outside the bell/dropdown area.
+  useEffect(() => {
+    if (!showNotifs) return;
+
+    const onPointerDown = (event) => {
+      if (!notifDropdownRef.current) return;
+      if (!notifDropdownRef.current.contains(event.target)) {
+        setShowNotifs(false);
+      }
+    };
+
+    const onEscape = (event) => {
+      if (event.key === 'Escape') setShowNotifs(false);
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('touchstart', onPointerDown);
+    document.addEventListener('keydown', onEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('touchstart', onPointerDown);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [showNotifs]);
 
   const handleLogin = (newToken, newUser) => {
     setToken(newToken);
@@ -418,6 +445,9 @@ export default function App() {
           align="center"
           justify="space-between"
           backdropFilter="blur(8px)"
+          position="relative"
+          zIndex={60}
+          isolation="isolate"
           flexShrink={0}
         >
           <HStack gap={3}>
@@ -439,7 +469,7 @@ export default function App() {
           {/* Notification bell + Profile icon (right side) */}
           <HStack gap={2}>
             {/* Notification Bell */}
-            <Box position="relative">
+            <Box position="relative" ref={notifDropdownRef}>
               <IconButton
                 variant="ghost"
                 size="sm"
@@ -480,52 +510,96 @@ export default function App() {
                   position="absolute"
                   top="44px"
                   right="0"
-                  w="360px"
-                  maxH="400px"
+                  w={{ base: 'calc(100vw - 1rem)', sm: '360px' }}
+                  maxW="calc(100vw - 1rem)"
+                  maxH={{ base: '65vh', md: '420px' }}
                   overflowY="auto"
-                  bg="gray.800"
+                  overscrollBehavior="contain"
+                  bg="rgba(23, 25, 35, 0.98)"
                   border="1px solid"
-                  borderColor="gray.700"
+                  borderColor="whiteAlpha.200"
                   borderRadius="xl"
-                  boxShadow="xl"
-                  zIndex={100}
+                  boxShadow="0 18px 38px rgba(0, 0, 0, 0.55)"
+                  zIndex={200}
                   p={0}
+                  backdropFilter="none"
+                  sx={{
+                    '&::-webkit-scrollbar': { width: '8px' },
+                    '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.04)', borderRadius: '10px' },
+                    '&::-webkit-scrollbar-thumb': { background: 'rgba(148,163,184,0.55)', borderRadius: '10px' },
+                    '&::-webkit-scrollbar-thumb:hover': { background: 'rgba(148,163,184,0.75)' },
+                  }}
                 >
-                  <Flex px={4} py={3} borderBottom="1px solid" borderColor="gray.700" align="center" justify="space-between">
+                  <Flex px={4} py={3} borderBottom="1px solid" borderColor="whiteAlpha.200" align="center" justify="space-between">
                     <Text fontWeight="600" color="gray.100" fontSize="sm">Notifications</Text>
-                    {unreadCount > 0 && (
-                      <Badge colorPalette="red" fontSize="xs">{unreadCount} new</Badge>
-                    )}
+                    <HStack gap={2}>
+                      {unreadCount > 0 && (
+                        <Badge colorPalette="red" fontSize="xs">{unreadCount} new</Badge>
+                      )}
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        color="gray.300"
+                        _hover={{ bg: 'gray.700', color: 'gray.100' }}
+                        onClick={async () => {
+                          const unread = notifications.filter((n) => n.status === 'unread');
+                          if (!unread.length) return;
+                          await Promise.all(unread.map((n) => markNotifRead(n.id)));
+                        }}
+                      >
+                        Mark all read
+                      </Button>
+                    </HStack>
                   </Flex>
                   {notifsLoading ? (
                     <Flex justify="center" py={6}><Spinner size="sm" color="blue.400" /></Flex>
                   ) : notifications.length === 0 ? (
                     <Text color="gray.500" fontSize="sm" p={4} textAlign="center">No notifications yet</Text>
                   ) : (
-                    <VStack gap={0} align="stretch">
+                    <VStack gap={0} align="stretch" p={2}>
                       {notifications.map((n) => (
                         <Box
                           key={n.id}
-                          px={4} py={3}
+                          position="relative"
+                          px={3} py={3}
                           borderBottom="1px solid"
-                          borderColor="gray.700"
-                          bg={n.status === 'unread' ? 'gray.750' : 'transparent'}
-                          cursor={n.status === 'unread' ? 'pointer' : 'default'}
-                          _hover={n.status === 'unread' ? { bg: 'gray.700' } : {}}
-                          onClick={() => { if (n.status === 'unread') markNotifRead(n.id); }}
+                          borderColor="whiteAlpha.100"
+                          bg={n.status === 'unread' ? 'rgba(55, 65, 81, 0.96)' : 'rgba(23, 25, 35, 0.98)'}
+                          borderRadius="lg"
+                          _hover={{ bg: 'rgba(75, 85, 99, 0.96)' }}
                         >
-                          <Flex gap={2} align="flex-start">
-                            {n.status === 'unread' && (
-                              <Box w="8px" h="8px" minW="8px" borderRadius="full" bg="blue.400" mt="6px" />
-                            )}
-                            <Box flex={1}>
-                              <Text fontSize="sm" color={n.status === 'unread' ? 'gray.100' : 'gray.400'} lineClamp={2}>
+                          <Flex gap={2} align="flex-start" justify="space-between">
+                            <HStack align="flex-start" gap={2} flex={1} pr={2}>
+                              <Box
+                                w="8px"
+                                h="8px"
+                                minW="8px"
+                                borderRadius="full"
+                                bg={n.status === 'unread' ? 'blue.400' : 'gray.600'}
+                                mt="6px"
+                              />
+                              <Box flex={1} minW={0}>
+                                <Text fontSize="sm" color={n.status === 'unread' ? 'gray.100' : 'gray.400'} lineClamp={2} wordBreak="break-word">
                                 {n.message}
                               </Text>
                               <Text fontSize="xs" color="gray.500" mt={1}>
                                 {new Date(n.created_at).toLocaleString()}
                               </Text>
-                            </Box>
+                              </Box>
+                            </HStack>
+                            {n.status === 'unread' && (
+                              <Button
+                                size="2xs"
+                                variant="outline"
+                                colorPalette="blue"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  markNotifRead(n.id);
+                                }}
+                              >
+                                Read
+                              </Button>
+                            )}
                           </Flex>
                         </Box>
                       ))}
@@ -587,30 +661,90 @@ export default function App() {
                 </Flex>
               ) : result ? (
                 <VStack gap={6} align="stretch">
-                  <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} gap={4}>
-                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                  <SimpleGrid columns={{ base: 1, sm: 2, lg: 3, xl: 4 }} gap={{ base: 4, md: 6 }}>
+                    <Box
+                      bg="gray.900"
+                      border="1px solid"
+                      borderColor="whiteAlpha.100"
+                      borderRadius="xl"
+                      p={{ base: 4, md: 5 }}
+                      minH="120px"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      textAlign="center"
+                      transition="all 0.2s ease"
+                      _hover={{ transform: 'scale(1.02)', boxShadow: 'lg', borderColor: 'whiteAlpha.200' }}
+                    >
+                      <VStack gap={1}>
                       <Text color="gray.400" fontSize="xs" mb={1}>Readiness Score</Text>
                       <Text fontSize="2xl" fontWeight="800" color={`${categoryColor(result.readiness_category)}.400`}>
                         {result.readiness_score}/100
                       </Text>
+                      </VStack>
                     </Box>
-                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                    <Box
+                      bg="gray.900"
+                      border="1px solid"
+                      borderColor="whiteAlpha.100"
+                      borderRadius="xl"
+                      p={{ base: 4, md: 5 }}
+                      minH="120px"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      textAlign="center"
+                      transition="all 0.2s ease"
+                      _hover={{ transform: 'scale(1.02)', boxShadow: 'lg', borderColor: 'whiteAlpha.200' }}
+                    >
+                      <VStack gap={1}>
                       <Text color="gray.400" fontSize="xs" mb={1}>Interested Jobs</Text>
                       <Text fontSize="2xl" fontWeight="800" color="blue.300">
                         {dashboardLoading ? '...' : dashboardStats.interested}
                       </Text>
+                      </VStack>
                     </Box>
-                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                    <Box
+                      bg="gray.900"
+                      border="1px solid"
+                      borderColor="whiteAlpha.100"
+                      borderRadius="xl"
+                      p={{ base: 4, md: 5 }}
+                      minH="120px"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      textAlign="center"
+                      transition="all 0.2s ease"
+                      _hover={{ transform: 'scale(1.02)', boxShadow: 'lg', borderColor: 'whiteAlpha.200' }}
+                    >
+                      <VStack gap={1}>
                       <Text color="gray.400" fontSize="xs" mb={1}>Shortlisted Jobs</Text>
                       <Text fontSize="2xl" fontWeight="800" color="purple.300">
                         {dashboardLoading ? '...' : dashboardStats.shortlisted}
                       </Text>
+                      </VStack>
                     </Box>
-                    <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                    <Box
+                      bg="gray.900"
+                      border="1px solid"
+                      borderColor="whiteAlpha.100"
+                      borderRadius="xl"
+                      p={{ base: 4, md: 5 }}
+                      minH="120px"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      textAlign="center"
+                      transition="all 0.2s ease"
+                      _hover={{ transform: 'scale(1.02)', boxShadow: 'lg', borderColor: 'whiteAlpha.200' }}
+                    >
+                      <VStack gap={1}>
                       <Text color="gray.400" fontSize="xs" mb={1}>Jobs With Updates</Text>
                       <Text fontSize="2xl" fontWeight="800" color="green.300">
                         {dashboardLoading ? '...' : dashboardStats.withUpdates}
                       </Text>
+                      </VStack>
                     </Box>
                   </SimpleGrid>
 
@@ -693,7 +827,7 @@ export default function App() {
                       ) : (
                         <VStack align="stretch" gap={2}>
                           {notifications.slice(0, 4).map((n) => (
-                            <Box key={n.id} p={3} bg={n.status === 'unread' ? 'gray.800' : 'gray.850'} borderRadius="md" border="1px solid" borderColor="gray.700">
+                            <Box key={n.id} p={3} bg={n.status === 'unread' ? 'gray.800' : 'gray.900'} borderRadius="md" border="1px solid" borderColor="gray.700">
                               <Text color={n.status === 'unread' ? 'gray.100' : 'gray.400'} fontSize="sm" lineClamp={2}>{n.message}</Text>
                               <Text color="gray.500" fontSize="xs" mt={1}>{new Date(n.created_at).toLocaleString()}</Text>
                             </Box>

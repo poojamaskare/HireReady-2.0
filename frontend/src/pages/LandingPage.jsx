@@ -141,93 +141,59 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
     // Limit persistent chips is now handled by the opacity filter in syncLoop
   }, []);
 
-  const FeatureTiles = () => {
-    const [isAssembled, setIsAssembled] = useState(false);
-
-    useEffect(() => {
-      const timer = setTimeout(() => setIsAssembled(true), 100);
-      return () => clearTimeout(timer);
-    }, []);
-
-    return (
-      <Box w="full" maxW="800px" mx="auto" mb={12} position="relative" h="280px">
-        {FEATURES.map((feature, index) => {
-          // Random initial positions (range -300 to 300)
-          const randomX = (Math.random() - 0.5) * 600;
-          const randomY = (Math.random() - 0.5) * 400;
-          const randomRotate = (Math.random() - 0.5) * 180;
-
-          // Target grid calculation (5 up, 2 down)
-          const isTopRow = index < 5;
-          const colIndex = isTopRow ? index : index - 5;
-          const targetX = isTopRow
-            ? (colIndex - 2) * 150  // 5 in top: -300, -150, 0, 150, 300
-            : (colIndex - 0.5) * 150; // 2 in bottom: -75, 75
-          const targetY = isTopRow ? 0 : 140;
-
-          return (
-            <motion.div
-              key={feature.label}
-              initial={{
-                x: randomX,
-                y: randomY,
-                rotate: randomRotate,
-                opacity: 0,
-                scale: 0.5
+  const FeatureTiles = () => (
+    <Box w="full" maxW="1100px" mx="auto" mb={{ base: 10, md: 12 }} position="relative" zIndex={2} px={{ base: 4, md: 0 }}>
+      <SimpleGrid columns={{ base: 1, sm: 2, lg: 3, xl: 4 }} gap={{ base: 4, md: 6 }}>
+        {FEATURES.map((feature, index) => (
+          <motion.div
+            key={feature.label}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: index * 0.05 }}
+          >
+            <VStack
+              minH="132px"
+              px={{ base: 4, md: 5 }}
+              py={{ base: 3, md: 4 }}
+              bg="whiteAlpha.100"
+              backdropFilter="blur(12px)"
+              border="1px solid"
+              borderColor="whiteAlpha.200"
+              borderRadius="2xl"
+              justify="center"
+              align="center"
+              textAlign="center"
+              gap={3}
+              boxShadow="0 10px 28px rgba(0,0,0,0.24)"
+              _hover={{
+                bg: 'whiteAlpha.200',
+                borderColor: 'whiteAlpha.300',
+                transform: 'scale(1.02)',
+                boxShadow: '0 16px 36px rgba(0,0,0,0.36)',
               }}
-              animate={isAssembled ? {
-                x: targetX,
-                y: targetY,
-                rotate: 0,
-                opacity: 1,
-                scale: 1
-              } : {}}
-              transition={{
-                duration: 3,
-                ease: [0.22, 1, 0.36, 1], // Classic smooth easeOutExpo
-                delay: index * 0.1
-              }}
-              style={{
-                position: 'absolute',
-                left: '50%',
-                top: '20%',
-                marginLeft: '-65px', // Half of tile width
-              }}
+              transition="all 0.2s ease"
+              cursor="pointer"
             >
-              <VStack
-                w="130px"
-                h="120px"
-                bg="whiteAlpha.100"
-                backdropFilter="blur(12px)"
-                border="1px solid"
-                borderColor="whiteAlpha.200"
-                borderRadius="2xl"
-                justify="center"
-                gap={3}
-                boxShadow="0 8px 32px rgba(0,0,0,0.3)"
-                _hover={{
-                  bg: "whiteAlpha.200",
-                  borderColor: feature.color,
-                  transform: "translateY(-5px)",
-                  boxShadow: `0 12px 40px rgba(0,0,0,0.5)`,
-                  transition: "all 0.3s ease"
-                }}
-                transition="all 0.3s ease"
-                cursor="pointer"
-              >
-                <Icon asChild color={feature.color} w={8} h={8}>
+              <HStack align="center" justify="center" gap={3}>
+                <Icon asChild color={feature.color} w={6} h={6}>
                   <feature.icon />
                 </Icon>
-                <Text fontSize="xs" fontWeight="700" color="whiteAlpha.900" textAlign="center">
+                <Text
+                  fontSize={{ base: 'sm', md: 'md' }}
+                  fontWeight="700"
+                  color="whiteAlpha.900"
+                  lineClamp={2}
+                  wordBreak="break-word"
+                >
                   {feature.label}
                 </Text>
-              </VStack>
-            </motion.div>
-          );
-        })}
-      </Box>
-    );
-  };
+              </HStack>
+            </VStack>
+          </motion.div>
+        ))}
+      </SimpleGrid>
+    </Box>
+  );
 
   // Hardcoded drifting background elements
   const FloatingBackgroundTags = () => (
