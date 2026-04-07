@@ -3,8 +3,9 @@ import { Box, Flex, Heading, Text, Button, HStack, Icon, SimpleGrid, Container, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Briefcase, ArrowRight, GraduationCap, Building2, Zap, Shield, Globe, Sun, Moon, LayoutDashboard, FileText, Map, ClipboardList, BadgeCheck, User } from 'lucide-react';
 import { ColorModeButton } from '../components/ui/color-mode';
-import Matter from 'matter-js';
 import IntegrationsBlock from '../components/IntegrationsBlock';
+
+import PhysicsChips from '../components/PhysicsChips';
 
 const FEATURES = [
   { label: 'Dashboard', icon: LayoutDashboard, color: 'blue.500' },
@@ -27,122 +28,9 @@ const COLORS = [
 ];
 
 export default function LandingPage({ onGetStarted, onLoginClick }) {
-  const containerRef = useRef(null);
-  const engineRef = useRef(null);
-  const runnerRef = useRef(null);
-  const [chips, setChips] = useState([]);
-  const lastSpawnTimeRef = useRef(0);
-  const chipIdRef = useRef(0);
-
-  // Initialize Matter.js Engine
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const { Engine, World, Bodies, Runner, Events } = Matter;
-    const engine = Engine.create();
-    engineRef.current = engine;
-
-    // Set up world boundaries (invisible floor and walls)
-    const updateBoundaries = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-
-      World.clear(engine.world, false);
-
-      const floor = Bodies.rectangle(width / 2, height + 10, width, 50, { isStatic: true });
-      const leftWall = Bodies.rectangle(-10, height / 2, 50, height, { isStatic: true });
-      const rightWall = Bodies.rectangle(width + 10, height / 2, 50, height, { isStatic: true });
-
-      World.add(engine.world, [floor, leftWall, rightWall]);
-    };
-
-    updateBoundaries();
-    window.addEventListener('resize', updateBoundaries);
-
-    // Runner
-    const runner = Runner.create();
-    Runner.run(runner, engine);
-    runnerRef.current = runner;
-
-    // Sync React state with Matter.js positions
-    const syncLoop = () => {
-      setChips((currentChips) => {
-        const now = Date.now();
-        return currentChips
-          .filter((chip) => {
-            // Remove from Matter world and React state if older than 1.5 seconds
-            if (now - chip.spawnTime > 1500) {
-              World.remove(engine.world, chip.body);
-              return false;
-            }
-            return true;
-          })
-          .map((chip) => ({
-            ...chip,
-            x: chip.body.position.x,
-            y: chip.body.position.y,
-            angle: chip.body.angle,
-          }));
-      });
-      requestAnimationFrame(syncLoop);
-    };
-    const animId = requestAnimationFrame(syncLoop);
-
-    return () => {
-      window.removeEventListener('resize', updateBoundaries);
-      Runner.stop(runner);
-      Engine.clear(engine);
-      cancelAnimationFrame(animId);
-    };
-  }, []);
-
-  const handleMouseMove = useCallback((e) => {
-    const now = Date.now();
-    if (now - lastSpawnTimeRef.current < 90) return; // Throttle 80-100ms
-    lastSpawnTimeRef.current = now;
-
-    if (!engineRef.current) return;
-
-    const { Bodies, World } = Matter;
-    const x = e.clientX;
-    const y = e.clientY;
-
-    const text = JOB_ROLES[Math.floor(Math.random() * JOB_ROLES.length)];
-    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-
-    // Reduced chip dimensions
-    const chipWidth = text.length * 8 + 30;
-    const chipHeight = 35;
-
-    const body = Bodies.rectangle(x, y, chipWidth, chipHeight, {
-      restitution: 0.6, // Bounciness
-      friction: 0.1,
-      chamfer: { radius: 20 }, // Rounded corners for physics
-    });
-
-    World.add(engineRef.current.world, body);
-
-    setChips((prev) => [
-      ...prev,
-      {
-        id: chipIdRef.current++,
-        text,
-        color,
-        body,
-        width: chipWidth,
-        height: chipHeight,
-        x,
-        y,
-        angle: 0,
-        spawnTime: Date.now()
-      }
-    ]);
-
-    // Limit persistent chips is now handled by the opacity filter in syncLoop
-  }, []);
-
   const FeatureTiles = () => (
     <Box w="full" maxW="1100px" mx="auto" mb={{ base: 10, md: 12 }} position="relative" zIndex={2} px={{ base: 4, md: 0 }}>
+      {/* ── FeatureTiles content was previously here ── */}
       <SimpleGrid columns={{ base: 1, sm: 2, lg: 3, xl: 4 }} gap={{ base: 4, md: 6 }}>
         {FEATURES.map((feature, index) => (
           <motion.div
@@ -205,7 +93,7 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
         animation="float 15s ease-in-out infinite"
         transform="rotate(-15deg)"
       >
-        <Text fontSize="6xl" fontWeight="900" color="purple.800" textTransform="uppercase" whiteSpace="nowrap">
+        <Text fontSize={{ base: "4xl", md: "6xl" }} fontWeight="900" color="purple.800" textTransform="uppercase" whiteSpace="nowrap">
           Engineering
         </Text>
       </Box>
@@ -216,7 +104,7 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
         animation="float 20s ease-in-out infinite reverse"
         transform="rotate(10deg)"
       >
-        <Text fontSize="7xl" fontWeight="900" color="blue.900" textTransform="uppercase" whiteSpace="nowrap">
+        <Text fontSize={{ base: "5xl", md: "7xl" }} fontWeight="900" color="blue.900" textTransform="uppercase" whiteSpace="nowrap">
           Marketing
         </Text>
       </Box>
@@ -227,7 +115,7 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
         animation="float 18s ease-in-out infinite"
         transform="rotate(-5deg)"
       >
-        <Text fontSize="5xl" fontWeight="900" color="teal.900" textTransform="uppercase" whiteSpace="nowrap">
+        <Text fontSize={{ base: "3xl", md: "5xl" }} fontWeight="900" color="teal.900" textTransform="uppercase" whiteSpace="nowrap">
           Operations
         </Text>
       </Box>
@@ -245,52 +133,16 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
     <Box bg="bg" minH="100vh">
       {/* ── HERO SECTION ── */}
       <Flex
-        ref={containerRef}
         h="100vh"
         direction="column"
         position="relative"
         overflow="hidden"
-        onMouseMove={handleMouseMove}
         onTouchMove={(e) => {
-          if (e.touches.length > 0) {
-            e.clientX = e.touches[0].clientX;
-            e.clientY = e.touches[0].clientY;
-            handleMouseMove(e);
-          }
+          // Disabled chip spawning on touch to prevent flickering and layout shifts
         }}
       >
         <FloatingBackgroundTags />
-
-        <Box position="absolute" inset={0} pointerEvents="none" zIndex={1}>
-          {chips.map((chip) => {
-            const age = Date.now() - chip.spawnTime;
-            const opacity = Math.max(0, 1 - age / 1500);
-
-            return (
-              <Box
-                key={chip.id}
-                position="absolute"
-                left={`${chip.x}px`}
-                top={`${chip.y}px`}
-                transform={`translate(-50%, -50%) rotate(${chip.angle}rad)`}
-                bg={chip.color}
-                color="white"
-                px={4}
-                py={2}
-                borderRadius="xl"
-                fontWeight="700"
-                fontSize={{ base: "xs", md: "sm" }}
-                whiteSpace="nowrap"
-                boxShadow="0 6px 15px rgba(0,0,0,0.4)"
-                border="1px solid rgba(255,255,255,0.3)"
-                opacity={opacity}
-                style={{ backdropFilter: 'blur(6px)' }}
-              >
-                {chip.text}
-              </Box>
-            );
-          })}
-        </Box>
+        <PhysicsChips />
 
         {/* Header */}
         <Flex
@@ -344,7 +196,7 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
           pointerEvents="auto"
         >
           <Heading
-            size="4xl"
+            size={{ base: "3xl", md: "4xl" }}
             fontWeight="900"
             mb={4}
             lineHeight="1.1"
@@ -362,14 +214,16 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
             </Text>
           </Heading>
 
-          <Text color="fg.muted" fontSize={{ base: "md", md: "xl" }} maxW="600px" mb={10}>
+          <Text color="fg.muted" fontSize={{ base: "sm", md: "xl" }} maxW="600px" mb={6}>
             Prepare for your dream role with AI-powered insights, real-time quizzes, and personalized career roadmaps.
           </Text>
 
-          {/* 7-Tile Feature Bar */}
-          <FeatureTiles />
+          {/* 7-Tile Feature Bar - Only show on larger screens to keep CTA visible on mobile */}
+          <Box display={{ base: 'none', md: 'block' }} w="full">
+            <FeatureTiles />
+          </Box>
 
-          <Box pointerEvents="auto" mt={8} position="relative" zIndex={50}>
+          <Box pointerEvents="auto" mt={{ base: 2, md: 8 }} position="relative" zIndex={50}>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

@@ -2,7 +2,6 @@ fastapi
 uvicorn
 joblib
 pandas
-xgboost
 requests
 PyMuPDF
 python-multipart

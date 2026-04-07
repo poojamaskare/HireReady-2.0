@@ -107,7 +107,7 @@ const JobPostingCard = React.memo(function JobPostingCard({
     resetUploadForm();
   }, [isUploadBusy, resetUploadForm]);
 
-  const handleResultFileSelect = useCallback(async (event) => {
+  const handleResultFileSelect = useCallback((event) => {
     if (isUploadBusy) return;
     const file = event.target.files?.[0];
     if (!file) {
@@ -124,50 +124,12 @@ const JobPostingCard = React.memo(function JobPostingCard({
       return;
     }
 
+    // Simply store the file locally. It will be uploaded via the backend on Submit.
     setResultFile(file);
     setResultFilePath('');
-    setUploadStatus({ type: 'loading', message: 'Uploading to Supabase...' });
-
-    if (!supabase) {
-      toaster.create({ title: 'Supabase is not configured. Falling back to server upload.', type: 'warning' });
-      setUploadStatus({ type: 'warning', message: 'Supabase not configured. File will be uploaded via server on submit.' });
-      return;
-    }
-
-    setUploadingResultFile(true);
-    try {
-      const {
-        data: { user: supabaseUser },
-      } = await supabase.auth.getUser();
-
-      if (!supabaseUser) {
-        setUploadStatus({ type: 'error', message: 'Login required before uploading file.' });
-        return;
-      }
-
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, '_');
-      const filePath = `results/${Date.now()}-${safeName}`;
-
-      const { error } = await supabase.storage
-        .from('Result')
-        .upload(filePath, file);
-
-      if (error) {
-        toaster.create({ title: error.message || 'Supabase upload failed', type: 'error' });
-        setUploadStatus({ type: 'error', message: error.message || 'Supabase upload failed.' });
-        return;
-      }
-
-      setResultFilePath(filePath);
-      setUploadStatus({ type: 'success', message: `Uploaded to Result/${filePath}` });
-      toaster.create({ title: 'File uploaded to Supabase', type: 'success' });
-    } catch (error) {
-      toaster.create({ title: 'Failed to upload file to Supabase', type: 'error' });
-      setUploadStatus({ type: 'error', message: error?.message || 'Failed to upload file to Supabase.' });
-    } finally {
-      setUploadingResultFile(false);
-    }
+    setUploadStatus({ type: 'success', message: 'File ready for upload.' });
   }, [isUploadBusy]);
+
 
   const submitUploadResults = useCallback(async () => {
     if (isUploadBusy) return;
@@ -248,17 +210,13 @@ const JobPostingCard = React.memo(function JobPostingCard({
           {job.deadline && <Badge colorPalette="orange" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><CalendarClock /></Icon>{job.deadline}</Badge>}
         </Flex>
 
-        <VStack gap={2} align="stretch">
-          <Text fontSize="xs" color={isSelected ? 'purple.300' : 'gray.500'}>
-            {isSelected ? 'Job selected' : 'Select this job to enable actions'}
-          </Text>
+        <VStack gap={3} align="stretch" mt={4}>
           <HStack gap={2}>
             <Button
               size="sm"
               colorPalette="blue"
               variant="outline"
               flex={1}
-              disabled={!isSelected}
               onClick={(e) => {
                 e.stopPropagation();
                 onViewShortlisted(job.id);
@@ -271,7 +229,6 @@ const JobPostingCard = React.memo(function JobPostingCard({
               colorPalette="purple"
               variant="outline"
               flex={1}
-              disabled={!isSelected}
               onClick={(e) => {
                 e.stopPropagation();
                 onViewInterested(job.id);
@@ -282,27 +239,25 @@ const JobPostingCard = React.memo(function JobPostingCard({
             </Button>
           </HStack>
 
-          <Box minH="36px" className="transition-none">
-            <Button
-              size="sm"
-              colorPalette="purple"
-              variant="outline"
-              w="full"
-              disabled={!isSelected || isUploadBusy}
-              onClick={(e) => {
-                e.stopPropagation();
-                openUploadResultsModal();
-              }}
-            >
-              {isUploadBusy ? 'Uploading...' : 'Upload Results'}
-            </Button>
-          </Box>
+          <Button
+            size="sm"
+            colorPalette="purple"
+            variant="outline"
+            w="full"
+            disabled={isUploadBusy}
+            onClick={(e) => {
+              e.stopPropagation();
+              openUploadResultsModal();
+            }}
+          >
+            {isUploadBusy ? 'Uploading...' : 'Upload Results'}
+          </Button>
 
           <Button
             size="sm"
             colorPalette="red"
             variant="ghost"
-            disabled={!isSelected}
+            w="full"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(job.id);

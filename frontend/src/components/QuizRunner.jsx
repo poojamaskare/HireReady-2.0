@@ -288,15 +288,26 @@ const QuizRunner = ({ role, difficulty, initialResultId, onComplete, onCancel, v
 
     return (
       <Box maxW="720px" mx="auto" w="full" px={4}>
-        <Flex justify="space-between" align="center" mb={10} bg="gray.900" p={6} borderRadius="2xl" border="1px solid" borderColor="gray.800">
-          <VStack align="flex-start" gap={0}>
+        <Flex 
+          justify="space-between" 
+          align={{ base: "stretch", sm: "center" }} 
+          mb={10} 
+          bg="gray.900" 
+          p={6} 
+          borderRadius="2xl" 
+          border="1px solid" 
+          borderColor="gray.800"
+          direction={{ base: "column", sm: "row" }}
+          gap={6}
+        >
+          <VStack align={{ base: "center", sm: "flex-start" }} gap={0} textAlign={{ base: "center", sm: "left" }}>
             <Heading size="md" color="gray.100" mb={1}>{viewOnly ? 'Assessment Review' : 'Assessment Results'}</Heading>
             <Text color="gray.500" fontSize="xs" fontWeight="600" textTransform="uppercase" letterSpacing="wider">
               {role} • {difficulty}
             </Text>
           </VStack>
           
-          <Flex align="center" gap={6}>
+          <Flex align="center" gap={6} justify={{ base: "center", sm: "flex-end" }}>
             <Box textAlign="right">
               <Text fontSize="4xl" fontWeight="900" color={`${badgeColor}.400`} lineHeight="1" mb={1}>
                 {score}
@@ -459,13 +470,13 @@ const QuizRunner = ({ role, difficulty, initialResultId, onComplete, onCancel, v
   return (
     <Box maxW="1200px" mx="auto" w="full">
       {/* Header */}
-      <Flex justify="space-between" align="center" mb={6}>
-        <HStack gap={3}>
+      <Flex justify="space-between" align={{ base: "flex-start", sm: "center" }} mb={6} direction={{ base: "column", sm: "row" }} gap={4}>
+        <HStack gap={3} wrap="wrap">
           <Heading size="md" color="gray.100">Quiz Runner</Heading>
           <Badge colorPalette="blue" px={2} py={1} borderRadius="md">{role}</Badge>
           <Badge colorPalette="purple" px={2} py={1} borderRadius="md">{difficulty}</Badge>
         </HStack>
-        <Button size="sm" variant="ghost" color="gray.400" _hover={{ color: 'red.300' }} onClick={onCancel}>
+        <Button size="sm" variant="ghost" color="gray.400" _hover={{ color: 'red.300' }} onClick={onCancel} alignSelf={{ base: "flex-end", sm: "auto" }}>
           <Icon asChild w={4} h={4}><X /></Icon> Cancel
         </Button>
       </Flex>
@@ -533,8 +544,8 @@ const QuizRunner = ({ role, difficulty, initialResultId, onComplete, onCancel, v
             </VStack>
 
             {/* Navigation Bar */}
-            <Flex justify="space-between" align="center" pt={4} borderTop="1px solid" borderColor="gray.800">
-              <Button size="sm" variant="outline" borderColor="gray.700" color="gray.300" onClick={handlePrev} disabled={currentIndex === 0}>
+            <Flex justify="space-between" align="center" pt={4} borderTop="1px solid" borderColor="gray.800" flexWrap="wrap" gap={2}>
+              <Button size="sm" variant="outline" borderColor="gray.700" color="gray.300" onClick={handlePrev} disabled={currentIndex === 0} flex={{ base: 1, sm: "initial" }}>
                 <Icon asChild w={4} h={4} mr={2}><ChevronLeft /></Icon> Previous
               </Button>
               
@@ -545,14 +556,16 @@ const QuizRunner = ({ role, difficulty, initialResultId, onComplete, onCancel, v
                 borderColor={markedForReview.has(currentIndex) ? 'transparent' : 'purple.500/50'}
                 onClick={toggleReview}
                 disabled={viewOnly}
+                flex={{ base: 1, sm: "initial" }}
               >
-                Mark for Review
+                {markedForReview.has(currentIndex) ? 'Reviewed' : 'Review'}
               </Button>
 
-              <Button size="sm" colorPalette="blue" onClick={handleNext} disabled={currentIndex === questions.length - 1}>
+              <Button size="sm" colorPalette="blue" onClick={handleNext} disabled={currentIndex === questions.length - 1} flex={{ base: "100%", sm: "initial" }}>
                 Next <Icon asChild w={4} h={4} ml={2}><ArrowRight /></Icon>
               </Button>
             </Flex>
+
           </Box>
         </Box>
 

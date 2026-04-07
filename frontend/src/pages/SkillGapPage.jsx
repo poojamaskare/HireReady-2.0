@@ -458,16 +458,17 @@ export default function SkillGapPage() {
             </MotionBox>
 
             {/* Input Bar with Suggestions */}
-            <Box position="relative" w="full" maxW="2xl">
+            <Box position="relative" w="full" maxW="2xl" mx="auto">
               <Flex
                 bg="gray.900"
                 p={2}
                 borderRadius="2xl"
                 border="1px solid"
                 borderColor="gray.800"
-                gap={4}
+                gap={{ base: 3, sm: 4 }}
                 boxShadow="0 10px 30px rgba(0,0,0,0.5)"
-                align="center"
+                align={{ base: "stretch", sm: "center" }}
+                direction={{ base: "column", sm: "row" }}
               >
                 <Flex flex={1} px={4} align="center" gap={2}>
                   <Icon asChild w={5} h={5} color="gray.500"><Search /></Icon>
@@ -888,10 +889,10 @@ export default function SkillGapPage() {
       )}
 
       {/* Floating Roadmap Assistant */}
-      <Box position="fixed" bottom="24px" right="24px" zIndex={50}>
+      <Box position="fixed" bottom={{ base: "12px", md: "24px" }} right={{ base: "12px", md: "24px" }} zIndex={50}>
         {assistantOpen ? (
           <Box
-            w={{ base: '280px', md: '340px' }}
+            w={{ base: 'calc(100vw - 24px)', sm: '320px', md: '340px' }}
             bg="gray.900"
             borderRadius="xl"
             border="1px solid"

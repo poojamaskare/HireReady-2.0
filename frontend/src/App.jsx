@@ -507,10 +507,11 @@ export default function App() {
               {/* Notification Dropdown */}
               {showNotifs && (
                 <Box
-                  position="absolute"
-                  top="44px"
-                  right="0"
-                  w={{ base: 'calc(100vw - 1rem)', sm: '360px' }}
+                  position={{ base: "fixed", md: "absolute" }}
+                  top={{ base: "60px", md: "44px" }}
+                  right={{ base: "8px", md: "0" }}
+                  left={{ base: "8px", md: "auto" }}
+                  w={{ base: 'auto', md: '360px' }}
                   maxW="calc(100vw - 1rem)"
                   maxH={{ base: '65vh', md: '420px' }}
                   overflowY="auto"
@@ -522,7 +523,6 @@ export default function App() {
                   boxShadow="0 18px 38px rgba(0, 0, 0, 0.55)"
                   zIndex={200}
                   p={0}
-                  backdropFilter="none"
                   sx={{
                     '&::-webkit-scrollbar': { width: '8px' },
                     '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.04)', borderRadius: '10px' },
