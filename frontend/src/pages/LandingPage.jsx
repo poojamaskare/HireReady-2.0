@@ -1,21 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Box, Flex, Heading, Text, Button, HStack, Icon, SimpleGrid, Container, GridItem, VStack } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Briefcase, ArrowRight, GraduationCap, Building2, Zap, Shield, Globe, Sun, Moon, LayoutDashboard, FileText, Map, ClipboardList, BadgeCheck, User } from 'lucide-react';
+import { Briefcase, ArrowRight, GraduationCap, Building2, Zap, Shield, Globe, Sun, Moon } from 'lucide-react';
 import { ColorModeButton } from '../components/ui/color-mode';
 import IntegrationsBlock from '../components/IntegrationsBlock';
 
 import PhysicsChips from '../components/PhysicsChips';
-
-const FEATURES = [
-  { label: 'Dashboard', icon: LayoutDashboard, color: 'blue.500' },
-  { label: 'Resume Analysis', icon: FileText, color: 'purple.500' },
-  { label: 'Skill Roadmap', icon: Map, color: 'teal.500' },
-  { label: 'AI Quizzes', icon: ClipboardList, color: 'orange.500' },
-  { label: 'Job Board', icon: Briefcase, color: 'pink.500' },
-  { label: 'Performance', icon: BadgeCheck, color: 'green.500' },
-  { label: 'Smart Profile', icon: User, color: 'cyan.500' },
-];
 
 const JOB_ROLES = [
   'Software Engineer', 'Data Analyst', 'Product Manager', 'UX Designer',
@@ -28,61 +18,6 @@ const COLORS = [
 ];
 
 export default function LandingPage({ onGetStarted, onLoginClick }) {
-  const FeatureTiles = () => (
-    <Box w="full" maxW="1100px" mx="auto" mb={{ base: 10, md: 12 }} position="relative" zIndex={2} px={{ base: 4, md: 0 }}>
-      {/* ── FeatureTiles content was previously here ── */}
-      <SimpleGrid columns={{ base: 1, sm: 2, lg: 3, xl: 4 }} gap={{ base: 4, md: 6 }}>
-        {FEATURES.map((feature, index) => (
-          <motion.div
-            key={feature.label}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: index * 0.05 }}
-          >
-            <VStack
-              minH="132px"
-              px={{ base: 4, md: 5 }}
-              py={{ base: 3, md: 4 }}
-              bg="whiteAlpha.100"
-              backdropFilter="blur(12px)"
-              border="1px solid"
-              borderColor="whiteAlpha.200"
-              borderRadius="2xl"
-              justify="center"
-              align="center"
-              textAlign="center"
-              gap={3}
-              boxShadow="0 10px 28px rgba(0,0,0,0.24)"
-              _hover={{
-                bg: 'whiteAlpha.200',
-                borderColor: 'whiteAlpha.300',
-                transform: 'scale(1.02)',
-                boxShadow: '0 16px 36px rgba(0,0,0,0.36)',
-              }}
-              transition="all 0.2s ease"
-              cursor="pointer"
-            >
-              <HStack align="center" justify="center" gap={3}>
-                <Icon asChild color={feature.color} w={6} h={6}>
-                  <feature.icon />
-                </Icon>
-                <Text
-                  fontSize={{ base: 'sm', md: 'md' }}
-                  fontWeight="700"
-                  color="whiteAlpha.900"
-                  lineClamp={2}
-                  wordBreak="break-word"
-                >
-                  {feature.label}
-                </Text>
-              </HStack>
-            </VStack>
-          </motion.div>
-        ))}
-      </SimpleGrid>
-    </Box>
-  );
-
   // Hardcoded drifting background elements
   const FloatingBackgroundTags = () => (
     <Box position="absolute" inset={0} overflow="hidden" pointerEvents="none" opacity={0.3} zIndex={0}>
@@ -217,11 +152,6 @@ export default function LandingPage({ onGetStarted, onLoginClick }) {
           <Text color="fg.muted" fontSize={{ base: "sm", md: "xl" }} maxW="600px" mb={6}>
             Prepare for your dream role with AI-powered insights, real-time quizzes, and personalized career roadmaps.
           </Text>
-
-          {/* 7-Tile Feature Bar - Only show on larger screens to keep CTA visible on mobile */}
-          <Box display={{ base: 'none', md: 'block' }} w="full">
-            <FeatureTiles />
-          </Box>
 
           <Box pointerEvents="auto" mt={{ base: 2, md: 8 }} position="relative" zIndex={50}>
             <motion.div
