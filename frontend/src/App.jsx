@@ -801,7 +801,7 @@ export default function App() {
 
                   <SimpleGrid columns={{ base: 1, lg: 2 }} gap={4}>
                     <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={5}>
-                      <Heading size="sm" color="gray.100" mb={2}>Placement Pipeline</Heading>
+                      <Heading size="sm" color="gray.100" mb={2}>Placement Updates</Heading>
                       <Text color="gray.400" fontSize="sm" mb={3}>
                         Track your job journey from interest to shortlist and result updates.
                       </Text>

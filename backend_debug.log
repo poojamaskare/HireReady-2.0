@@ -5388,3 +5388,17 @@ sqlalchemy.exc.TimeoutError: QueuePool limit of size 5 overflow 10 reached, conn
 2026-04-07 20:02:11,794 [INFO] main: Loading ML models in background thread...
 2026-04-07 20:02:11,804 [INFO] main: Loaded 100 roles into skill cache.
 2026-04-07 20:02:11,805 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-07 20:18:01,383 [INFO] main: Loading ML models in background thread...
+2026-04-07 20:18:01,403 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-07 20:18:01,404 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-07 20:18:30,728 [INFO] main: Loading ML models in background thread...
+2026-04-07 20:18:30,737 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-07 20:18:30,739 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-07 20:19:16,104 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-07 20:27:42,615 [INFO] main: Loading ML models in background thread...
+2026-04-07 20:27:42,623 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-07 20:27:42,624 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-07 20:31:02,497 [INFO] main: Loading ML models in background thread...
+2026-04-07 20:31:02,499 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-07 20:31:02,513 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-07 20:31:30,474 [INFO] main: Uploaded result file to Supabase for job ff562c94-e4ce-45c4-aacc-40c81fc8a829: results/ff562c94-e4ce-45c4-aacc-40c81fc8a829/1775574087-Aptitude_Test-aptitude_selection.pdf
