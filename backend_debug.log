@@ -5373,3 +5373,12 @@ sqlalchemy.exc.TimeoutError: QueuePool limit of size 5 overflow 10 reached, conn
 2026-04-07 16:34:52,377 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
 2026-04-07 16:34:52,393 [INFO] main: Loaded 100 roles into skill cache.
 2026-04-07 16:35:29,036 [INFO] main: Uploaded result file to Supabase for job 7b269961-c307-4747-85fb-bda12747618b: results/7b269961-c307-4747-85fb-bda12747618b/1775559924-Final_Selection-aptitude_selection.pdf
+2026-04-07 17:06:20,771 [INFO] main: Loading ML models in background thread...
+2026-04-07 17:06:20,773 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-07 17:06:20,795 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-07 17:06:40,896 [INFO] main: Loading ML models in background thread...
+2026-04-07 17:06:40,900 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-07 17:06:40,908 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-07 17:08:20,532 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-07 17:08:28,695 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-07 17:18:27,722 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"

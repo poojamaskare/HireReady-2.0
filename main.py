@@ -267,58 +267,56 @@ def sanitize_roadmap_resources(roadmap_data: dict, topic_name: str) -> dict:
     # We trust the LLM or provide fallbacks if links are missing.
     for c in (roadmap_data.get("courses") or []):
         if isinstance(c, dict) and c.get("title"):
-            if not c.get("url") or not is_valid_url(c["url"]):
-                 q = quote_plus(f"{topic_name} {c['title']} course")
-                 c["url"] = f"https://www.google.com/search?q={q}"
-            sanitized["courses"].append(c)
+             # Fast check: skip slow real-time HTTP validation. 
+             # Just assume it works or use a search link if completely missing.
+             if not c.get("url"):
+                  q = quote_plus(f"{topic_name} {c['title']} course")
+                  c["url"] = f"https://www.google.com/search?q={q}"
+             sanitized["courses"].append(c)
 
     for cert in (roadmap_data.get("certificates") or []):
         if isinstance(cert, dict) and cert.get("title"):
-             if not cert.get("url") or not is_valid_url(cert["url"]):
-                 q = quote_plus(f"{topic_name} {cert['title']} certification")
-                 cert["url"] = f"https://www.google.com/search?q={q}"
+             if not cert.get("url"):
+                  q = quote_plus(f"{topic_name} {cert['title']} certification")
+                  cert["url"] = f"https://www.google.com/search?q={q}"
              sanitized["certificates"].append(cert)
 
     for v in (roadmap_data.get("youtube") or []):
         if isinstance(v, dict) and v.get("title"):
-            if not v.get("videoId") or not is_valid_youtube_id(v["videoId"]):
+            if not v.get("videoId"):
                 q = quote_plus(f"{topic_name} {v['title']} tutorial")
                 v["searchUrl"] = f"https://www.youtube.com/results?search_query={q}"
             sanitized["youtube"].append(v)
 
-    # Fallback logic: if still below targets, generate generic items and resolve them
+
+    # Fallback logic: if still below targets, generate generic items with instant search links
     def add_fallbacks(key, count, query_suffix, item_factory):
         while len(sanitized[key]) < count:
             idx = len(sanitized[key]) + 1
             title = f"{topic_name} {key[:-1].capitalize()} {idx}"
             query = f"{topic_name} {title} {query_suffix}".strip()
+            q = quote_plus(query)
             
-            # 1. Try resolving a direct link
-            resolved = resolve_direct_link(query) if key != "youtube" else resolve_youtube_video_id(query)
-            
-            # 2. If resolution fails, construct a platform-specific search link
-            # This redirects the user directly to the target website's internal search.
-            if not resolved:
-                q = quote_plus(query)
-                if key == "courses":
-                    resolved = f"https://www.udemy.com/courses/search/?q={q}"
-                elif key == "certificates":
-                    resolved = f"https://www.coursera.org/search?query={q}"
-
-            if resolved:
-                item = item_factory(title, resolved)
-                sanitized[key].append(item)
+            # Use immediate search result links instead of waiting for external researchers.
+            # This makes the generation near-instant.
+            if key == "courses":
+                resolved = f"https://www.udemy.com/courses/search/?q={q}"
+            elif key == "certificates":
+                resolved = f"https://www.coursera.org/search?query={q}"
+            elif key == "youtube":
+                resolved = f"https://www.youtube.com/results?search_query={q}"
             else:
-                # Last resort for YouTube if no ID found
-                if key == "youtube":
-                    sanitized[key].append({
-                        "title": title, 
-                        "channel": "YouTube", 
-                        "videoId": None, 
-                        "description": "Click to search for this tutorial."
-                    })
-                else:
-                    break
+                resolved = f"https://www.google.com/search?q={q}"
+
+            item = item_factory(title, resolved)
+            
+            # Special case for YouTube to ensure it renders correctly
+            if key == "youtube":
+                 item["videoId"] = None # Use searchUrl fallback instead of blocking for a specific ID
+                 item["searchUrl"] = resolved
+
+            sanitized[key].append(item)
+
 
     add_fallbacks("courses", TARGETS["courses"], "online course", 
                   lambda t, r: {"title": t, "platform": "Udemy", "url": r, "level": "Beginner", "description": "Recommended learning resource."})
