@@ -3,9 +3,7 @@ import { Box, SimpleGrid, VStack, HStack, Text, Button, chakra } from '@chakra-u
 import { motion, useReducedMotion, useAnimation } from 'framer-motion'
 import { Zap, Users, Book, Code, CheckCircle, MessageSquare, Bell } from 'lucide-react'
 import { useRef } from 'react'
-
-const Lottie = React.lazy(() => import('lottie-react'))
-
+ 
 const MotionBox = chakra(motion.div)
 
 const tiles = [
@@ -19,20 +17,6 @@ const tiles = [
 ]
 
 export default function IntegrationsBlock() {
-  const [animationData, setAnimationData] = useState(null)
-
-  useEffect(() => {
-    // Avoid 'require' for Vite-compatibility. Rely on CDN fallback or public/ imports.
-    const defaultUrl = 'https://assets7.lottiefiles.com/packages/lf20_sftkbx0v.json';
-    let cancelled = false
-    fetch(defaultUrl)
-      .then((r) => r.json())
-      .then((json) => { if (!cancelled) setAnimationData(json) })
-      .catch(() => { /* ignore, fallback will be SVG */ })
-
-    return () => { cancelled = true }
-  }, [])
-
   function AnimatedIconsNetwork() {
     const shouldReduce = useReducedMotion()
     const anim = useAnimation()
