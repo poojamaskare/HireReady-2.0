@@ -612,15 +612,13 @@ def _upload_resume_to_supabase(pdf_bytes: bytes, original_filename: str, user_id
 def _upload_result_file_to_supabase(file_bytes: bytes, original_filename: str, job_id: str, round_name: str, content_type: str = "application/octet-stream") -> str:
     supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/")
     supabase_service_key = (os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
-    supabase_anon_key = (
-        os.getenv("SUPABASE_ANON_KEY")
-        or os.getenv("SUPABASE_KEY")
-        or os.getenv("VITE_SUPABASE_ANON_KEY")
-        or ""
-    ).strip()
-    auth_key = supabase_service_key or supabase_anon_key
-    if not supabase_url or not auth_key:
-        raise HTTPException(status_code=500, detail="Supabase credentials are not configured")
+    if not supabase_url:
+        raise HTTPException(status_code=500, detail="SUPABASE_URL is not configured")
+    if not supabase_service_key:
+        raise HTTPException(
+            status_code=500,
+            detail="SUPABASE_SERVICE_ROLE_KEY is required for result file uploads",
+        )
 
     safe_round = re.sub(r"[^a-zA-Z0-9_-]+", "_", (round_name or "round")).strip("_") or "round"
     safe_filename = _sanitize_storage_filename(original_filename, fallback="result_file")
@@ -628,8 +626,8 @@ def _upload_result_file_to_supabase(file_bytes: bytes, original_filename: str, j
     upload_url = f"{supabase_url}/storage/v1/object/{SUPABASE_STORAGE_BUCKET_RESULTS}/{requests.utils.requote_uri(object_path)}"
 
     headers = {
-        "apikey": auth_key,
-        "Authorization": f"Bearer {auth_key}",
+        "apikey": supabase_service_key,
+        "Authorization": f"Bearer {supabase_service_key}",
         "Content-Type": content_type or "application/octet-stream",
         "x-upsert": "false",
     }
@@ -645,6 +643,11 @@ def _upload_result_file_to_supabase(file_bytes: bytes, original_filename: str, j
         except Exception:
             pass
         logger.error("Supabase result upload failed (%s): %s", response.status_code, error_text)
+        if response.status_code in {401, 403}:
+            raise HTTPException(
+                status_code=500,
+                detail="Supabase result upload unauthorized. Verify SUPABASE_SERVICE_ROLE_KEY and bucket permissions.",
+            )
         raise HTTPException(status_code=400, detail=f"Supabase result upload failed: {error_text}")
 
     return object_path
