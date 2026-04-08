@@ -3888,13 +3888,10 @@ def upsert_job_review(
     current_user: User = Depends(get_current_student),
     db: Session = Depends(get_db),
 ):
-    """Create a student's review for an expired job they applied to (one-time only)."""
+    """Create a student's review at any time (one-time only)."""
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-
-    if not _is_job_expired(job.deadline):
-        raise HTTPException(status_code=400, detail="Reviews are allowed only after deadline passes")
 
     is_interested = db.query(InterestedJob.id).filter(
         InterestedJob.job_id == job_id,

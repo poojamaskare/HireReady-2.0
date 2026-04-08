@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Box, Flex, Heading, Text, Spinner, SimpleGrid, Badge, VStack, HStack, Icon, Button, Image, Textarea,
 } from '@chakra-ui/react';
-import { Target, BarChart3, Award, Lightbulb, DollarSign, ClipboardCheck, CalendarClock, ChevronDown } from 'lucide-react';
+import { Target, BarChart3, Award, Lightbulb, DollarSign, ClipboardCheck, CalendarClock, ChevronDown, MessageSquare } from 'lucide-react';
 import { toaster } from '@/components/ui/toaster';
 import { MenuContent, MenuItem, MenuRoot, MenuTrigger } from '@/components/ui/menu';
 
@@ -23,6 +23,7 @@ export default function StudentJobs({ token, mode = 'active' }) {
   const [reviewForms, setReviewForms] = useState({});
   const [reviewStatusByJob, setReviewStatusByJob] = useState({});
   const [savingReviews, setSavingReviews] = useState(new Set());
+  const [showReviewByJob, setShowReviewByJob] = useState({});
 
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const isExpiredMode = mode === 'expired';
@@ -37,7 +38,7 @@ export default function StudentJobs({ token, mode = 'active' }) {
         const fetchedJobs = data.jobs || [];
         setJobs(fetchedJobs);
 
-        if (isExpiredMode && fetchedJobs.length) {
+        if (fetchedJobs.length) {
           await fetchMyReviews(fetchedJobs.map((job) => job.id));
         }
       }
@@ -155,6 +156,7 @@ export default function StudentJobs({ token, mode = 'active' }) {
         ...prev,
         [jobId]: { submitted: true, updated_at: updatedAt },
       }));
+      setShowReviewByJob((prev) => ({ ...prev, [jobId]: true }));
       toaster.create({ title: 'Review submitted', type: 'success' });
     } catch {
       toaster.create({ title: 'Failed to submit review', type: 'error' });
@@ -255,7 +257,7 @@ export default function StudentJobs({ token, mode = 'active' }) {
                   {j.deadline && <Badge colorPalette="red" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><CalendarClock /></Icon>{j.deadline}</Badge>}
                 </Flex>
 
-                {isExpiredMode ? (
+                {isExpiredMode || showReviewByJob[j.id] ? (
                   <VStack align="stretch" gap={2} mt={3}>
                     <HStack justify="space-between" align="center">
                       <Text color="gray.300" fontSize="sm" fontWeight="600">Your Review</Text>
@@ -320,19 +322,45 @@ export default function StudentJobs({ token, mode = 'active' }) {
                         Submit Review
                       </Button>
                     )}
+
+                    {!isExpiredMode && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        color="gray.400"
+                        _hover={{ color: 'gray.200' }}
+                        onClick={() => setShowReviewByJob((prev) => ({ ...prev, [j.id]: false }))}
+                      >
+                        Hide Review Form
+                      </Button>
+                    )}
                   </VStack>
                 ) : (
-                  <Button
-                    size="sm"
-                    w="full"
-                    variant={isInterested ? 'solid' : 'outline'}
-                    colorPalette={isInterested ? 'green' : 'blue'}
-                    loading={isToggling}
-                    loadingText={isInterested ? 'Removing…' : 'Marking…'}
-                    onClick={() => toggleInterest(j.id)}
-                  >
-                    {isInterested ? 'Interested ✓' : 'Interested'}
-                  </Button>
+                  <HStack gap={2} w="full" align="stretch">
+                    <Button
+                      size="sm"
+                      flex={1}
+                      minW={0}
+                      variant={isInterested ? 'solid' : 'outline'}
+                      colorPalette={isInterested ? 'green' : 'blue'}
+                      loading={isToggling}
+                      loadingText={isInterested ? 'Removing…' : 'Marking…'}
+                      onClick={() => toggleInterest(j.id)}
+                    >
+                      {isInterested ? 'Interested ✓' : 'Interested'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      flex={1}
+                      minW={0}
+                      variant={reviewStatus.submitted ? 'solid' : 'outline'}
+                      colorPalette={reviewStatus.submitted ? 'green' : 'purple'}
+                      onClick={() => setShowReviewByJob((prev) => ({ ...prev, [j.id]: true }))}
+                    >
+                      <Icon asChild w={4} h={4} mr={1}><MessageSquare /></Icon>
+                      {reviewStatus.submitted ? 'Review Submitted' : 'Give Review'}
+                    </Button>
+                  </HStack>
                 )}
               </Box>
             );
