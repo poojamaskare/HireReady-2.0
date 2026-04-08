@@ -12,6 +12,7 @@ import {
 import {
   MenuContent, MenuItem, MenuRoot, MenuTrigger,
 } from '@/components/ui/menu';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Avatar } from '@/components/ui/avatar';
 import { toaster } from '@/components/ui/toaster';
 import { supabase } from '@/lib/supabaseClient';
@@ -19,9 +20,45 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import {
   LogOut, Target, BarChart3, DollarSign, CalendarClock,
   Award, Lightbulb, Phone, FileText, ChevronLeft, ChevronDown, Download, Bell, Users, Upload, Menu as MenuIcon,
+  Briefcase, ClipboardCheck, Eye, MessageSquare, PanelLeftClose, PanelLeftOpen, LayoutDashboard, Star,
 } from 'lucide-react';
 
 const API_BASE = '/api';
+
+const parseDeadlineDate = (rawDeadline) => {
+  const value = String(rawDeadline || '').trim();
+  if (!value) return null;
+  const normalized = value.includes('T') ? value.split('T')[0] : value;
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return null;
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+};
+
+const isExpiredJob = (job) => {
+  if (job?.is_expired === true) return true;
+  if (job?.is_expired === false) return false;
+
+  const deadlineDate = parseDeadlineDate(job?.deadline);
+  if (!deadlineDate) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return deadlineDate < today;
+};
+
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Sort: Newest First' },
+  { value: 'oldest', label: 'Sort: Oldest First' },
+  { value: 'highest', label: 'Sort: Highest Rating' },
+  { value: 'lowest', label: 'Sort: Lowest Rating' },
+];
+
+const toDateInputValue = (rawDeadline) => {
+  const value = String(rawDeadline || '').trim();
+  if (!value) return '';
+  return value.includes('T') ? value.split('T')[0] : value;
+};
 
 const normalizeShortlistedItem = (item) => {
   const hasNestedStudent = Boolean(item && typeof item.student === 'object' && item.student);
@@ -60,7 +97,9 @@ const JobPostingCard = React.memo(function JobPostingCard({
   onSelect,
   onViewShortlisted,
   onViewInterested,
+  onViewReviews,
   onDelete,
+  onDeadlineUpdated,
 }) {
   if (import.meta.env.DEV) {
     console.log('Rendering card:', job.id);
@@ -75,9 +114,15 @@ const JobPostingCard = React.memo(function JobPostingCard({
   const [uploadingResultFile, setUploadingResultFile] = useState(false);
   const [submittingResult, setSubmittingResult] = useState(false);
   const [uploadStatus, setUploadStatus] = useState({ type: 'idle', message: '' });
+  const [deadlineInput, setDeadlineInput] = useState(toDateInputValue(job.deadline));
+  const [updatingDeadline, setUpdatingDeadline] = useState(false);
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
   const isUploadBusy = uploadingResultFile || submittingResult;
+
+  useEffect(() => {
+    setDeadlineInput(toDateInputValue(job.deadline));
+  }, [job.deadline]);
 
   const resetUploadForm = useCallback(() => {
     setResultRoundName('');
@@ -178,6 +223,36 @@ const JobPostingCard = React.memo(function JobPostingCard({
     }
   }, [authHeaders, isUploadBusy, job.id, resetUploadForm, resultFile, resultFilePath, resultRemarks, resultRoundName, resultStatus]);
 
+  const updateDeadline = useCallback(async () => {
+    const nextDeadline = String(deadlineInput || '').trim();
+    if (!nextDeadline) {
+      toaster.create({ title: 'Deadline is required', type: 'warning' });
+      return;
+    }
+
+    setUpdatingDeadline(true);
+    try {
+      const res = await fetch(`${API_BASE}/tpo/jobs/${job.id}/deadline`, {
+        method: 'PATCH',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deadline: nextDeadline }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toaster.create({ title: data.detail || 'Failed to update deadline', type: 'error' });
+        return;
+      }
+
+      toaster.create({ title: 'Deadline updated', type: 'success' });
+      onDeadlineUpdated();
+    } catch {
+      toaster.create({ title: 'Failed to update deadline', type: 'error' });
+    } finally {
+      setUpdatingDeadline(false);
+    }
+  }, [authHeaders, deadlineInput, job.id, onDeadlineUpdated]);
+
   return (
     <>
       <Box
@@ -210,34 +285,72 @@ const JobPostingCard = React.memo(function JobPostingCard({
           {job.deadline && <Badge colorPalette="orange" fontSize="xs"><Icon asChild w={3} h={3} mr={1}><CalendarClock /></Icon>{job.deadline}</Badge>}
         </Flex>
 
+        <HStack gap={2} mb={3}>
+          <Input
+            type="date"
+            size="sm"
+            value={deadlineInput}
+            onChange={(e) => setDeadlineInput(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            {...inputStyles}
+          />
+          <Button
+            size="sm"
+            colorPalette="purple"
+            variant="solid"
+            loading={updatingDeadline}
+            loadingText="Saving..."
+            onClick={(e) => {
+              e.stopPropagation();
+              updateDeadline();
+            }}
+          >
+            Update Deadline
+          </Button>
+        </HStack>
+
         <VStack gap={3} align="stretch" mt={4}>
-          <HStack gap={2}>
-            <Button
-              size="sm"
-              colorPalette="blue"
-              variant="outline"
-              flex={1}
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewShortlisted(job.id);
-              }}
-            >
-              View Shortlisted
-            </Button>
-            <Button
-              size="sm"
-              colorPalette="purple"
-              variant="outline"
-              flex={1}
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewInterested(job.id);
-              }}
-            >
-              <Icon asChild w={4} h={4} mr={1}><Users /></Icon>
-              View Interested
-            </Button>
-          </HStack>
+          {isSelected && (
+            <HStack gap={2}>
+              <Button
+                size="sm"
+                colorPalette="blue"
+                variant="outline"
+                flex={1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewShortlisted(job.id);
+                }}
+              >
+                View Shortlisted
+              </Button>
+              <Button
+                size="sm"
+                colorPalette="purple"
+                variant="outline"
+                flex={1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewInterested(job.id);
+                }}
+              >
+                <Icon asChild w={4} h={4} mr={1}><Users /></Icon>
+                View Interested
+              </Button>
+              <Button
+                size="sm"
+                colorPalette="teal"
+                variant="outline"
+                flex={1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewReviews(job.id);
+                }}
+              >
+                View Reviews
+              </Button>
+            </HStack>
+          )}
 
           <Button
             size="sm"
@@ -370,15 +483,18 @@ const JobPostingCard = React.memo(function JobPostingCard({
   && prev.onSelect === next.onSelect
   && prev.onViewShortlisted === next.onViewShortlisted
   && prev.onViewInterested === next.onViewInterested
+  && prev.onViewReviews === next.onViewReviews
   && prev.onDelete === next.onDelete
+  && prev.onDeadlineUpdated === next.onDeadlineUpdated
 ));
 
 export default function TpoDashboard({ token, user, onLogout }) {
-  const [tab, setTab] = useState('jobs');
+  const [tab, setTab] = useState('dashboard');
   const [jobs, setJobs] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   /* New-job form */
   const [title, setTitle] = useState('');
@@ -427,6 +543,15 @@ export default function TpoDashboard({ token, user, onLogout }) {
   const [selectedJobForDelete, setSelectedJobForDelete] = useState(null);
   const [deletingJob, setDeletingJob] = useState(false);
   const [selectedActionJobId, setSelectedActionJobId] = useState(null);
+  const [jobReviews, setJobReviews] = useState([]);
+  const [reviewsJob, setReviewsJob] = useState(null);
+  const [reviewsSummary, setReviewsSummary] = useState({ count: 0, avg_rating: 0 });
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [allReviews, setAllReviews] = useState([]);
+  const [allReviewsSummary, setAllReviewsSummary] = useState({ count: 0, avg_rating: 0 });
+  const [loadingAllReviews, setLoadingAllReviews] = useState(false);
+  const [jobReviewSort, setJobReviewSort] = useState('newest');
+  const [allReviewSort, setAllReviewSort] = useState('newest');
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }), [token]);
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
@@ -507,6 +632,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
 
   const handleSelectActionJob = useCallback((jobId) => {
     setSelectedActionJobId((prev) => (prev === jobId ? prev : jobId));
+    setSelectedJobId(jobId);
   }, []);
 
   const confirmDeleteJob = async () => {
@@ -771,6 +897,46 @@ export default function TpoDashboard({ token, user, onLogout }) {
     } catch { /* */ } finally { setLoadingInterested(false); }
   }, [headers]);
 
+  const viewReviews = useCallback(async (jobId) => {
+    setSelectedJobId(jobId); setLoadingReviews(true); setTab('reviews');
+    try {
+      const res = await fetch(`${API_BASE}/tpo/jobs/${jobId}/reviews`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setJobReviews(data.reviews || []);
+        setReviewsJob(data.job || null);
+        setReviewsSummary(data.summary || { count: 0, avg_rating: 0 });
+      }
+    } catch { /* */ } finally { setLoadingReviews(false); }
+  }, [headers]);
+
+  const fetchAllReviewsData = useCallback(async (targetTab = 'view') => {
+    setTab(targetTab);
+    setLoadingAllReviews(true);
+    try {
+      const res = await fetch(`${API_BASE}/tpo/reviews`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setAllReviews(data.reviews || []);
+        setAllReviewsSummary(data.summary || { count: 0, avg_rating: 0 });
+      }
+    } catch { /* */ } finally { setLoadingAllReviews(false); }
+  }, [headers]);
+
+  const viewAllReviews = useCallback(async () => {
+    await fetchAllReviewsData('view');
+  }, [fetchAllReviewsData]);
+
+  const viewDashboard = useCallback(async () => {
+    await fetchAllReviewsData('dashboard');
+  }, [fetchAllReviewsData]);
+
+  useEffect(() => {
+    if (tab === 'dashboard') {
+      viewDashboard();
+    }
+  }, [tab, viewDashboard]);
+
   /* ── Export interested students as Excel ── */
   const exportExcel = async () => {
     if (!selectedJobId) return;
@@ -1033,11 +1199,18 @@ export default function TpoDashboard({ token, user, onLogout }) {
   };
 
   const NAV = [
-    { key: 'post', label: 'Post Job' },
-    { key: 'jobs', label: 'My Jobs' },
-    { key: 'shortlisted', label: 'Shortlisted' },
-    { key: 'interested', label: 'Interested' },
+    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { key: 'post', label: 'Post Job', icon: Upload },
+    { key: 'jobs', label: 'My Jobs', icon: Briefcase },
+    { key: 'past', label: 'Past Jobs', icon: CalendarClock },
+    { key: 'reviews', label: 'Job Reviews', icon: MessageSquare },
+    { key: 'shortlisted', label: 'Shortlisted', icon: ClipboardCheck },
+    { key: 'interested', label: 'Interested', icon: Users },
+    { key: 'view', label: 'All Reviews', icon: Eye },
   ];
+  const navItemsToRender = selectedJobId
+    ? NAV
+    : NAV.filter((item) => !['reviews', 'shortlisted', 'interested'].includes(item.key));
   const isPreparingResumes = loadingAllResumes || loadingSelectedResumes;
   const downloadButtonLabel = loadingExcel
     ? 'Preparing Excel...'
@@ -1080,8 +1253,18 @@ export default function TpoDashboard({ token, user, onLogout }) {
     return false;
   }), [jobs, normalizedSearchQuery]);
 
-  const renderedJobs = useMemo(() => (
-    filteredJobs.map((j) => (
+  const activeJobs = useMemo(
+    () => filteredJobs.filter((job) => !isExpiredJob(job)),
+    [filteredJobs],
+  );
+
+  const pastJobs = useMemo(
+    () => filteredJobs.filter((job) => isExpiredJob(job)),
+    [filteredJobs],
+  );
+
+  const renderJobCards = useCallback((jobList) => (
+    jobList.map((j) => (
       <JobPostingCard
         key={j.id}
         job={j}
@@ -1091,10 +1274,137 @@ export default function TpoDashboard({ token, user, onLogout }) {
         onSelect={handleSelectActionJob}
         onViewShortlisted={viewShortlisted}
         onViewInterested={viewInterested}
+        onViewReviews={viewReviews}
         onDelete={handleDelete}
+        onDeadlineUpdated={fetchJobs}
       />
     ))
-  ), [filteredJobs, handleDelete, handleSelectActionJob, inputStyles, selectedActionJobId, token, viewInterested, viewShortlisted]);
+  ), [fetchJobs, handleDelete, handleSelectActionJob, inputStyles, selectedActionJobId, token, viewInterested, viewReviews, viewShortlisted]);
+
+  const sortReviews = useCallback((items, mode) => {
+    const list = [...items];
+    switch (mode) {
+      case 'oldest':
+        return list.sort((a, b) => new Date(a.updated_at || a.created_at || 0) - new Date(b.updated_at || b.created_at || 0));
+      case 'highest':
+        return list.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+      case 'lowest':
+        return list.sort((a, b) => Number(a.rating || 0) - Number(b.rating || 0));
+      case 'newest':
+      default:
+        return list.sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+    }
+  }, []);
+
+  const sortedJobReviews = useMemo(() => sortReviews(jobReviews, jobReviewSort), [jobReviewSort, jobReviews, sortReviews]);
+  const sortedAllReviews = useMemo(() => sortReviews(allReviews, allReviewSort), [allReviewSort, allReviews, sortReviews]);
+  const selectedJobSortLabel = SORT_OPTIONS.find((option) => option.value === jobReviewSort)?.label || 'Sort: Newest First';
+  const selectedAllSortLabel = SORT_OPTIONS.find((option) => option.value === allReviewSort)?.label || 'Sort: Newest First';
+
+  const reviewStats = useMemo(() => {
+    const totalReviews = allReviews.length;
+    const avgRating = totalReviews
+      ? (allReviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) / totalReviews)
+      : 0;
+
+    const ratingDistribution = [1, 2, 3, 4, 5].map((rating) => ({
+      rating,
+      count: allReviews.filter((item) => Number(item.rating) === rating).length,
+    }));
+
+    const monthlyMap = {};
+    for (let i = 5; i >= 0; i -= 1) {
+      const dt = new Date();
+      dt.setMonth(dt.getMonth() - i);
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      monthlyMap[key] = { month: dt.toLocaleString('default', { month: 'short' }), count: 0, totalRating: 0 };
+    }
+
+    allReviews.forEach((item) => {
+      const rawDate = item.updated_at || item.created_at;
+      if (!rawDate) return;
+      const dt = new Date(rawDate);
+      if (Number.isNaN(dt.getTime())) return;
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthlyMap[key]) return;
+      monthlyMap[key].count += 1;
+      monthlyMap[key].totalRating += Number(item.rating || 0);
+    });
+
+    const monthlyTrend = Object.values(monthlyMap).map((item) => ({
+      ...item,
+      avgRating: item.count ? item.totalRating / item.count : 0,
+    }));
+
+    const jobMap = new Map();
+    allReviews.forEach((item) => {
+      const jobId = item.job?.id;
+      if (!jobId) return;
+      if (!jobMap.has(jobId)) {
+        jobMap.set(jobId, {
+          id: jobId,
+          title: item.job?.title || 'Job',
+          company: item.job?.company || 'Company',
+          count: 0,
+          totalRating: 0,
+        });
+      }
+      const job = jobMap.get(jobId);
+      job.count += 1;
+      job.totalRating += Number(item.rating || 0);
+    });
+
+    const topReviewedJobs = [...jobMap.values()]
+      .map((job) => ({ ...job, avgRating: job.count ? job.totalRating / job.count : 0 }))
+      .sort((a, b) => {
+        if (b.avgRating !== a.avgRating) return b.avgRating - a.avgRating;
+        return b.count - a.count;
+      })
+      .slice(0, 5);
+
+    const positiveTokens = ['good', 'great', 'excellent', 'helpful', 'clear', 'supportive', 'amazing', 'nice', 'best', 'smooth'];
+    const negativeTokens = ['bad', 'poor', 'worst', 'confusing', 'slow', 'rude', 'late', 'difficult', 'hard', 'issue', 'problem'];
+    const sentiment = { positive: 0, neutral: 0, negative: 0 };
+
+    allReviews.forEach((item) => {
+      const text = String(item.review_text || '').toLowerCase();
+      if (!text.trim()) {
+        sentiment.neutral += 1;
+        return;
+      }
+      const positiveScore = positiveTokens.reduce((sum, token) => (text.includes(token) ? sum + 1 : sum), 0);
+      const negativeScore = negativeTokens.reduce((sum, token) => (text.includes(token) ? sum + 1 : sum), 0);
+
+      if (positiveScore > negativeScore) {
+        sentiment.positive += 1;
+      } else if (negativeScore > positiveScore) {
+        sentiment.negative += 1;
+      } else {
+        sentiment.neutral += 1;
+      }
+    });
+
+    return {
+      totalReviews,
+      avgRating,
+      ratingDistribution,
+      monthlyTrend,
+      topReviewedJobs,
+      sentiment,
+    };
+  }, [allReviews]);
+
+  const maxRatingCount = Math.max(1, ...reviewStats.ratingDistribution.map((item) => item.count));
+  const maxMonthlyCount = Math.max(1, ...reviewStats.monthlyTrend.map((item) => item.count));
+  const maxTopJobRating = Math.max(1, ...reviewStats.topReviewedJobs.map((item) => item.avgRating || 0));
+  const maxSentimentCount = Math.max(
+    1,
+    reviewStats.sentiment.positive,
+    reviewStats.sentiment.neutral,
+    reviewStats.sentiment.negative,
+  );
+
+  const sideW = sidebarCollapsed ? '72px' : '240px';
 
   return (
     <Flex h="100vh" bg="gray.950">
@@ -1108,41 +1418,88 @@ export default function TpoDashboard({ token, user, onLogout }) {
 
       {/* Sidebar */}
       <Box
-        as="nav" w="240px" minW="240px" h="100vh" bg="gray.900"
+        as="nav" w={sideW} minW={sideW} h="100vh" bg="gray.900"
         borderRight="1px solid" borderColor="gray.800" py={4}
         display={{ base: mobileMenuOpen ? 'flex' : 'none', md: 'flex' }}
         position={{ base: 'fixed', md: 'relative' }}
         zIndex={100}
         flexDirection="column"
+        transition="width 0.2s"
+        overflow="hidden"
       >
-        <HStack px={4} mb={6} gap={2}>
+        <HStack px={4} mb={6} gap={2} justify={sidebarCollapsed ? 'center' : 'flex-start'}>
           <Text fontSize="xl" fontWeight="800" color="purple.400" letterSpacing="-0.5px">
-            HireReady
+            {sidebarCollapsed ? 'H' : 'HireReady'}
           </Text>
-          <Badge colorPalette="purple" fontSize="xs">TPO</Badge>
+          {!sidebarCollapsed && <Badge colorPalette="purple" fontSize="xs">TPO</Badge>}
         </HStack>
 
         <VStack gap={1} px={2} flex={1}>
-          {NAV.map((item) => {
+          {navItemsToRender.map((item) => {
             const isActive = tab === item.key;
-            const needsJob = (item.key === 'shortlisted' || item.key === 'interested') && !selectedJobId;
-            return (
+            const navButton = (
               <Button
                 key={item.key}
-                variant="ghost" w="full" justifyContent="flex-start" px={3} py={2} h="44px"
+                variant="ghost" w="full" justifyContent={sidebarCollapsed ? 'center' : 'flex-start'} px={sidebarCollapsed ? 0 : 3} py={2} h="44px"
                 bg={isActive ? 'purple.500/15' : 'transparent'}
                 color={isActive ? 'purple.300' : 'gray.400'}
                 _hover={{ bg: 'gray.800', color: 'gray.100' }}
                 borderRadius="lg" fontSize="sm" fontWeight={isActive ? '600' : '400'}
-                onClick={() => { if (needsJob) return; setTab(item.key); setMobileMenuOpen(false); }}
-                opacity={needsJob ? 0.4 : 1}
-                cursor={needsJob ? 'not-allowed' : 'pointer'}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (item.key === 'shortlisted' && selectedJobId) {
+                    viewShortlisted(selectedJobId);
+                    return;
+                  }
+                  if (item.key === 'interested' && selectedJobId) {
+                    viewInterested(selectedJobId);
+                    return;
+                  }
+                  if (item.key === 'reviews' && selectedJobId) {
+                    viewReviews(selectedJobId);
+                    return;
+                  }
+                  if (item.key === 'view') {
+                    viewAllReviews();
+                    return;
+                  }
+                  if (item.key === 'dashboard') {
+                    viewDashboard();
+                    return;
+                  }
+                  setTab(item.key);
+                }}
               >
-                {item.label}
+                <Icon asChild w={5} h={5} mr={sidebarCollapsed ? 0 : 2}>
+                  <item.icon />
+                </Icon>
+                {!sidebarCollapsed && item.label}
               </Button>
             );
+
+            return sidebarCollapsed ? (
+              <Tooltip key={item.key} content={item.label} positioning={{ placement: 'right' }}>
+                {navButton}
+              </Tooltip>
+            ) : navButton;
           })}
         </VStack>
+
+        <Box px={2} mt="auto" display={{ base: 'none', md: 'block' }}>
+          <Button
+            variant="ghost"
+            w="full"
+            size="sm"
+            color="gray.500"
+            _hover={{ color: 'gray.300', bg: 'gray.800' }}
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          >
+            <Icon asChild w={4} h={4}>
+              {sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+            </Icon>
+            {!sidebarCollapsed && 'Collapse'}
+          </Button>
+        </Box>
       </Box>
 
       {/* Main */}
@@ -1184,6 +1541,137 @@ export default function TpoDashboard({ token, user, onLogout }) {
 
         {/* Content */}
         <Box flex={1} overflow="auto" p={6}>
+          {/* ═══ Dashboard ═══ */}
+          {tab === 'dashboard' && (
+            <Box>
+              <Flex justify="space-between" align={{ base: 'flex-start', md: 'center' }} mb={5} direction={{ base: 'column', md: 'row' }} gap={3}>
+                <Box>
+                  <Heading size="lg" color="gray.100" mb={1}>Review Analytics Dashboard</Heading>
+                  <Text color="gray.400" fontSize="sm">Overview of feedback quality, trends, and top-performing jobs.</Text>
+                </Box>
+                <Button size="sm" variant="outline" colorPalette="purple" onClick={viewDashboard}>
+                  Refresh Analytics
+                </Button>
+              </Flex>
+
+              <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} gap={4} mb={6}>
+                <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                  <Text color="gray.500" fontSize="xs">Total Reviews</Text>
+                  <Heading size="lg" color="gray.100" mt={1}>{reviewStats.totalReviews}</Heading>
+                </Box>
+                <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                  <Text color="gray.500" fontSize="xs">Average Rating</Text>
+                  <HStack mt={1} gap={2} align="center">
+                    <Heading size="lg" color="gray.100">{reviewStats.avgRating.toFixed(1)}</Heading>
+                    <Badge colorPalette="purple"><Icon asChild w={3} h={3} mr={1}><Star /></Icon>out of 5</Badge>
+                  </HStack>
+                </Box>
+                <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                  <Text color="gray.500" fontSize="xs">Active Jobs</Text>
+                  <Heading size="lg" color="gray.100" mt={1}>{activeJobs.length}</Heading>
+                </Box>
+                <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                  <Text color="gray.500" fontSize="xs">Past Jobs</Text>
+                  <Heading size="lg" color="gray.100" mt={1}>{pastJobs.length}</Heading>
+                </Box>
+              </SimpleGrid>
+
+              {loadingAllReviews ? (
+                <Flex justify="center" py={8}><Spinner color="purple.400" size="xl" /></Flex>
+              ) : allReviews.length === 0 ? (
+                <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={6}>
+                  <Text color="gray.500">No reviews available yet. Once students submit reviews, analytics will appear here.</Text>
+                </Box>
+              ) : (
+                <SimpleGrid columns={{ base: 1, xl: 2 }} gap={6}>
+                  <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={5}>
+                    <Heading size="sm" color="gray.100" mb={4}>Rating Distribution</Heading>
+                    <VStack align="stretch" gap={3}>
+                      {reviewStats.ratingDistribution.slice().reverse().map((item) => (
+                        <HStack key={`rating-${item.rating}`} gap={3}>
+                          <Text w="48px" color="gray.400" fontSize="sm">{item.rating} star</Text>
+                          <Box flex={1} bg="gray.800" borderRadius="md" h="10px" overflow="hidden">
+                            <Box
+                              h="10px"
+                              bg="purple.400"
+                              borderRadius="md"
+                              w={`${(item.count / maxRatingCount) * 100}%`}
+                              transition="width 0.3s ease"
+                            />
+                          </Box>
+                          <Text minW="24px" textAlign="right" color="gray.300" fontSize="sm">{item.count}</Text>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  </Box>
+
+                  <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={5}>
+                    <Heading size="sm" color="gray.100" mb={4}>Monthly Review Trend (Last 6 Months)</Heading>
+                    <HStack align="end" gap={3} h="220px">
+                      {reviewStats.monthlyTrend.map((item) => (
+                        <VStack key={`month-${item.month}`} gap={2} flex={1} align="center" justify="end" h="100%">
+                          <Text color="gray.300" fontSize="xs">{item.count}</Text>
+                          <Box w="100%" bg="gray.800" borderRadius="md" h={`${Math.max(8, (item.count / maxMonthlyCount) * 160)}px`}>
+                            <Box h="100%" bg="cyan.400" borderRadius="md" />
+                          </Box>
+                          <Text color="gray.500" fontSize="xs">{item.month}</Text>
+                        </VStack>
+                      ))}
+                    </HStack>
+                  </Box>
+
+                  <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={5}>
+                    <Heading size="sm" color="gray.100" mb={4}>Review Sentiment</Heading>
+                    <VStack align="stretch" gap={4}>
+                      {[
+                        { key: 'positive', label: 'Positive', color: 'green.400', value: reviewStats.sentiment.positive },
+                        { key: 'neutral', label: 'Neutral', color: 'yellow.400', value: reviewStats.sentiment.neutral },
+                        { key: 'negative', label: 'Negative', color: 'red.400', value: reviewStats.sentiment.negative },
+                      ].map((item) => (
+                        <HStack key={`sentiment-${item.key}`} gap={3}>
+                          <Text w="70px" color="gray.400" fontSize="sm">{item.label}</Text>
+                          <Box flex={1} bg="gray.800" borderRadius="md" h="10px" overflow="hidden">
+                            <Box
+                              h="10px"
+                              bg={item.color}
+                              borderRadius="md"
+                              w={`${(item.value / maxSentimentCount) * 100}%`}
+                              transition="width 0.3s ease"
+                            />
+                          </Box>
+                          <Text minW="24px" textAlign="right" color="gray.300" fontSize="sm">{item.value}</Text>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  </Box>
+
+                  <Box bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={5} gridColumn={{ xl: 'span 2' }}>
+                    <Heading size="sm" color="gray.100" mb={4}>Top Reviewed Jobs by Rating</Heading>
+                    <VStack align="stretch" gap={3}>
+                      {reviewStats.topReviewedJobs.map((item) => (
+                        <Box key={`top-job-${item.id}`}>
+                          <Flex justify="space-between" mb={1}>
+                            <Text color="gray.200" fontSize="sm" fontWeight="600">{item.title} — {item.company}</Text>
+                            <Text color="purple.300" fontSize="sm">{item.avgRating.toFixed(1)} / 5 ({item.count})</Text>
+                          </Flex>
+                          <Box bg="gray.800" borderRadius="md" h="8px" overflow="hidden">
+                            <Box
+                              h="8px"
+                              bg="purple.400"
+                              borderRadius="md"
+                              w={`${(item.avgRating / maxTopJobRating) * 100}%`}
+                              transition="width 0.3s ease"
+                            />
+                          </Box>
+                        </Box>
+                      ))}
+                    </VStack>
+                  </Box>
+                </SimpleGrid>
+              )}
+            </Box>
+          )}
+
           {/* ═══ Post Job ═══ */}
           {tab === 'post' && (
             <Box maxW="700px" mx="auto">
@@ -1282,7 +1770,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
                     </Field>
                   </SimpleGrid>
                   <Field label="Deadline">
-                    <Input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} {...inputStyles} />
+                    <Input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} required {...inputStyles} />
                   </Field>
                   <Button type="submit" colorPalette="purple" size="lg" w="full" loading={posting} loadingText="Posting…">
                     Post Job
@@ -1295,7 +1783,7 @@ export default function TpoDashboard({ token, user, onLogout }) {
           {/* ═══ My Jobs ═══ */}
           {tab === 'jobs' && (
             <Box>
-              <Heading size="lg" color="gray.100" mb={4}>My Job Postings</Heading>
+              <Heading size="lg" color="gray.100" mb={4}>Active Job Postings</Heading>
               <HStack justify="space-between" align="center" mb={6}>
                 <Input
                   type="text"
@@ -1308,16 +1796,42 @@ export default function TpoDashboard({ token, user, onLogout }) {
               </HStack>
               {loadingJobs ? (
                 <Flex justify="center" py={8}><Spinner color="purple.400" size="xl" /></Flex>
-              ) : jobs.length === 0 ? (
+              ) : activeJobs.length === 0 && jobs.length === 0 ? (
                 <Flex direction="column" align="center" justify="center" h="200px" gap={3}>
                   <Text color="gray.500">No jobs posted yet.</Text>
                   <Button colorPalette="purple" onClick={() => setTab('post')}>Post Your First Job</Button>
                 </Flex>
-              ) : filteredJobs.length === 0 ? (
-                <Text color="gray.500" mt={6}>No jobs found.</Text>
+              ) : activeJobs.length === 0 ? (
+                <Text color="gray.500" mt={6}>No active jobs found.</Text>
               ) : (
                 <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-                  {renderedJobs}
+                  {renderJobCards(activeJobs)}
+                </SimpleGrid>
+              )}
+            </Box>
+          )}
+
+          {/* ═══ Past Jobs ═══ */}
+          {tab === 'past' && (
+            <Box>
+              <Heading size="lg" color="gray.100" mb={4}>Past Jobs</Heading>
+              <HStack justify="space-between" align="center" mb={6}>
+                <Input
+                  type="text"
+                  placeholder="Search past jobs by title or company..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  maxW="320px"
+                  {...inputStyles}
+                />
+              </HStack>
+              {loadingJobs ? (
+                <Flex justify="center" py={8}><Spinner color="purple.400" size="xl" /></Flex>
+              ) : pastJobs.length === 0 ? (
+                <Text color="gray.500" mt={6}>No past jobs found.</Text>
+              ) : (
+                <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                  {renderJobCards(pastJobs)}
                 </SimpleGrid>
               )}
             </Box>
@@ -1415,6 +1929,131 @@ export default function TpoDashboard({ token, user, onLogout }) {
                     </Table.Body>
                   </Table.Root>
                 </Box>
+              )}
+            </Box>
+          )}
+
+          {/* ═══ Reviews ═══ */}
+          {tab === 'reviews' && (
+            <Box>
+              <Button variant="ghost" size="sm" color="gray.400" mb={3}
+                onClick={() => setTab('jobs')} _hover={{ color: 'gray.100' }}>
+                <Icon asChild w={4} h={4}><ChevronLeft /></Icon> Back to jobs
+              </Button>
+
+              <Flex justify="space-between" align="center" mb={4}>
+                <Box>
+                  <Heading size="lg" color="gray.100" mb={1}>Specific Job Reviews</Heading>
+                  {reviewsJob && (
+                    <Text color="gray.400" fontSize="sm">
+                      {reviewsJob.title} — {reviewsJob.company}
+                    </Text>
+                  )}
+                  <Text color="gray.500" fontSize="xs" mt={1}>Reviews for the selected job only.</Text>
+                </Box>
+                <HStack gap={2}>
+                  <Badge colorPalette="purple" fontSize="sm">Avg Rating: {reviewsSummary.avg_rating || 0}</Badge>
+                  <Badge colorPalette="blue" fontSize="sm">Total: {reviewsSummary.count || 0}</Badge>
+                </HStack>
+              </Flex>
+
+              <HStack mb={4} justify="flex-end">
+                <MenuRoot>
+                  <MenuTrigger asChild>
+                    <Button size="sm" variant="outline" colorPalette="gray" minW="220px" justifyContent="space-between">
+                      {selectedJobSortLabel}
+                      <Icon asChild w={4} h={4}><ChevronDown /></Icon>
+                    </Button>
+                  </MenuTrigger>
+                  <MenuContent bg="gray.800" borderColor="gray.700">
+                    {SORT_OPTIONS.map((option) => (
+                      <MenuItem
+                        key={`job-sort-${option.value}`}
+                        value={`job-sort-${option.value}`}
+                        onClick={() => setJobReviewSort(option.value)}
+                      >
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </MenuContent>
+                </MenuRoot>
+              </HStack>
+
+              {loadingReviews ? (
+                <Flex justify="center" py={8}><Spinner color="purple.400" size="xl" /></Flex>
+              ) : sortedJobReviews.length === 0 ? (
+                <Text color="gray.500">No reviews submitted yet for this job.</Text>
+              ) : (
+                <VStack gap={3} align="stretch">
+                  {sortedJobReviews.map((item) => (
+                    <Box key={item.id} bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                      <Flex justify="space-between" align="flex-start" mb={2}>
+                        <Box>
+                          <Text color="gray.100" fontWeight="600">{item.student?.name || 'Student'}</Text>
+                          <Text color="gray.500" fontSize="xs">{item.student?.email || ''}</Text>
+                        </Box>
+                        <Badge colorPalette="purple" fontSize="xs">Rating: {item.rating}/5</Badge>
+                      </Flex>
+                      <Text color="gray.300" fontSize="sm">{item.review_text || 'No written feedback provided.'}</Text>
+                    </Box>
+                  ))}
+                </VStack>
+              )}
+            </Box>
+          )}
+
+          {/* ═══ View (All Reviews) ═══ */}
+          {tab === 'view' && (
+            <Box>
+              <Heading size="lg" color="gray.100" mb={1}>All Job Reviews</Heading>
+              <Text color="gray.400" fontSize="sm" mb={4}>Combined reviews across all your applications and job postings.</Text>
+
+              <HStack gap={2} mb={4}>
+                <Badge colorPalette="purple" fontSize="sm">Avg Rating: {allReviewsSummary.avg_rating || 0}</Badge>
+                <Badge colorPalette="blue" fontSize="sm">Total: {allReviewsSummary.count || 0}</Badge>
+              </HStack>
+
+              <HStack mb={4} justify="flex-end">
+                <MenuRoot>
+                  <MenuTrigger asChild>
+                    <Button size="sm" variant="outline" colorPalette="gray" minW="220px" justifyContent="space-between">
+                      {selectedAllSortLabel}
+                      <Icon asChild w={4} h={4}><ChevronDown /></Icon>
+                    </Button>
+                  </MenuTrigger>
+                  <MenuContent bg="gray.800" borderColor="gray.700">
+                    {SORT_OPTIONS.map((option) => (
+                      <MenuItem
+                        key={`all-sort-${option.value}`}
+                        value={`all-sort-${option.value}`}
+                        onClick={() => setAllReviewSort(option.value)}
+                      >
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </MenuContent>
+                </MenuRoot>
+              </HStack>
+
+              {loadingAllReviews ? (
+                <Flex justify="center" py={8}><Spinner color="purple.400" size="xl" /></Flex>
+              ) : sortedAllReviews.length === 0 ? (
+                <Text color="gray.500">No reviews available yet.</Text>
+              ) : (
+                <VStack gap={3} align="stretch">
+                  {sortedAllReviews.map((item) => (
+                    <Box key={item.id} bg="gray.900" border="1px solid" borderColor="gray.800" borderRadius="xl" p={4}>
+                      <Flex justify="space-between" align="flex-start" mb={2}>
+                        <Box>
+                          <Text color="gray.100" fontWeight="700">{item.job?.title || 'Job'} — {item.job?.company || ''}</Text>
+                          <Text color="gray.500" fontSize="xs">{item.student?.name || 'Student'} ({item.student?.email || ''})</Text>
+                        </Box>
+                        <Badge colorPalette="purple" fontSize="xs">Rating: {item.rating}/5</Badge>
+                      </Flex>
+                      <Text color="gray.300" fontSize="sm">{item.review_text || 'No written feedback provided.'}</Text>
+                    </Box>
+                  ))}
+                </VStack>
               )}
             </Box>
           )}

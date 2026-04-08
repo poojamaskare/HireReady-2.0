@@ -10,7 +10,7 @@ import {
 import { Tooltip } from '@/components/ui/tooltip';
 import {
   LayoutDashboard, FileText, Map, ClipboardList, Briefcase,
-  User, PanelLeftClose, PanelLeftOpen, LogOut, ChevronLeft, Bell, BadgeCheck, Menu
+  User, PanelLeftClose, PanelLeftOpen, LogOut, ChevronLeft, Bell, BadgeCheck, Menu, CalendarClock
 } from 'lucide-react';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -36,6 +36,7 @@ const NAV_ITEMS = [
   { key: 'roadmap', label: 'Roadmap', icon: Map },
   { key: 'quiz', label: 'Take Quizzes', icon: ClipboardList },
   { key: 'jobs', label: 'Jobs', icon: Briefcase },
+  { key: 'past-jobs', label: 'Past Jobs', icon: CalendarClock },
   { key: 'results', label: 'Results', icon: BadgeCheck },
   { key: 'profile', label: 'Profile', icon: User },
 ];
@@ -46,6 +47,7 @@ const TAB_TO_PATH = {
   roadmap: '/student/roadmap',
   quiz: '/student/quiz',
   jobs: '/student/jobs',
+  'past-jobs': '/student/past-jobs',
   results: '/student/results',
   profile: '/student/profile',
 };
@@ -891,6 +893,9 @@ export default function App() {
 
           {/* Jobs Tab */}
           {activeTab === 'jobs' && <StudentJobs token={token} />}
+
+          {/* Past Jobs Tab */}
+          {activeTab === 'past-jobs' && <StudentJobs token={token} mode="expired" />}
 
           {/* Results Tab */}
           {activeTab === 'results' && <StudentResults token={token} />}

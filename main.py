@@ -15,7 +15,7 @@ import base64
 import smtplib
 import time
 import concurrent.futures
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from urllib.parse import quote_plus, urlparse, unquote
 from zipfile import ZipFile, ZIP_DEFLATED
 from functools import lru_cache
@@ -34,7 +34,7 @@ from openpyxl import Workbook
 
 from services.feature_analyzer import build_complete_feature_vector, FEATURE_COLUMNS as DEFAULT_FEATURE_COLUMNS, evaluate_resume_structure
 from services.database import engine, get_db, Base
-from services.models import User, AnalysisResult, QuizResult, Job, TpoLogin, InterestedJob, ShortlistedJob, Notification, JobResult
+from services.models import User, AnalysisResult, QuizResult, Job, TpoLogin, InterestedJob, ShortlistedJob, Notification, JobResult, JobReview
 from services.quiz_generator import generate_quiz_questions
 from services.auth import (
     hash_password,
@@ -708,6 +708,36 @@ def _normalize_resume_url_for_response(raw_url: Optional[str]) -> str:
         return ""
 
 
+def _parse_job_deadline_date(raw_deadline: Optional[str]) -> Optional[date]:
+    """Parse supported deadline formats into a date object.
+
+    Expected primary format is YYYY-MM-DD from the TPO date input.
+    """
+    value = (raw_deadline or "").strip()
+    if not value:
+        return None
+
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d-%m-%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+
+    try:
+        return datetime.fromisoformat(value).date()
+    except ValueError:
+        return None
+
+
+def _is_job_expired(raw_deadline: Optional[str], today: Optional[date] = None) -> bool:
+    """Return True when a valid deadline is before the current date."""
+    deadline_date = _parse_job_deadline_date(raw_deadline)
+    if deadline_date is None:
+        return False
+    current_day = today or datetime.now(timezone.utc).date()
+    return deadline_date < current_day
+
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_root(request: Request):
     """Serve the built HireReady frontend."""
@@ -812,6 +842,11 @@ class ShortlistAllRequest(BaseModel):
 class ProfilePhotoRequest(BaseModel):
     # The storage file path (recommended) or a public URL
     filePath: str
+
+
+class JobReviewRequest(BaseModel):
+    rating: int
+    review_text: str = ""
 
 
 @app.post('/api/profile/photo')
@@ -2799,6 +2834,12 @@ async def create_job(
     db: Session = Depends(get_db),
 ):
     """TPO creates a new job posting (multipart/form-data with optional logo)."""
+    normalized_deadline = (deadline or "").strip()
+    if not normalized_deadline:
+        raise HTTPException(status_code=400, detail="deadline is required")
+    if _parse_job_deadline_date(normalized_deadline) is None:
+        raise HTTPException(status_code=400, detail="deadline must be a valid date (YYYY-MM-DD)")
+
     logo_data = ""
     if company_logo and company_logo.filename:
         allowed = (".png", ".jpg", ".jpeg")
@@ -2825,7 +2866,7 @@ async def create_job(
         required_certifications=required_certifications,
         preferred_skills=preferred_skills,
         package_lpa=package_lpa,
-        deadline=deadline,
+        deadline=normalized_deadline,
         company_logo=logo_data,
     )
     db.add(job)
@@ -2861,6 +2902,8 @@ def list_tpo_jobs(
         .order_by(Job.created_at.desc())
         .all()
     )
+    today = datetime.now(timezone.utc).date()
+
     return {
         "jobs": [
             {
@@ -2876,6 +2919,7 @@ def list_tpo_jobs(
                 "preferred_skills": j.preferred_skills or "",
                 "package_lpa": j.package_lpa,
                 "deadline": j.deadline,
+                "is_expired": _is_job_expired(j.deadline, today=today),
                 "company_logo": j.company_logo or "",
                 "created_at": str(j.created_at),
             }
@@ -2897,6 +2941,39 @@ def delete_job(
     db.delete(job)
     db.commit()
     return {"detail": "Job deleted"}
+
+
+@app.patch("/api/tpo/jobs/{job_id}/deadline")
+def update_job_deadline(
+    job_id: str,
+    payload: Dict[str, str],
+    tpo: User = Depends(get_current_tpo),
+    db: Session = Depends(get_db),
+):
+    """Allow TPO to adjust an existing job deadline."""
+    job = db.query(Job).filter(Job.id == job_id, Job.posted_by == tpo.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    next_deadline = (payload.get("deadline") or "").strip()
+    if not next_deadline:
+        raise HTTPException(status_code=400, detail="deadline is required")
+    if _parse_job_deadline_date(next_deadline) is None:
+        raise HTTPException(status_code=400, detail="deadline must be a valid date (YYYY-MM-DD)")
+
+    job.deadline = next_deadline
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    return {
+        "message": "Deadline updated",
+        "job": {
+            "id": str(job.id),
+            "deadline": job.deadline,
+            "is_expired": _is_job_expired(job.deadline),
+        },
+    }
 
 
 @app.post("/api/results/upload")
@@ -3577,6 +3654,8 @@ def list_all_jobs(
 ):
     """Students browse all available job postings (view-only, no apply)."""
     jobs = db.query(Job).order_by(Job.created_at.desc()).all()
+    today = datetime.now(timezone.utc).date()
+    active_jobs = [j for j in jobs if not _is_job_expired(j.deadline, today=today)]
 
     return {
         "jobs": [
@@ -3593,10 +3672,45 @@ def list_all_jobs(
                 "preferred_skills": j.preferred_skills or "",
                 "package_lpa": j.package_lpa,
                 "deadline": j.deadline,
+                "is_expired": False,
                 "company_logo": j.company_logo or "",
                 "created_at": str(j.created_at),
             }
-            for j in jobs
+            for j in active_jobs
+        ]
+    }
+
+
+@app.get("/api/jobs/past")
+def list_past_jobs(
+    current_user: User = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Students browse expired jobs in a separate tab."""
+    jobs = db.query(Job).order_by(Job.created_at.desc()).all()
+    today = datetime.now(timezone.utc).date()
+    expired_jobs = [j for j in jobs if _is_job_expired(j.deadline, today=today)]
+
+    return {
+        "jobs": [
+            {
+                "id": str(j.id),
+                "title": j.title,
+                "company": j.company,
+                "description": j.description,
+                "eligibility": j.eligibility,
+                "job_role": j.job_role or "",
+                "min_cgpa": j.min_cgpa,
+                "min_resume_score": j.min_resume_score,
+                "required_certifications": j.required_certifications or "",
+                "preferred_skills": j.preferred_skills or "",
+                "package_lpa": j.package_lpa,
+                "deadline": j.deadline,
+                "is_expired": True,
+                "company_logo": j.company_logo or "",
+                "created_at": str(j.created_at),
+            }
+            for j in expired_jobs
         ]
     }
 
@@ -3646,6 +3760,8 @@ def mark_interest(
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    if _is_job_expired(job.deadline):
+        raise HTTPException(status_code=400, detail="Application deadline has passed for this job")
 
     existing = db.query(InterestedJob).filter(
         InterestedJob.student_id == current_user.id,
@@ -3715,6 +3831,9 @@ def get_my_applied_jobs(
         .all()
     )
 
+    today = datetime.now(timezone.utc).date()
+    visible_jobs = [j for j in jobs if not _is_job_expired(j.deadline, today=today)]
+
     return {
         "jobs": [
             {
@@ -3725,12 +3844,204 @@ def get_my_applied_jobs(
                 "job_role": j.job_role or "",
                 "package_lpa": j.package_lpa,
                 "deadline": j.deadline,
+                "is_expired": False,
                 "company_logo": j.company_logo or "",
                 "is_interested": str(j.id) in interested_ids,
                 "is_shortlisted": str(j.id) in shortlisted_ids,
             }
-            for j in jobs
+            for j in visible_jobs
         ]
+    }
+
+
+@app.get("/api/jobs/{job_id}/review/me")
+def get_my_job_review(
+    job_id: str,
+    current_user: User = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Get the current student's review for a specific job."""
+    review = db.query(JobReview).filter(
+        JobReview.job_id == job_id,
+        JobReview.student_id == current_user.id,
+    ).first()
+
+    if not review:
+        return {"review": None}
+
+    return {
+        "review": {
+            "id": str(review.id),
+            "job_id": str(review.job_id),
+            "rating": review.rating,
+            "review_text": review.review_text or "",
+            "created_at": str(review.created_at),
+            "updated_at": str(review.updated_at),
+        }
+    }
+
+
+@app.post("/api/jobs/{job_id}/review")
+def upsert_job_review(
+    job_id: str,
+    payload: JobReviewRequest,
+    current_user: User = Depends(get_current_student),
+    db: Session = Depends(get_db),
+):
+    """Create a student's review for an expired job they applied to (one-time only)."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not _is_job_expired(job.deadline):
+        raise HTTPException(status_code=400, detail="Reviews are allowed only after deadline passes")
+
+    is_interested = db.query(InterestedJob.id).filter(
+        InterestedJob.job_id == job_id,
+        InterestedJob.student_id == current_user.id,
+    ).first()
+    is_shortlisted = db.query(ShortlistedJob.id).filter(
+        ShortlistedJob.job_id == job_id,
+        ShortlistedJob.student_id == current_user.id,
+    ).first()
+    if not (is_interested or is_shortlisted):
+        raise HTTPException(status_code=403, detail="You can review only jobs you interacted with")
+
+    rating = int(payload.rating)
+    if rating < 1 or rating > 5:
+        raise HTTPException(status_code=400, detail="rating must be between 1 and 5")
+
+    review_text = (payload.review_text or "").strip()
+    now = datetime.now(timezone.utc)
+
+    existing_review = db.query(JobReview).filter(
+        JobReview.job_id == job_id,
+        JobReview.student_id == current_user.id,
+    ).first()
+
+    if existing_review:
+        raise HTTPException(status_code=409, detail="You have already submitted a review for this job")
+
+    review = JobReview(
+        job_id=job_id,
+        student_id=current_user.id,
+        rating=rating,
+        review_text=review_text,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(review)
+
+    db.commit()
+    db.refresh(review)
+
+    return {
+        "message": "Review submitted",
+        "review": {
+            "id": str(review.id),
+            "job_id": str(review.job_id),
+            "rating": review.rating,
+            "review_text": review.review_text or "",
+            "created_at": str(review.created_at),
+            "updated_at": str(review.updated_at),
+        },
+    }
+
+
+@app.get("/api/tpo/jobs/{job_id}/reviews")
+def get_job_reviews_for_tpo(
+    job_id: str,
+    tpo: User = Depends(get_current_tpo),
+    db: Session = Depends(get_db),
+):
+    """TPO views all reviews for one of their jobs."""
+    job = db.query(Job).filter(Job.id == job_id, Job.posted_by == tpo.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    reviews = (
+        db.query(JobReview, User)
+        .join(User, User.id == JobReview.student_id)
+        .filter(JobReview.job_id == job_id)
+        .order_by(JobReview.updated_at.desc())
+        .all()
+    )
+
+    total_reviews = len(reviews)
+    avg_rating = round(sum(r.rating for r, _ in reviews) / total_reviews, 2) if total_reviews else 0
+
+    return {
+        "job": {
+            "id": str(job.id),
+            "title": job.title,
+            "company": job.company,
+            "deadline": job.deadline,
+        },
+        "summary": {
+            "count": total_reviews,
+            "avg_rating": avg_rating,
+        },
+        "reviews": [
+            {
+                "id": str(review.id),
+                "student": {
+                    "id": str(student.id),
+                    "name": student.name,
+                    "email": student.email,
+                },
+                "rating": review.rating,
+                "review_text": review.review_text or "",
+                "created_at": str(review.created_at),
+                "updated_at": str(review.updated_at),
+            }
+            for review, student in reviews
+        ],
+    }
+
+
+@app.get("/api/tpo/reviews")
+def get_all_reviews_for_tpo(
+    tpo: User = Depends(get_current_tpo),
+    db: Session = Depends(get_db),
+):
+    """TPO views reviews across all jobs posted by them."""
+    reviews = (
+        db.query(JobReview, User, Job)
+        .join(User, User.id == JobReview.student_id)
+        .join(Job, Job.id == JobReview.job_id)
+        .filter(Job.posted_by == tpo.id)
+        .order_by(JobReview.updated_at.desc())
+        .all()
+    )
+
+    total_reviews = len(reviews)
+    avg_rating = round(sum(r.rating for r, _, _ in reviews) / total_reviews, 2) if total_reviews else 0
+
+    return {
+        "summary": {
+            "count": total_reviews,
+            "avg_rating": avg_rating,
+        },
+        "reviews": [
+            {
+                "id": str(review.id),
+                "job": {
+                    "id": str(job.id),
+                    "title": job.title,
+                    "company": job.company,
+                },
+                "student": {
+                    "id": str(student.id),
+                    "name": student.name,
+                    "email": student.email,
+                },
+                "rating": review.rating,
+                "review_text": review.review_text or "",
+                "created_at": str(review.created_at),
+                "updated_at": str(review.updated_at),
+            }
+            for review, student, job in reviews
+        ],
     }
 
 

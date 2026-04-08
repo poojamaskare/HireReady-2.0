@@ -79,6 +79,7 @@ class User(Base):
     quizzes = relationship("QuizResult", back_populates="user")
     interested_jobs = relationship("InterestedJob", back_populates="student", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="student", cascade="all, delete-orphan")
+    job_reviews = relationship("JobReview", back_populates="student", cascade="all, delete-orphan")
 
 
 class AnalysisResult(Base):
@@ -172,6 +173,7 @@ class Job(Base):
     # Relationships
     interested_students = relationship("InterestedJob", back_populates="job", cascade="all, delete-orphan")
     shortlisted_students = relationship("ShortlistedJob", back_populates="job", cascade="all, delete-orphan")
+    reviews = relationship("JobReview", back_populates="job", cascade="all, delete-orphan")
 
 
 class TpoLogin(Base):
@@ -293,3 +295,39 @@ class JobResult(Base):
     )
 
     job = relationship("Job")
+
+
+class JobReview(Base):
+    """Student review for a specific job posting."""
+    __tablename__ = "job_reviews"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    job_id = Column(
+        UUID(as_uuid=False),
+        ForeignKey("jobs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    student_id = Column(
+        UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    rating = Column(Integer, nullable=False, default=5)
+    review_text = Column(Text, default="")
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        UniqueConstraint("job_id", "student_id", name="uq_job_student_review"),
+    )
+
+    job = relationship("Job", back_populates="reviews")
+    student = relationship("User", back_populates="job_reviews")
