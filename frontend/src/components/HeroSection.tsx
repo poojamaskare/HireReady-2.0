@@ -8,7 +8,7 @@ export interface HeroSectionProps {
 export const HeroSection: React.FC<HeroSectionProps> = ({ onBeginJourney }) => {
   return (
     <Box bg="bg" minH="60vh" display="flex" alignItems="center" justifyContent="center">
-      <VStack spacing={4} textAlign="center" maxW="800px" px={6}>
+      <VStack gap={4} textAlign="center" maxW="800px" px={6}>
         <Heading size="3xl" fontWeight="900">
           <Text as="span" color="fg">Get Ready To </Text>
           <Text as="span" bgGradient="linear(to-r, purple.500, blue.500)" bgClip="text">

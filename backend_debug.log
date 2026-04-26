@@ -5402,3 +5402,1967 @@ sqlalchemy.exc.TimeoutError: QueuePool limit of size 5 overflow 10 reached, conn
 2026-04-07 20:31:02,499 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
 2026-04-07 20:31:02,513 [INFO] main: Loaded 100 roles into skill cache.
 2026-04-07 20:31:30,474 [INFO] main: Uploaded result file to Supabase for job ff562c94-e4ce-45c4-aacc-40c81fc8a829: results/ff562c94-e4ce-45c4-aacc-40c81fc8a829/1775574087-Aptitude_Test-aptitude_selection.pdf
+2026-04-08 09:38:52,743 [INFO] main: Loading ML models in background thread...
+2026-04-08 09:38:52,960 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-08 09:38:52,996 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-08 09:40:17,768 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-08 09:41:59,313 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-08 09:42:29,624 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-08 09:43:50,836 [INFO] httpx: HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-08 09:48:48,502 [INFO] main: Uploaded result file to Supabase for job 7b269961-c307-4747-85fb-bda12747618b: results/7b269961-c307-4747-85fb-bda12747618b/1775621925-Aptitude_Test-aptitude_selection.pdf
+2026-04-08 10:19:39,897 [ERROR] main: Unhandled error on GET /api/auth/me
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1128, in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 712, in do_rollback
+    dbapi_connection.rollback()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 116, in app
+    async with AsyncExitStack() as request_stack:
+               ~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 768, in __aexit__
+    raise exc
+  File "C:\Python314\Lib\contextlib.py", line 751, in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 221, in __aexit__
+    await anext(self.gen)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\concurrency.py", line 39, in contextmanager_in_threadpool
+    await anyio.to_thread.run_sync(
+        cm.__exit__, None, None, None, limiter=exit_limiter
+    )
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Python314\Lib\contextlib.py", line 148, in __exit__
+    next(self.gen)
+    ~~~~^^^^^^^^^^
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\services\database.py", line 46, in get_db
+    db.close()
+    ~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2507, in close
+    self._close_impl(invalidate=False)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2576, in _close_impl
+    transaction.close(invalidate)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "<string>", line 2, in close
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 1417, in close
+    transaction.close()
+    ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2597, in close
+    self._do_close()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2735, in _do_close
+    self._close_impl()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2721, in _close_impl
+    self._connection_rollback_impl()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2713, in _connection_rollback_impl
+    self.connection._rollback_impl()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1130, in _rollback_impl
+    self._handle_dbapi_exception(e, None, None, None, None)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1128, in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 712, in do_rollback
+    dbapi_connection.rollback()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-08 10:19:41,055 [ERROR] main: Unhandled error on GET /api/quiz/roles
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1128, in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 712, in do_rollback
+    dbapi_connection.rollback()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 116, in app
+    async with AsyncExitStack() as request_stack:
+               ~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 768, in __aexit__
+    raise exc
+  File "C:\Python314\Lib\contextlib.py", line 751, in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 221, in __aexit__
+    await anext(self.gen)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\concurrency.py", line 39, in contextmanager_in_threadpool
+    await anyio.to_thread.run_sync(
+        cm.__exit__, None, None, None, limiter=exit_limiter
+    )
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Python314\Lib\contextlib.py", line 148, in __exit__
+    next(self.gen)
+    ~~~~^^^^^^^^^^
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\services\database.py", line 46, in get_db
+    db.close()
+    ~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2507, in close
+    self._close_impl(invalidate=False)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2576, in _close_impl
+    transaction.close(invalidate)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "<string>", line 2, in close
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 1417, in close
+    transaction.close()
+    ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2597, in close
+    self._do_close()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2735, in _do_close
+    self._close_impl()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2721, in _close_impl
+    self._connection_rollback_impl()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2713, in _connection_rollback_impl
+    self.connection._rollback_impl()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1130, in _rollback_impl
+    self._handle_dbapi_exception(e, None, None, None, None)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1128, in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 712, in do_rollback
+    dbapi_connection.rollback()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-08 10:19:41,520 [ERROR] main: Unhandled error on GET /api/notifications/unread-count
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\main.py", line 3854, in get_unread_count
+    ).count()
+      ~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 3146, in count
+    self._legacy_from_self(col).enable_eagerloads(False).scalar()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2835, in scalar
+    ret = self.one()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2808, in one
+    return self._iter().one()  # type: ignore
+           ~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT notifications.id AS notifications_id, notifications.student_id AS notifications_student_id, notifications.message AS notifications_message, notifications.status AS notifications_status, notifications.created_at AS notifications_created_at 
+FROM notifications 
+WHERE notifications.student_id = %(student_id_1)s::UUID AND notifications.status = %(status_1)s) AS anon_1]
+[parameters: {'student_id_1': UUID('a6f8ae81-3d05-4211-8dde-d194154cdefb'), 'status_1': 'unread'}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-08 10:19:41,982 [ERROR] main: Unhandled error on GET /api/quiz/results
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\main.py", line 2762, in get_quiz_results
+    results = db.query(QuizResult).filter(QuizResult.user_id == current_user.id).order_by(QuizResult.created_at.desc()).all()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2704, in all
+    return self._iter().all()  # type: ignore
+           ~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+[SQL: SELECT quiz_results.id AS quiz_results_id, quiz_results.user_id AS quiz_results_user_id, quiz_results.role AS quiz_results_role, quiz_results.difficulty AS quiz_results_difficulty, quiz_results.score AS quiz_results_score, quiz_results.total_questions AS quiz_results_total_questions, quiz_results.questions AS quiz_results_questions, quiz_results.answers AS quiz_results_answers, quiz_results.created_at AS quiz_results_created_at 
+FROM quiz_results 
+WHERE quiz_results.user_id = %(user_id_1)s::UUID ORDER BY quiz_results.created_at DESC]
+[parameters: {'user_id_1': UUID('a6f8ae81-3d05-4211-8dde-d194154cdefb')}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-08 10:20:30,392 [ERROR] main: Unhandled error on GET /api/notifications/unread-count
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 717, in checkout
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 715, in checkout
+    dbapi_connection = rec.get_connection()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 866, in get_connection
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (13.239.87.90), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (52.62.122.103), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 649, in solve_dependencies
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 680, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\services\auth.py", line 107, in get_current_user
+    user = db.query(User).filter(User.id == subject).first()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2759, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2239, in _execute_internal
+    conn = self._connection_for_bind(bind)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2108, in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 2, in _connection_for_bind
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 1187, in _connection_for_bind
+    conn = bind.connect()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3293, in connect
+    return self._connection_cls(self)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 145, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        err, dialect, engine
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2448, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 717, in checkout
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 715, in checkout
+    dbapi_connection = rec.get_connection()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 866, in get_connection
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (13.239.87.90), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (52.62.122.103), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-08 10:20:30,989 [ERROR] main: Unhandled error on GET /api/notifications/unread-count
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 717, in checkout
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 715, in checkout
+    dbapi_connection = rec.get_connection()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 837, in get_connection
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (13.239.87.90), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (52.62.122.103), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 649, in solve_dependencies
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 680, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\services\auth.py", line 107, in get_current_user
+    user = db.query(User).filter(User.id == subject).first()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2759, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2239, in _execute_internal
+    conn = self._connection_for_bind(bind)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2108, in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 2, in _connection_for_bind
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 1187, in _connection_for_bind
+    conn = bind.connect()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3293, in connect
+    return self._connection_cls(self)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 145, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        err, dialect, engine
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2448, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 717, in checkout
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 715, in checkout
+    dbapi_connection = rec.get_connection()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 837, in get_connection
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (13.239.87.90), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (52.62.122.103), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-08 10:20:31,034 [ERROR] main: Unhandled error on GET /api/quiz/results
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 717, in checkout
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 715, in checkout
+    dbapi_connection = rec.get_connection()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 837, in get_connection
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (13.239.87.90), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (52.62.122.103), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 680, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\services\auth.py", line 107, in get_current_user
+    user = db.query(User).filter(User.id == subject).first()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2759, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2239, in _execute_internal
+    conn = self._connection_for_bind(bind)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2108, in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 2, in _connection_for_bind
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 1187, in _connection_for_bind
+    conn = bind.connect()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3293, in connect
+    return self._connection_cls(self)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 145, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        err, dialect, engine
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2448, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 717, in checkout
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 715, in checkout
+    dbapi_connection = rec.get_connection()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 837, in get_connection
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (13.239.87.90), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (52.62.122.103), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-08 10:20:31,089 [ERROR] main: Unhandled error on GET /api/quiz/roles
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 717, in checkout
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 715, in checkout
+    dbapi_connection = rec.get_connection()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 837, in get_connection
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (13.239.87.90), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (52.62.122.103), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 680, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\services\auth.py", line 107, in get_current_user
+    user = db.query(User).filter(User.id == subject).first()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2759, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2239, in _execute_internal
+    conn = self._connection_for_bind(bind)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2108, in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 2, in _connection_for_bind
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 1187, in _connection_for_bind
+    conn = bind.connect()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3293, in connect
+    return self._connection_cls(self)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 145, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        err, dialect, engine
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2448, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 717, in checkout
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 715, in checkout
+    dbapi_connection = rec.get_connection()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 837, in get_connection
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (13.239.87.90), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (52.62.122.103), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-08 10:20:31,133 [ERROR] main: Unhandled error on GET /api/auth/me
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 717, in checkout
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 715, in checkout
+    dbapi_connection = rec.get_connection()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 837, in get_connection
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (13.239.87.90), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (52.62.122.103), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 680, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\services\auth.py", line 107, in get_current_user
+    user = db.query(User).filter(User.id == subject).first()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2759, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2239, in _execute_internal
+    conn = self._connection_for_bind(bind)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2108, in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 2, in _connection_for_bind
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 1187, in _connection_for_bind
+    conn = bind.connect()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3293, in connect
+    return self._connection_cls(self)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 145, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        err, dialect, engine
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2448, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 717, in checkout
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 715, in checkout
+    dbapi_connection = rec.get_connection()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 837, in get_connection
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (13.239.87.90), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (52.62.122.103), port 5432 failed: Connection timed out (0x0000274C/10060)
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-26 10:47:27,015 [INFO] main: Loading ML models in background thread...
+2026-04-26 10:47:27,018 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-26 10:47:27,034 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-26 10:55:59,267 [INFO] main: Loading ML models in background thread...
+2026-04-26 10:55:59,270 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-26 10:55:59,330 [INFO] main: Loaded 100 roles into skill cache.
+2026-04-26 11:05:22,274 [ERROR] main: Unhandled error on GET /api/jobs/5021a480-fae2-40b2-a518-864de32774fa/review/me
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\impl.py", line 177, in _do_get
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\impl.py", line 175, in _do_get
+    return self._create_connection()
+           ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 674, in __init__
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (64:ff9b::def:575a), port 5432 failed: FATAL:  MaxClientsInSessionMode: max clients reached - in Session mode max clients are limited to pool_size
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 649, in solve_dependencies
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 680, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\services\auth.py", line 107, in get_current_user
+    user = db.query(User).filter(User.id == subject).first()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2759, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2239, in _execute_internal
+    conn = self._connection_for_bind(bind)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2108, in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 2, in _connection_for_bind
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 1187, in _connection_for_bind
+    conn = bind.connect()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3293, in connect
+    return self._connection_cls(self)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 145, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        err, dialect, engine
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2448, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\impl.py", line 177, in _do_get
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\impl.py", line 175, in _do_get
+    return self._create_connection()
+           ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 674, in __init__
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (64:ff9b::def:575a), port 5432 failed: FATAL:  MaxClientsInSessionMode: max clients reached - in Session mode max clients are limited to pool_size
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-26 11:05:22,972 [ERROR] main: Unhandled error on GET /api/jobs/8dd27c73-a349-487b-8c25-6d661954f7a2/review/me
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\impl.py", line 177, in _do_get
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\impl.py", line 175, in _do_get
+    return self._create_connection()
+           ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 674, in __init__
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (64:ff9b::def:575a), port 5432 failed: FATAL:  MaxClientsInSessionMode: max clients reached - in Session mode max clients are limited to pool_size
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\routing.py", line 457, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 649, in solve_dependencies
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\fastapi\dependencies\utils.py", line 680, in solve_dependencies
+    solved = await run_in_threadpool(call, **solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "C:\Users\POOJA\Documents\Hire-Ready\HireReady-2.0\services\auth.py", line 107, in get_current_user
+    user = db.query(User).filter(User.id == subject).first()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2759, in first
+    return self.limit(1)._iter().first()  # type: ignore
+           ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\query.py", line 2857, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+        params,
+        ^^^^^^^
+        execution_options={"_sa_orm_load_options": self.load_options},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2239, in _execute_internal
+    conn = self._connection_for_bind(bind)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 2108, in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 2, in _connection_for_bind
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\orm\session.py", line 1187, in _connection_for_bind
+    conn = bind.connect()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3293, in connect
+    return self._connection_cls(self)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 145, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        err, dialect, engine
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 2448, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\base.py", line 3317, in raw_connection
+    return self.pool.connect()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\impl.py", line 177, in _do_get
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\impl.py", line 175, in _do_get
+    return self._create_connection()
+           ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 674, in __init__
+    self.__connect()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 900, in __connect
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\pool\base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\sqlalchemy\engine\default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\POOJA\AppData\Roaming\Python\Python314\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "aws-1-ap-southeast-2.pooler.supabase.com" (64:ff9b::def:575a), port 5432 failed: FATAL:  MaxClientsInSessionMode: max clients reached - in Session mode max clients are limited to pool_size
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-26 11:47:59,643 [INFO] main: Loading ML models in background thread...
+2026-04-26 11:47:59,645 [ERROR] main: Critical error loading ML models: [Errno 2] No such file or directory: 'C:\\Users\\POOJA\\Documents\\Hire-Ready\\HireReady-2.0\\roadmap_model.pkl'
+2026-04-26 11:47:59,652 [INFO] main: Loaded 100 roles into skill cache.
